@@ -1,6 +1,6 @@
 package edu.rit.cs.graph_matching;
 
-import java.util.Collection;
+import java.util.Set;
 
 /**
  * An undirected graph that the Dani-Hayes algorithm works with. As stated in
@@ -48,8 +48,11 @@ public interface Graph {
   int getRandomNeighbor(int vertex);
 
   /**
+   * Get all vertices that share an edge with a vertex.
+   *
    * @param vertex
-   * @return
+   *   the vertex
+   * @return all neighbors of the vertex
    */
-  Collection<Integer> getAllNeighbors(int vertex);
+  Set<Integer> getAllNeighbors(int vertex);
 }

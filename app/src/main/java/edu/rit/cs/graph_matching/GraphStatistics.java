@@ -1,6 +1,6 @@
 package edu.rit.cs.graph_matching;
 
-import java.util.Collection;
+import java.util.Set;
 
 /**
  * A wrapper that tracks how many times graph methods are called.
@@ -56,7 +56,7 @@ public class GraphStatistics implements Graph {
    *   {@link #getAllNeighborsCount()}.
    */
   @Override
-  public Collection<Integer> getAllNeighbors(int vertex) {
+  public Set<Integer> getAllNeighbors(int vertex) {
     allNeighborsCount++;
     return source.getAllNeighbors(vertex);
   }

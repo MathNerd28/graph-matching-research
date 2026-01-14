@@ -3,11 +3,11 @@ package edu.rit.cs.graph_matching;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * A sparse undirected graph implementation with the following properties:
@@ -97,7 +97,7 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
-  public Collection<Integer> getAllNeighbors(int vertex) {
+  public Set<Integer> getAllNeighbors(int vertex) {
     checkVertexIndex(vertex);
 
     return adjacencyList.get(vertex);
