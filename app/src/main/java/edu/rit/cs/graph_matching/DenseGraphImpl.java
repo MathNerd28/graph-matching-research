@@ -15,21 +15,21 @@ public class DenseGraphImpl extends SparseGraphImpl {
   }
 
   @Override
-  public void addEdge(int vertice1, int vertice2) {
-    super.addEdge(vertice1, vertice2);
-    adjacencyMatrix.set(vertice1 * size() + vertice2);
-    adjacencyMatrix.set(vertice2 * size() + vertice1);
+  public void addEdge(int vertex1, int vertex2) {
+    super.addEdge(vertex1, vertex2);
+    adjacencyMatrix.set(vertex1 * size() + vertex2);
+    adjacencyMatrix.set(vertex2 * size() + vertex1);
   }
 
   @Override
-  public void removeEdge(int vertice1, int vertice2) {
-    super.removeEdge(vertice1, vertice2);
-    adjacencyMatrix.clear(vertice1 * size() + vertice2);
-    adjacencyMatrix.clear(vertice2 * size() + vertice1);
+  public void removeEdge(int vertex1, int vertex2) {
+    super.removeEdge(vertex1, vertex2);
+    adjacencyMatrix.clear(vertex1 * size() + vertex2);
+    adjacencyMatrix.clear(vertex2 * size() + vertex1);
   }
 
   @Override
-  public boolean hasEdge(int vertice1, int vertice2) {
-    return adjacencyMatrix.get(vertice1 * size() + vertice2);
+  public boolean hasEdge(int vertex1, int vertex2) {
+    return adjacencyMatrix.get(vertex1 * size() + vertex2);
   }
 }

@@ -25,30 +25,30 @@ public interface Graph {
   int size();
 
   /**
-   * Checks whether an edge exists between two vertices. Vertice order does not
+   * Checks whether an edge exists between two vertices. Vertex order does not
    * matter. This method should run in O(1) time.
    *
-   * @param vertice1
-   *   the first vertice
-   * @param vertice2
-   *   the second vertice
+   * @param vertex1
+   *   the first vertex
+   * @param vertex2
+   *   the second vertex
    * @return true iff an undirected edge exists between these two vertices
    */
-  boolean hasEdge(int vertice1, int vertice2);
+  boolean hasEdge(int vertex1, int vertex2);
 
   /**
    * Gets a random neighbor of a vertex, or indicates that no neighbors exist.
    * This method should run in O(1) time.
    *
-   * @param vertice
+   * @param vertex
    *   the vertex
    * @return a random neighbor of the vertex, or -1 if no such neighbors exist.
    */
-  int getRandomNeighbor(int vertice);
+  int getRandomNeighbor(int vertex);
 
   /**
-   * @param vertice
+   * @param vertex
    * @return
    */
-  Collection<Integer> getAllNeighbors(int vertice);
+  Collection<Integer> getAllNeighbors(int vertex);
 }

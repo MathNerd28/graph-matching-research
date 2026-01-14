@@ -20,19 +20,19 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
-  public void addEdge(int vertice1, int vertice2) {
-    adjacencyList.get(vertice1)
-                 .add(vertice2);
-    adjacencyList.get(vertice2)
-                 .add(vertice1);
+  public void addEdge(int vertex1, int vertex2) {
+    adjacencyList.get(vertex1)
+                 .add(vertex2);
+    adjacencyList.get(vertex2)
+                 .add(vertex1);
   }
 
   @Override
-  public void removeEdge(int vertice1, int vertice2) {
-    adjacencyList.get(vertice1)
-                 .remove(vertice2);
-    adjacencyList.get(vertice2)
-                 .remove(vertice1);
+  public void removeEdge(int vertex1, int vertex2) {
+    adjacencyList.get(vertex1)
+                 .remove(vertex2);
+    adjacencyList.get(vertex2)
+                 .remove(vertex1);
   }
 
   @Override
@@ -41,20 +41,20 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
-  public boolean hasEdge(int vertice1, int vertice2) {
-    return adjacencyList.get(vertice1)
-                        .contains(vertice2);
+  public boolean hasEdge(int vertex1, int vertex2) {
+    return adjacencyList.get(vertex1)
+                        .contains(vertex2);
   }
 
   @Override
-  public int getRandomNeighbor(int vertice) {
-    OrderedIntSet neighbors = adjacencyList.get(vertice);
+  public int getRandomNeighbor(int vertex) {
+    OrderedIntSet neighbors = adjacencyList.get(vertex);
     int index = random.nextInt(neighbors.size());
     return neighbors.get(index);
   }
 
   @Override
-  public Collection<Integer> getAllNeighbors(int vertice) {
-    return adjacencyList.get(vertice);
+  public Collection<Integer> getAllNeighbors(int vertex) {
+    return adjacencyList.get(vertex);
   }
 }

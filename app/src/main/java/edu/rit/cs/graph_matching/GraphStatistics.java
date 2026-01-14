@@ -19,21 +19,21 @@ public class GraphStatistics implements Graph {
   }
 
   @Override
-  public boolean hasEdge(int vertice1, int vertice2) {
+  public boolean hasEdge(int vertex1, int vertex2) {
     edgeCheckCount++;
-    return source.hasEdge(vertice1, vertice2);
+    return source.hasEdge(vertex1, vertex2);
   }
 
   @Override
-  public int getRandomNeighbor(int vertice) {
+  public int getRandomNeighbor(int vertex) {
     randomNeighborCount++;
-    return source.getRandomNeighbor(vertice);
+    return source.getRandomNeighbor(vertex);
   }
 
   @Override
-  public Collection<Integer> getAllNeighbors(int vertice) {
+  public Collection<Integer> getAllNeighbors(int vertex) {
     allNeighborsCount++;
-    return source.getAllNeighbors(vertice);
+    return source.getAllNeighbors(vertex);
   }
 
   public Graph getSource() {
