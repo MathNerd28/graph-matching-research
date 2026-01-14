@@ -2,25 +2,44 @@ package edu.rit.cs.graph_matching;
 
 import java.util.AbstractSet;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.NoSuchElementException;
-import java.util.Random;
-import java.util.TreeSet;
 
+/**
+ * A custom self-ordered, growable list of ints that prohibits unique elements.
+ * Supports O(n) writes, O(log n) searches, O(1) iteration, and uses primitive
+ * ints to reduce memory overhead.
+ * <p>
+ * When adding/removing elements, the elements are self-sorted. Thus, users have
+ * no control over the ordering of the collection.
+ */
 public class OrderedIntSet extends AbstractSet<Integer> {
-  private static final int DEFAULT_CAPACITY = 8;
-  private static final double GROWTH_FACTOR = 2;
+  /** The default initial capacity, if none is specified. */
+  private static final int    DEFAULT_CAPACITY = 8;
+  /** The factor of growth each time the capacity is exceeded. */
+  private static final double GROWTH_FACTOR    = 2;
 
+  /** The data array, always kept in sorted order */
   private int[] data;
+  /** The current number of elements in this list */
   private int   size;
 
-  public OrderedIntSet(int capacity) {
-    this.data = new int[capacity];
+  /**
+   * Construct an OrderedIntSet with zero elements and a specified initial
+   * capacity.
+   *
+   * @param initialCapacity
+   *   the number of elements this set should be able to hold before growing
+   */
+  public OrderedIntSet(int initialCapacity) {
+    this.data = new int[initialCapacity];
     this.size = 0;
   }
 
+  /**
+   * Construct an OrderedIntSet with zero elements and the default initial
+   * capacity.
+   */
   public OrderedIntSet() {
     this(DEFAULT_CAPACITY);
   }
@@ -30,6 +49,20 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     return size;
   }
 
+  @Override
+  public void clear() {
+    this.size = 0;
+  }
+
+  /**
+   * Gets the integer at the specified index in the ordering.
+   *
+   * @param index
+   *   the index of the element to get
+   * @return the element at that index
+   * @throws IndexOutOfBoundsException
+   *   if the index is negative, or greater than or equal to {@link #size()}
+   */
   public int get(int index) {
     if (index < 0 || index >= size) {
       throw new IndexOutOfBoundsException(index);
@@ -44,7 +77,7 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     }
 
     // Shortcut for common case where this is the new largest element
-    if (size == 0 || data[size-1] < e) {
+    if (size == 0 || data[size - 1] < e) {
       data[size] = e;
       size++;
       return true;
@@ -54,7 +87,6 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     if (index < size && data[index] == e) {
       return false;
     }
-
 
     System.arraycopy(data, index, data, index + 1, size - index);
     data[index] = e;
@@ -88,6 +120,16 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     return index < size && data[index] == e;
   }
 
+  /**
+   * Searches for an element in the data array using binary search. If the
+   * element is present, returns its index; otherwise, returns the index at
+   * which the element should be inserted.
+   *
+   * @param target
+   *   the element to find
+   * @return the index of the element, or if not present then the index it
+   *   should be inserted
+   */
   private int binarySearch(int target) {
     int low = 0;
     int high = size;
@@ -102,6 +144,9 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     return low;
   }
 
+  /**
+   * Grows this set by {@link #GROWTH_FACTOR}.
+   */
   private void grow() {
     int newCapacity = (int) (data.length * GROWTH_FACTOR);
     this.data = Arrays.copyOf(data, newCapacity);
@@ -112,7 +157,11 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     return new OrderedIntSetIterator();
   }
 
+  /**
+   * An iterator implementation for {@link OrderedIntSet}.
+   */
   private class OrderedIntSetIterator implements Iterator<Integer> {
+    /** The index of the next element to return */
     private int index = 0;
 
     @Override
@@ -135,56 +184,6 @@ public class OrderedIntSet extends AbstractSet<Integer> {
     public void remove() {
       OrderedIntSet.this.remove(index);
       index--;
-    }
-  }
-
-  public static void main(String[] args) {
-    int attempts = 10;
-    int elements = 1000_000;
-    Random rd = new Random();
-
-    for (int i = 0; i < attempts; i++) {
-      long start = System.currentTimeMillis();
-      OrderedIntSet set = new OrderedIntSet();
-      for (int j = 0; j < elements; j++) {
-        // set.add(rd.nextInt());
-        set.add(j);
-      }
-      long end = System.currentTimeMillis();
-      System.out.println("Custom:" + (end - start));
-    }
-
-    for (int i = 0; i < attempts; i++) {
-      long start = System.currentTimeMillis();
-      TreeSet<Integer> set = new TreeSet<>();
-      for (int j = 0; j < elements; j++) {
-        // set.add(rd.nextInt());
-        set.add(j);
-      }
-      long end = System.currentTimeMillis();
-      System.out.println("TreeSet:" + (end - start));
-    }
-
-    for (int i = 0; i < attempts; i++) {
-      long start = System.currentTimeMillis();
-      LinkedHashSet<Integer> set = new LinkedHashSet<>();
-      for (int j = 0; j < elements; j++) {
-        // set.add(rd.nextInt());
-        set.add(j);
-      }
-      long end = System.currentTimeMillis();
-      System.out.println("LinkedHashSet:" + (end - start));
-    }
-
-    for (int i = 0; i < attempts; i++) {
-      long start = System.currentTimeMillis();
-      HashSet<Integer> set = new HashSet<>();
-      for (int j = 0; j < elements; j++) {
-        // set.add(rd.nextInt());
-        set.add(j);
-      }
-      long end = System.currentTimeMillis();
-      System.out.println("HashSet:" + (end - start));
     }
   }
 }

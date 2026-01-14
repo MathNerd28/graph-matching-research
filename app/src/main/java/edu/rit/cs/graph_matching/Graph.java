@@ -3,7 +3,7 @@ package edu.rit.cs.graph_matching;
 import java.util.Collection;
 
 /**
- * The model of a graph that the Dani-Hayes algorithm works with. As stated in
+ * An undirected graph that the Dani-Hayes algorithm works with. As stated in
  * their paper, the algorithm requires two primary functions:
  * <ol>
  * <li>Checking whether a specific edge exists: {@link #hasEdge(int, int)}</li>
@@ -14,6 +14,8 @@ import java.util.Collection;
  * does not use, which is enumerating all neighbors of a vertex. This is for
  * computing maximum matchings via Edmonds's "Blossom" algorithm, for comparison
  * purposes.
+ * <p>
+ * Vertices are numbered in the range [0, n).
  */
 public interface Graph {
   /**
@@ -26,7 +28,7 @@ public interface Graph {
 
   /**
    * Checks whether an edge exists between two vertices. Vertex order does not
-   * matter. This method should run in O(1) time.
+   * matter.
    *
    * @param vertex1
    *   the first vertex
@@ -38,7 +40,6 @@ public interface Graph {
 
   /**
    * Gets a random neighbor of a vertex, or indicates that no neighbors exist.
-   * This method should run in O(1) time.
    *
    * @param vertex
    *   the vertex
