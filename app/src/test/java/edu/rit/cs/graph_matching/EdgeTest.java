@@ -3,9 +3,9 @@ package edu.rit.cs.graph_matching;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class EdgeTest {
+class EdgeTest {
   @Test
-  public void checkEquality() {
+  void checkEquality() {
     Edge e1 = new Edge(0, 1);
     assertEquals(e1, e1, "Edges should be equal to themselves");
 
@@ -17,7 +17,7 @@ public class EdgeTest {
   }
 
   @Test
-  public void checkHashCode() {
+  void checkHashCode() {
     Edge e1 = new Edge(0, 1);
     assertEquals(e1.hashCode(), e1.hashCode(), "Edges should never change their hashCode");
 
