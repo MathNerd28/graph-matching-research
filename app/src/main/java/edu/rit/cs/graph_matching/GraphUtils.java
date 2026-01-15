@@ -14,8 +14,8 @@ public class GraphUtils {
     boolean isValidMatching(Set<Edge> edges) {
         Set<Integer> vertices = new HashSet<>();
         for (Edge edge : edges) {
-            int v1 = edge.vertice1();
-            int v2 = edge.vertice2();
+            int v1 = edge.vertex1();
+            int v2 = edge.vertex1();
             if (vertices.contains(v1) || vertices.contains(v2)) {
                 return false;
             }
