@@ -3,7 +3,7 @@ package edu.rit.cs.graph_matching;
 import java.util.Objects;
 
 /**
- * An edge in an undirected graph. Vertice order does not matter; edges with the
+ * An edge in an undirected graph. Vertex order does not matter; edges with the
  * same vertices in the opposite order are treated as equal.
  */
 public record Edge(int vertex1,
