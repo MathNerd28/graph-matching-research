@@ -1,5 +1,8 @@
 package edu.rit.cs.graph_matching;
 
+import java.io.File;
+import java.io.IOException;
+
 public class GraphGenerator {
     private GraphGenerator() {}
 
@@ -57,5 +60,17 @@ public class GraphGenerator {
 
     public static Graph generateBipartiteGraph(int leftVertices, int rightVertices) {
         throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    public static void main(String[] args) {
+        try {
+            Graph starGraph = GraphGenerator.generateStarGraph(new SparseGraphImpl(100));
+            GraphUtils.generateDotFile(starGraph, new File("star.dot"));
+
+            Graph starGraphWithMatching = GraphGenerator.generateStarGraphWithMatching(new SparseGraphImpl(8), 3);
+            GraphUtils.generateDotFile(starGraphWithMatching, new File("star_with_matching.dot"));
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
     }
 }
