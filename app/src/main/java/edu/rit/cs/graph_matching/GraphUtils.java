@@ -19,7 +19,7 @@ public class GraphUtils {
         Set<Integer> vertices = new HashSet<>();
         for (Edge edge : edges) {
             int v1 = edge.vertex1();
-            int v2 = edge.vertex1();
+            int v2 = edge.vertex2();
             if (vertices.contains(v1) || vertices.contains(v2)) {
                 return false;
             }
