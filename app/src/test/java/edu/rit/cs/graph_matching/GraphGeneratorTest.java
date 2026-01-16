@@ -20,7 +20,7 @@ public class GraphGeneratorTest {
 
             for (int v = 0; v < graph.size(); v++) {
                 for (int u : graph.getAllNeighbors(v)) {
-                    if (v < u) { 
+                    if (v < u) {
                         writer.println("    " + v + " -- " + u + ";");
                     }
                 }
@@ -31,7 +31,7 @@ public class GraphGeneratorTest {
             e.printStackTrace();
         }
 
-        try {      
+        try {
             String[] command = {
                 "dot",
                 "-Tpng",
@@ -41,16 +41,15 @@ public class GraphGeneratorTest {
             };
             Runtime.getRuntime().exec(command);
         } catch (Exception e) {
-            
+
         }
     }
 
     public static void main(String[] args) {
-        GraphGenerator generator = new GraphGenerator();
-        Graph starGraph = generator.generateStarGraph(100);
+        Graph starGraph = GraphGenerator.generateStarGraph(new SparseGraphImpl(100));
         getVisual(starGraph, "star.dot");
 
-        Graph starGraphWithMatching = generator.generateStarGraphWithMatching(8, 3);
+        Graph starGraphWithMatching = GraphGenerator.generateStarGraphWithMatching(new SparseGraphImpl(8), 3);
         getVisual(starGraphWithMatching, "star_with_matching.dot");
     }
 }
