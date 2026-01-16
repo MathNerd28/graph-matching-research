@@ -25,3 +25,5 @@ build
 
 # Ignore VSCode build directory
 **/bin/
+
+*.dot
