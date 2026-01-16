@@ -27,12 +27,15 @@ public class EdmondsAlgorithm {
   private final int[] parents;
 
   /**
-   * blossomBase[v] = base of the blossom containing vertex v
+   * bases[v] = base of the blossom containing vertex v
    */
   private final int[] bases;
 
   /**
    * Create a blossom matching solver for the given graph.
+   *
+   * @param graph
+   *   the graph to be solved
    */
   public EdmondsAlgorithm(Graph graph) {
     this.graph = graph;
@@ -40,9 +43,6 @@ public class EdmondsAlgorithm {
     this.matches = new int[graph.size()];
     this.parents = new int[graph.size()];
     this.bases = new int[graph.size()];
-
-    // Initially, all vertices are unmatched
-    Arrays.fill(matches, -1);
   }
 
   /**
@@ -51,19 +51,24 @@ public class EdmondsAlgorithm {
    * <p>
    * This method assumes that such a common ancestor exists, and should only be
    * called in such cases.
+   *
+   * @param vertex1
+   *   the first vertex
+   * @param vertex2
+   *   the second vertex
    */
-  private int findLeastCommonAncestor(int vertexA, int vertexB) {
-    Set<Integer> ancestorsOfA = new LinkedHashSet<>();
+  private int findLeastCommonAncestor(int vertex1, int vertex2) {
+    Set<Integer> ancestors1 = new LinkedHashSet<>();
 
     // Walk upward from a to find all of a's alternating ancestors
-    int a = vertexA;
+    int a = vertex1;
     while (true) {
       // Add base of current vertex to ancestors
-      int baseOfA = bases[a];
-      ancestorsOfA.add(baseOfA);
+      int base1 = bases[a];
+      ancestors1.add(base1);
 
       // If unmatched, then no more ancestors exist
-      int match = matches[baseOfA];
+      int match = matches[base1];
       if (match < 0) {
         break;
       }
@@ -73,16 +78,16 @@ public class EdmondsAlgorithm {
     }
 
     // Walk upward from b until an ancestor of a is found
-    int b = vertexB;
+    int b = vertex2;
     while (true) {
-      int baseOfB = bases[b];
-      if (ancestorsOfA.contains(baseOfB)) {
+      int base2 = bases[b];
+      if (ancestors1.contains(base2)) {
         // found a common ancestor
-        return baseOfB;
+        return base2;
       } else {
         // since we haven't found a common ancestor yet,
         // and we assume one exists, we assume a match exists here
-        b = parents[matches[baseOfB]];
+        b = parents[matches[base2]];
       }
     }
   }
@@ -90,13 +95,20 @@ public class EdmondsAlgorithm {
   /**
    * Mark all vertices on the path from vertex v to a blossom base as belonging
    * to the blossom, and fix parent pointers during contraction.
+   *
+   * @param vertex
+   *   the source vertex
+   * @param base
+   *   the blossom base
+   * @param parent
+   *   the new parent of the vertex
    */
-  private Set<Integer> computeBlossomPath(int vertex, int base, int child) {
+  private Set<Integer> computeBlossomPath(int vertex, int base, int parent) {
     Set<Integer> blossomPath = new LinkedHashSet<>();
 
     // Walk upward from v until we find the base
     int v = vertex;
-    int c = child;
+    int p = parent;
     while (bases[v] != base) {
       int matchOfV = matches[v];
 
@@ -105,8 +117,8 @@ public class EdmondsAlgorithm {
       blossomPath.add(bases[matchOfV]);
 
       // Fix parent pointers
-      parents[v] = c;
-      c = matchOfV;
+      parents[v] = p;
+      p = matchOfV;
       v = parents[matchOfV];
     }
 
@@ -117,6 +129,8 @@ public class EdmondsAlgorithm {
    * Run a BFS to find an augmenting path starting from the given unmatched root
    * vertex.
    *
+   * @param root
+   *   the unmatched root vertex
    * @return true if an augmenting path was found
    */
   private boolean findAugmentingPath(int root) {
@@ -129,8 +143,8 @@ public class EdmondsAlgorithm {
 
     // Enqueue root
     Queue<Integer> bfsQueue = new ArrayDeque<>();
-    bfsQueue.add(root);
     Set<Integer> enqueued = new LinkedHashSet<>();
+    bfsQueue.add(root);
     enqueued.add(root);
 
     while (!bfsQueue.isEmpty()) {
@@ -186,6 +200,9 @@ public class EdmondsAlgorithm {
 
   /**
    * Flip matching edges along the discovered augmenting path.
+   *
+   * @param freeVertex
+   *   the initial vertex in the augmenting path
    */
   private void augmentMatching(int freeVertex) {
     int current = freeVertex;
@@ -204,11 +221,14 @@ public class EdmondsAlgorithm {
   }
 
   /**
-   * Compute the maximum matching.
+   * Compute the maximum matching on the input graph.
    *
-   * @return number of matched pairs
+   * @return the edges in the maximum matching
    */
   public Set<Edge> computeMaximumMatching() {
+    // Initially, all vertices are unmatched
+    Arrays.fill(matches, -1);
+
     // Compute matching by repeatedly augmenting
     for (int v = 0; v < graph.size(); v++) {
       if (matches[v] < 0) {
