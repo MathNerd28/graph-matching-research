@@ -1,8 +1,7 @@
 package edu.rit.cs.graph_matching;
-import java.util.Random;
-
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 
 public class GraphGenerator {
     private GraphGenerator() {}
@@ -78,15 +77,24 @@ public class GraphGenerator {
 
     public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
         graph.clear();
+        int n = graph.size();
 
-        if (degree >= graph.size() || degree % 2 != 0) {
-            throw new IllegalArgumentException("Degree must be even and greater than the number of vertices");
+        if (degree >= n) {
+            throw new IllegalArgumentException("Degree must be less than number of vertices");
         }
 
-        for (int i = 0; i < graph.size(); i++) {
+        for (int i = 0; i < n; i++) {
             for (int offset = 1; offset <= degree / 2; offset++) {
-                int j = (i + offset) % graph.size();
+                int j = (i + offset) % n;
                 graph.addEdge(i, j);
+            }
+
+            if (degree % 2 != 0) {
+                if (n % 2 != 0) {
+                    throw new IllegalArgumentException("Cannot create a regular graph with odd degree and odd number of vertices");
+                }
+                int opposite = (i + n / 2) % n;
+                graph.addEdge(i, opposite);
             }
         }
 
@@ -104,6 +112,12 @@ public class GraphGenerator {
 
             Graph starGraphWithMatching = GraphGenerator.generateStarGraphWithMatching(new SparseGraphImpl(8), 3);
             GraphUtils.generateDotFile(starGraphWithMatching, new File("star_with_matching.dot"));
+
+            Graph randomGraph = GraphGenerator.generateRandomGraph(new SparseGraphImpl(5), 0.3);
+            GraphUtils.generateDotFile(randomGraph, new File("randomGraph.dot"));
+
+            Graph regularGraph = GraphGenerator.generateRegularGraph(new SparseGraphImpl(6), 4);
+            GraphUtils.generateDotFile(regularGraph, new File("regularGraph.dot"));
         } catch(IOException e) {
             e.printStackTrace();
         }
