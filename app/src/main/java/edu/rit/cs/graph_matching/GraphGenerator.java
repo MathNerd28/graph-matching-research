@@ -1,4 +1,5 @@
 package edu.rit.cs.graph_matching;
+import java.util.Random;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,15 +51,49 @@ public class GraphGenerator {
         return graph;
     }
 
-    public static Graph generateRandomGraph(int vertices) {
-        throw new UnsupportedOperationException("Not yet implemented");
+    /**
+     * Generates a random graph.
+     *
+     * @param vertices number of vertices
+     * @param edgeProb probability of adding an edge between any pair
+     * @return random graph
+     */
+    public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb) {
+        graph.clear();
+        Random random = new Random();
+        if (edgeProb < 0.0 || edgeProb > 1.0) {
+            throw new IllegalArgumentException("edgeProb must be between 0.0 and 1.0");
+        }
+
+        for (int u = 0; u < graph.size(); u++) {
+            for (int v = u + 1; v < graph.size(); v++) {
+                if (random.nextDouble() < edgeProb) {
+                    graph.addEdge(u, v);
+                }
+            }
+        }
+
+        return graph;
     }
 
-    public static Graph generateRegularGraph(int vertices, int degree) {
-        throw new UnsupportedOperationException("Not yet implemented");
+    public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
+        graph.clear();
+
+        if (degree >= graph.size() || degree % 2 != 0) {
+            throw new IllegalArgumentException("Degree must be even and greater than the number of vertices");
+        }
+
+        for (int i = 0; i < graph.size(); i++) {
+            for (int offset = 1; offset <= degree / 2; offset++) {
+                int j = (i + offset) % graph.size();
+                graph.addEdge(i, j);
+            }
+        }
+
+        return graph;
     }
 
-    public static Graph generateBipartiteGraph(int leftVertices, int rightVertices) {
+    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int leftVertices, int rightVertices) {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
