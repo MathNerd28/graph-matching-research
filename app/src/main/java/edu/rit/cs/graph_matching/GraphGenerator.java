@@ -52,10 +52,16 @@ public class GraphGenerator {
 
     /**
      * Generates a random graph.
+     * This function builds a random graph by 
+     * considering every possible pair of vertices 
+     * and adding an edge between them with a fixed 
+     * probability.
      *
-     * @param vertices number of vertices
-     * @param edgeProb probability of adding an edge between any pair
-     * @return random graph
+     * @param vertices 
+     *      number of vertices
+     * @param edgeProb 
+     *      probability of adding an edge between any pair
+     * @return the same graph instance
      */
     public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb) {
         graph.clear();
@@ -75,6 +81,21 @@ public class GraphGenerator {
         return graph;
     }
 
+    /**
+     * Generates a regular graph with a specific degree.
+     * This function generates a regular graph where every 
+     * vertex has the same degree. It connects each vertex 
+     * to nearby vertices in a circular pattern. If the 
+     * degree is odd, it also connects each vertex to the 
+     * one directly opposite it, which only works when the 
+     * total number of vertices is even.
+     * 
+     * @param graph
+     *      the graph to edit in-place
+     * @param degree
+     *     the desired degree of each vertex
+     * @return the same graph instance
+     */
     public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
         graph.clear();
         int n = graph.size();
@@ -101,8 +122,122 @@ public class GraphGenerator {
         return graph;
     }
 
-    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int leftVertices, int rightVertices) {
-        throw new UnsupportedOperationException("Not yet implemented");
+    /**
+     * Mutates a regular graph by performing a double-edge swap.
+     * This function randomly changes a regular graph by picking 
+     * two edges and swapping their endpoints, while keeping all 
+     * vertex degrees the same. It skips invalid choices like 
+     * shared vertices or duplicate edges, and once a valid swap 
+     * is found, it performs it and exits.
+     * 
+     * @param graph
+     *    the graph to mutate in-place
+     */
+    public static void mutateRegularGraph(MutableGraph graph) {
+        Random rand = new Random();
+        int n = graph.size();
+
+        while (true) {
+            int u = rand.nextInt(n);
+            int v = graph.getRandomNeighbor(u);
+
+            int x = rand.nextInt(n);
+            int y = graph.getRandomNeighbor(x);
+
+            if (u == x || u == y || v == x || v == y) {
+                continue;
+            }
+
+            if (graph.hasEdge(u, y) || graph.hasEdge(x, v)) {
+                continue;
+            }
+
+            graph.removeEdge(u, v);
+            graph.removeEdge(x, y);
+            graph.addEdge(u, y);
+            graph.addEdge(x, v);
+
+            return;
+        }
+    }
+
+    /**
+     * Generates a bipartite graph with a specific window size.
+     * This function builds a bipartite graph by connecting each 
+     * left vertex to a fixed number of right vertices using a 
+     * sliding window. For each left vertex, it adds edges to 
+     * windowSize consecutive right vertices, wrapping around when 
+     * it reaches the end. 
+     * 
+     * @param graph
+     *    the graph to edit in-place
+     * @param leftVertices
+     *   number of left side vertices
+     * @param rightVertices
+     *  number of right side vertices
+     * @param windowSize
+     *  the desired window size
+     * @return the same graph instance
+     */
+    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int leftVertices, int rightVertices, int windowSize) {
+        graph.clear();
+
+        if (windowSize > rightVertices) {
+            throw new IllegalArgumentException("Window size cannot exceed right side size");
+        }
+
+        int offset = leftVertices;
+
+        for (int i = 0; i < leftVertices; i++) {
+            for (int w = 0; w < windowSize; w++) {
+                int j = (i + w) % rightVertices;
+                graph.addEdge(i, offset + j);
+            }
+        }
+
+        return graph;
+    }
+
+    /**
+     * Mutates a bipartite graph by performing a double-edge swap.
+     * 
+     * ! has an error where the graph might disconnect itself
+     * 
+     * @param graph
+     *    the graph to mutate in-place
+     * @param leftVertices
+     *   number of left side vertices
+     */
+    public static void mutateBipartiteGraph(MutableGraph graph, int leftVertices) {
+        Random rand = new Random();
+        while (true) {
+            int left1 = rand.nextInt(leftVertices);
+            int left2 = rand.nextInt(leftVertices);
+            if (left1 == left2) {
+                continue;
+            }
+
+            int right1 = graph.getRandomNeighbor(left1);
+            int right2 = graph.getRandomNeighbor(left2);
+
+            if (right1 < leftVertices || right2 < leftVertices) {
+                continue;
+            }
+            if (right1 == right2) {
+                continue;
+            }
+
+            if (graph.hasEdge(left1, right2) || graph.hasEdge(left2, right1)) {
+                continue;
+            }
+
+            graph.removeEdge(left1, right1);
+            graph.removeEdge(left2, right2);
+            graph.addEdge(left1, right2);
+            graph.addEdge(left2, right1);
+
+            return;
+        }
     }
 
     public static void main(String[] args) {
@@ -118,6 +253,15 @@ public class GraphGenerator {
 
             Graph regularGraph = GraphGenerator.generateRegularGraph(new SparseGraphImpl(6), 4);
             GraphUtils.generateDotFile(regularGraph, new File("regularGraph.dot"));
+
+            GraphGenerator.mutateRegularGraph((MutableGraph) regularGraph);
+            GraphUtils.generateDotFile(regularGraph, new File("regularGraphMutated.dot"));
+
+            Graph bipartiteGraph = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(8), 4, 4, 2);
+            GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraph.dot"));
+            
+            GraphGenerator.mutateBipartiteGraph((MutableGraph) bipartiteGraph, 4);
+            GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraphMutated.dot"));
         } catch(IOException e) {
             e.printStackTrace();
         }
