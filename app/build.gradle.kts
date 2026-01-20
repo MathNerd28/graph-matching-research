@@ -37,6 +37,6 @@ tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 
-    // Increase heap to 2GB for big graphs
-    maxHeapSize = "2g"
+    // Increase heap to 4GB for big graphs
+    maxHeapSize = "4g"
 }
