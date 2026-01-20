@@ -93,7 +93,7 @@ public class GraphGenerator {
      * @param graph
      *      the graph to edit in-place
      * @param degree
-     *     the desired degree of each vertex
+     *      the desired degree of each vertex
      * @return the same graph instance
      */
     public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
@@ -132,9 +132,9 @@ public class GraphGenerator {
      * a specific amount of this.
      * 
      * @param graph
-     *    the graph to mutate in-place
+     *      the graph to mutate in-place
      * @param mutationCount
-     *   number of mutations to perform
+     *      number of mutations to perform
      */
     public static void mutateRegularGraph(MutableGraph graph, int mutationCount) {
         Random rand = new Random();
@@ -173,11 +173,11 @@ public class GraphGenerator {
      * on both sides has the same number of edges.
      * 
      * @param graph
-     *    the graph to edit in-place
+     *      the graph to edit in-place
      * @param verticesPerSide
-     *   number of vertices on each side
+     *      number of vertices on each side
      * @param degree
-     *  the desired degree of each vertex
+     *      the desired degree of each vertex
      * @return the same graph instance
      */
     public static MutableGraph generateBipartiteGraph(MutableGraph graph, int verticesPerSide, int degree) {
@@ -206,11 +206,11 @@ public class GraphGenerator {
      * it bipartite.
      * 
      * @param graph
-     *    the graph to mutate in-place
+     *      the graph to mutate in-place
      * @param leftVertices
-     *   number of left side vertices
+     *      number of left side vertices
      * @param mutationCount
-     *  number of mutations to perform
+     *      number of mutations to perform
      */
     public static void mutateBipartiteGraph(MutableGraph graph, int leftVertices, int mutationCount) {
         Random rand = new Random();
@@ -247,6 +247,70 @@ public class GraphGenerator {
         }
     }
 
+    /**
+     * Irregularizes a graph by randomly adding or removing edges.
+     * This function modifies a graph by randomly adding or removing
+     * edges based on a given probability, making the graph less regular.
+     * 
+     * @param graph
+     *      the graph to irregularize in-place
+     * @param p
+     *      the probability of adding or removing each edge
+     */
+    public static void irregularizeGraph(MutableGraph graph, double p) {
+        if (p < 0.0 || p > 1.0) {
+            throw new IllegalArgumentException("Probability must be between 0 and 1");
+        }
+
+        Random rand = new Random();
+        int n = graph.size();
+
+        for (int u = 0; u < n; u++) {
+            for (int v = u + 1; v < n; v++) {
+                if (rand.nextDouble() < p) {
+                    if (graph.hasEdge(u, v)) {
+                        graph.removeEdge(u, v);
+                    } else {
+                        graph.addEdge(u, v);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Irregularizes a bipartite graph by randomly adding or removing edges.
+     * This function modifies a bipartite graph by randomly adding or removing
+     * edges based on a given probability, making the graph less regular.
+     * 
+     * @param graph
+     *      the graph to irregularize in-place
+     * @param leftVertices
+     *      number of left side vertices
+     * @param p
+     *      the probability of adding or removing each edge
+     */
+    public static void irregularizeBipartiteGraph(MutableGraph graph, int leftVertices, double p) {
+        if (p < 0.0 || p > 1.0) {
+            throw new IllegalArgumentException("Probability must be between 0 and 1");
+        }
+
+        Random rand = new Random();
+        int n = graph.size();
+
+        for (int u = 0; u < leftVertices; u++) {
+            for (int v = leftVertices; v < n; v++) {
+                if (rand.nextDouble() < p) {
+                    if (graph.hasEdge(u, v)) {
+                        graph.removeEdge(u, v);
+                    } else {
+                        graph.addEdge(u, v);
+                    }
+                }
+            }
+        }
+    }
+
     public static void main(String[] args) {
         try {
             Graph starGraph = GraphGenerator.generateStarGraph(new SparseGraphImpl(100));
@@ -269,6 +333,12 @@ public class GraphGenerator {
             
             GraphGenerator.mutateBipartiteGraph((MutableGraph) bipartiteGraph, 4, 1000);
             GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraphMutated.dot"));
+
+            GraphGenerator.irregularizeGraph((MutableGraph) regularGraph, 0.1);
+            GraphUtils.generateDotFile(regularGraph, new File("regularGraphIrregularized.dot"));
+
+            GraphGenerator.irregularizeBipartiteGraph((MutableGraph) bipartiteGraph, 4, 0.1);
+            GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraphIrregularized.dot"));
         } catch(IOException e) {
             e.printStackTrace();
         }
