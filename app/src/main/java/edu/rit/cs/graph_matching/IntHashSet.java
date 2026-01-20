@@ -9,7 +9,7 @@ import java.util.PrimitiveIterator;
 import java.util.Random;
 
 /**
- * A performant and memory-efficient hashset implementation specialized for
+ * A performant and memory-efficient hash set implementation specialized for
  * primitive ints. This implementation reduces a significant amount of memory
  * overhead from the standard {@link HashSet} that forces the use of boxed
  * {@link Integer}s.
@@ -51,7 +51,7 @@ public class IntHashSet extends AbstractSet<Integer> {
    */
   private final BitSet deleted;
 
-  /** The bitmask applied to hashes to generate table indicies. */
+  /** The bitmask applied to hashes to generate table indexes. */
   private int mask;
 
   /** The maximum permissible size of the hash table before growth. */
@@ -73,8 +73,8 @@ public class IntHashSet extends AbstractSet<Integer> {
   // --- Public API ---
 
   /**
-   * Construct an integer hashset that is capable of holding expectedSize
-   * elements without rehashing or growing.
+   * Construct an IntHashSet that is capable of holding expectedSize elements
+   * without rehashing or growing.
    *
    * @param expectedSize
    *   the expected number of elements
@@ -88,7 +88,7 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Construct an integer hashset with a default initial capacity.
+   * Construct an IntHashSet with a default initial capacity.
    */
   public IntHashSet() {
     this(4);
@@ -99,9 +99,9 @@ public class IntHashSet extends AbstractSet<Integer> {
    *
    * @param rd
    *   the {@link Random} to use to choose an element
-   * @return a random element from this hashset
+   * @return a random integer from this set
    * @throws NoSuchElementException
-   *   if this hashset contains no elements
+   *   if this set contains no elements
    */
   public int getRandom(Random rd) {
     if (isEmpty()) {
@@ -350,8 +350,9 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Increase the size of the {@link #values} array to accomodate more elements.
-   * All integers within this set are copied to the same index in the new array.
+   * Increase the size of the {@link #values} array to accommodate more
+   * elements. All integers within this set are copied to the same index in the
+   * new array.
    *
    * @implNote This method doubles the size of {@link #values}.
    */
@@ -362,7 +363,7 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Increase the size of {@link #table} to accomodate more elements. All
+   * Increase the size of {@link #table} to accommodate more elements. All
    * integers within this set are copied to the new table, but not necessarily
    * to the same location.
    *
@@ -408,8 +409,8 @@ public class IntHashSet extends AbstractSet<Integer> {
    * @implSpec The hash table size is always a power of 2; since the outputs of
    *   this function must be coprime with all powers of 2, this function must
    *   always return an odd integer.
-   * @implNote This function is a bijection and easily reversible, and therefore
-   *   vulnerable against maliciously-constructed data.
+   * @implNote This function is easily reversible, and therefore vulnerable
+   *   against maliciously-constructed data.
    */
   private static int hash2(int x) {
     x ^= x << 15;
