@@ -35,7 +35,7 @@ public class IntHashSet extends AbstractSet<Integer> {
   private static final double LOAD_FACTOR = 0.75;
 
   /**
-   * The hash table. The array indices are the hashes, and the array values are
+   * The hash table. The array indexes are the hashes, and the array values are
    * pointers to the value in {@link #values}.
    */
   private int[] table;
@@ -54,7 +54,7 @@ public class IntHashSet extends AbstractSet<Integer> {
   /** The bitmask applied to hashes to generate table indicies. */
   private int mask;
 
-  /** The maximum permissable size of the hash table before growth. */
+  /** The maximum permissible size of the hash table before growth. */
   private int maxFill;
 
   /** The current number of empty cells in the hash table. */
