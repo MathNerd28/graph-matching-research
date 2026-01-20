@@ -15,8 +15,8 @@ import java.util.Set;
  */
 public class SparseGraphImpl implements MutableGraph {
   /**
-   * The backing adjacency list. Uses OrderedIntSet to guarantee O(log d) lookup
-   * with a tiny memory footprint.
+   * The backing adjacency list. Uses IntHashSet for amortized O(1) lookup with
+   * a small memory footprint.
    */
   private final List<IntHashSet> adjacencyList;
 

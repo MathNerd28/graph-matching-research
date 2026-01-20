@@ -4,7 +4,6 @@ import java.util.AbstractSet;
 import java.util.BitSet;
 import java.util.ConcurrentModificationException;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.Random;
@@ -96,23 +95,6 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Initialize the hash table with the specified capacity, and clear it of all
-   * entries. Preserve {@link #values}.
-   *
-   * @param capacity
-   *   the capacity of the table, a power of 2
-   */
-  private void createTable(int capacity) {
-    mask = capacity - 1;
-    maxFill = (int) (capacity * LOAD_FACTOR);
-    table = new int[capacity];
-    size = 0;
-    empty = capacity;
-    occupied.clear();
-    deleted.clear();
-  }
-
-  /**
    * Get a random integer contained in this set with uniform probability.
    *
    * @param rd
@@ -136,9 +118,6 @@ public class IntHashSet extends AbstractSet<Integer> {
    * this set already contains the element, the call leaves the set unchanged
    * and returns {@code false}. In combination with the restriction on
    * constructors, this ensures that sets never contain duplicate elements.
-   * <p>
-   * As this set only supports primitive int values, this method will reject
-   * {@code null} as a value.
    *
    * @param e
    *   element to be added to this set
@@ -146,6 +125,8 @@ public class IntHashSet extends AbstractSet<Integer> {
    *   element
    * @throws NullPointerException
    *   if the specified element is null
+   * @implSpec As this set only supports primitive int values, this method will
+   *   reject {@code null} as a value.
    */
   @Override
   public boolean add(Integer e) {
@@ -153,27 +134,26 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Adds the specified element to this set if it is not already present. More
-   * formally, adds the specified integer {@code e} to this set if the set
-   * contains no integer {@code e2} such that {@code e == e2}. If this set
-   * already contains the element, the call leaves the set unchanged and returns
-   * {@code false}. In combination with the restriction on constructors, this
-   * ensures that sets never contain duplicate elements.
+   * Adds the specified integer to this set if it is not already present. If
+   * this set already contains the integer, the call leaves the set unchanged
+   * and returns {@code false}. In combination with the restriction on
+   * constructors, this ensures that sets never contain duplicate integers.
    *
    * @param e
-   *   element to be added to this set
+   *   integer to be added to this set
    * @return {@code true} if this set did not already contain the specified
-   *   element
+   *   integer
    */
   public boolean add(int e) {
-    if (size >= maxFill || empty == 0) {
-      growTable();
+    if (table.length - empty >= maxFill) {
+      rehashTable();
     }
     if (size >= values.length) {
       growValues();
     }
 
-    int index = e & mask;
+    int index = hash1(e) & mask;
+    int increment = hash2(e);
     int firstDeleted = -1;
 
     while (true) {
@@ -203,7 +183,7 @@ public class IntHashSet extends AbstractSet<Integer> {
         return true;
       }
 
-      index = (index + 1) & mask;
+      index = (index + increment) & mask;
     }
   }
 
@@ -222,16 +202,15 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Returns {@code true} if this set contains the specified integer. More
-   * formally, returns {@code true} if and only if this set contains an element
-   * {@code e2} such that {@code e == e2}.
+   * Returns {@code true} if this set contains the specified integer.
    *
    * @param e
-   *   element whose presence in this set is to be tested
-   * @return {@code true} if this set contains the specified element
+   *   integer whose presence in this set is to be tested
+   * @return {@code true} if this set contains the specified integer
    */
   public boolean contains(int e) {
-    int index = e & mask;
+    int index = hash1(e) & mask;
+    int increment = hash2(e);
     while (true) {
       if (!occupied.get(index) && !deleted.get(index)) {
         // empty slot
@@ -241,7 +220,7 @@ public class IntHashSet extends AbstractSet<Integer> {
         // found value
         return true;
       }
-      index = (index + 1) & mask;
+      index = (index + increment) & mask;
     }
   }
 
@@ -263,24 +242,24 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Removes the specified element from this set if it is present. More
-   * formally, removes an element {@code e2} such that {@code e == e2}, if this
-   * set contains such an element. Returns {@code true} if this set contained
-   * the element (or equivalently, if this set changed as a result of the call).
-   * (This set will not contain the element once the call returns.)
+   * Removes the specified integer from this set if it is present. Returns
+   * {@code true} if this set contained the integer (or equivalently, if this
+   * set changed as a result of the call). (This set will not contain the
+   * integer once the call returns.)
    *
-   * @param o
-   *   object to be removed from this set, if present
-   * @return {@code true} if this set contained the specified element
+   * @param e
+   *   integer to be removed from this set, if present
+   * @return {@code true} if this set contained the specified integer
    */
-  public boolean remove(int key) {
-    int index = key & mask;
+  public boolean remove(int e) {
+    int index = hash1(e) & mask;
+    int increment = hash2(e);
     while (true) {
       if (!occupied.get(index) && !deleted.get(index)) {
         // empty slot
         return false;
       }
-      if (occupied.get(index) && values[table[index]] == key) {
+      if (occupied.get(index) && values[table[index]] == e) {
         // found value
         int removeIndex = table[index];
 
@@ -297,7 +276,7 @@ public class IntHashSet extends AbstractSet<Integer> {
         return true;
       }
 
-      index = (index + 1) & mask;
+      index = (index + increment) & mask;
     }
   }
 
@@ -332,6 +311,23 @@ public class IntHashSet extends AbstractSet<Integer> {
   // --- Implementation-only details ---
 
   /**
+   * Initialize the hash table with the specified capacity, and clear it of all
+   * entries. Preserve {@link #values}.
+   *
+   * @param capacity
+   *   the capacity of the table, a power of 2
+   */
+  private void createTable(int capacity) {
+    mask = capacity - 1;
+    maxFill = (int) (capacity * LOAD_FACTOR);
+    table = new int[capacity];
+    size = 0;
+    empty = capacity;
+    occupied.clear();
+    deleted.clear();
+  }
+
+  /**
    * Update the position of an integer in the {@link #values} array.
    *
    * @param e
@@ -342,14 +338,14 @@ public class IntHashSet extends AbstractSet<Integer> {
    *   method.
    */
   private void updateIndex(int e, int newIndex) {
-    int index = e & mask;
-
+    int index = hash1(e) & mask;
+    int increment = hash2(e);
     while (true) {
       if (occupied.get(index) && values[table[index]] == e) {
         table[index] = newIndex;
         return;
       }
-      index = (index + 1) & mask;
+      index = (index + increment) & mask;
     }
   }
 
@@ -373,7 +369,7 @@ public class IntHashSet extends AbstractSet<Integer> {
    * @implNote This method doubles the size of {@link #table}.
    * @implNote {@link #values} is preserved as-is.
    */
-  private void growTable() {
+  private void rehashTable() {
     int oldSize = size;
     createTable(table.length << 1); // double the previous size
 
@@ -383,6 +379,43 @@ public class IntHashSet extends AbstractSet<Integer> {
     for (int i = 0; i < oldSize; i++) {
       add(values[i]);
     }
+  }
+
+  /**
+   * The hash function used for initial bucket selection. Optimized for
+   * performance over low bias.
+   *
+   * @param x
+   *   the integer to hash
+   * @return the hash of that integer
+   * @implNote This function is a bijection and easily reversible, and therefore
+   *   vulnerable against maliciously-constructed data.
+   */
+  private static int hash1(int x) {
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    return x;
+  }
+
+  /**
+   * The hash function used for linear probing increments. Optimized for
+   * performance over low bias.
+   *
+   * @param x
+   *   the integer to hash
+   * @return the hash of that integer
+   * @implSpec The hash table size is always a power of 2; since the outputs of
+   *   this function must be coprime with all powers of 2, this function must
+   *   always return an odd integer.
+   * @implNote This function is a bijection and easily reversible, and therefore
+   *   vulnerable against maliciously-constructed data.
+   */
+  private static int hash2(int x) {
+    x ^= x << 15;
+    x ^= x >>> 12;
+    x ^= x << 7;
+    return x | 1;
   }
 
   /**
