@@ -8,7 +8,7 @@ gradle-app.setting
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
 
-# Avoid ignore Gradle wrappper properties
+# Avoid ignore Gradle wrapper properties
 !gradle-wrapper.properties
 
 # Cache of project
@@ -25,3 +25,6 @@ build
 
 # Ignore VSCode build directory
 **/bin/
+
+# Ignore VSCode workspace settings directory
+.vscode
