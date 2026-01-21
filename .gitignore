@@ -26,5 +26,6 @@ build
 # Ignore VSCode build directory
 **/bin/
 
+*.dot
 # Ignore VSCode workspace settings directory
 .vscode
