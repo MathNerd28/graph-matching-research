@@ -3,7 +3,8 @@ package edu.rit.cs.graph_matching;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GraphUtils {
     /**

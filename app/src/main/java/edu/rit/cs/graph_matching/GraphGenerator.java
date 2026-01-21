@@ -1,6 +1,4 @@
 package edu.rit.cs.graph_matching;
-import java.io.File;
-import java.io.IOException;
 import java.util.Random;
 
 public class GraphGenerator {
@@ -104,6 +102,10 @@ public class GraphGenerator {
             throw new IllegalArgumentException("Degree must be less than number of vertices");
         }
 
+        if (degree % 2 != 0 && n % 2 != 0) {
+            throw new IllegalArgumentException("Cannot create a regular graph with odd degree and odd number of vertices");
+        }
+
         for (int i = 0; i < n; i++) {
             for (int offset = 1; offset <= degree / 2; offset++) {
                 int j = (i + offset) % n;
@@ -111,9 +113,6 @@ public class GraphGenerator {
             }
 
             if (degree % 2 != 0) {
-                if (n % 2 != 0) {
-                    throw new IllegalArgumentException("Cannot create a regular graph with odd degree and odd number of vertices");
-                }
                 int opposite = (i + n / 2) % n;
                 graph.addEdge(i, opposite);
             }
@@ -140,33 +139,46 @@ public class GraphGenerator {
         Random rand = new Random();
         int n = graph.size();
 
-        for (int i = 0; i < mutationCount; i++) {
-            while (true) {
-                int u = rand.nextInt(n);
-                int v = graph.getRandomNeighbor(u);
+        int mutations = 0;
+        while (mutations < mutationCount) {
+            int u = rand.nextInt(n);
+            int v = graph.getRandomNeighbor(u);
 
-                int x = rand.nextInt(n);
-                int y = graph.getRandomNeighbor(x);
+            int x = rand.nextInt(n);
+            int y = graph.getRandomNeighbor(x);
 
-                if (u == x || u == y || v == x || v == y) {
-                    continue;
-                }
+            if (u == x || u == y || v == x || v == y) {
+                continue;
+            }
 
-                if (graph.hasEdge(u, y) || graph.hasEdge(x, v)) {
-                    continue;
-                }
+            if (graph.hasEdge(u, y) || graph.hasEdge(x, v)) {
+                continue;
+            }
 
+            graph.removeEdge(u, v);
+            graph.removeEdge(x, y);
+            graph.addEdge(u, y);
+            graph.addEdge(x, v);
+            
+            if (!graph.hasEdge(u, y) && !graph.hasEdge(x, v)) {
                 graph.removeEdge(u, v);
                 graph.removeEdge(x, y);
                 graph.addEdge(u, y);
                 graph.addEdge(x, v);
-                break;
+                mutations++;
+            }
+            else if (!graph.hasEdge(u, x) && !graph.hasEdge(v, y)) {
+                graph.removeEdge(u, v);
+                graph.removeEdge(x, y);
+                graph.addEdge(u, x);
+                graph.addEdge(v, y);
+                mutations++;
             }
         }
     }
 
     /**
-     * Generates a bipartite graph with a specific window size.
+     * Generates a regular bipartite graph with a specific window size.
      * This function builds a bipartite graph with equal sized 
      * left and right sides. Each left vertex is connected to 
      * a specific amount of right vertices, ensuring every vertex 
@@ -180,19 +192,17 @@ public class GraphGenerator {
      *      the desired degree of each vertex
      * @return the same graph instance
      */
-    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int verticesPerSide, int degree) {
+    public static MutableGraph generateRegularBipartiteGraph(MutableGraph graph, int verticesPerSide, int degree) {
         graph.clear();
 
         if (degree > verticesPerSide) {
             throw new IllegalArgumentException("Degree cannot exceed the number of vertices per side");
         }
 
-        int offset = verticesPerSide;
-
         for (int i = 0; i < verticesPerSide; i++) {
             for (int w = 0; w < degree; w++) {
                 int j = (i + w) % verticesPerSide;
-                graph.addEdge(i, offset + j);
+                graph.addEdge(i, verticesPerSide + j);
             }
         }
 
@@ -215,36 +225,33 @@ public class GraphGenerator {
     public static void mutateBipartiteGraph(MutableGraph graph, int leftVertices, int mutationCount) {
         Random rand = new Random();
         
-        for (int i = 0; i < mutationCount; i++) {
-            while (true) {
-                int left1 = rand.nextInt(leftVertices);
-                int left2 = rand.nextInt(leftVertices);
-                if (left1 == left2) {
-                    continue;
-                }
-
-                int right1 = graph.getRandomNeighbor(left1);
-                int right2 = graph.getRandomNeighbor(left2);
-
-                if (right1 < leftVertices || right2 < leftVertices) {
-                    continue;
-                }
-                if (right1 == right2) {
-                    continue;
-                }
-
-                if (graph.hasEdge(left1, right2) || graph.hasEdge(left2, right1)) {
-                    continue;
-                }
-
-                graph.removeEdge(left1, right1);
-                graph.removeEdge(left2, right2);
-                graph.addEdge(left1, right2);
-                graph.addEdge(left2, right1);
-
-                break;
+        int mutations = 0;
+        while (mutations < mutationCount) {
+            int left1 = rand.nextInt(leftVertices);
+            int left2 = rand.nextInt(leftVertices);
+            if (left1 == left2) {
+                continue;
             }
+
+            int right1 = graph.getRandomNeighbor(left1);
+            int right2 = graph.getRandomNeighbor(left2);
+
+            if (right1 == right2) {
+                continue;
+            }
+
+            if (graph.hasEdge(left1, right2) || graph.hasEdge(left2, right1)) {
+                continue;
+            }
+
+            graph.removeEdge(left1, right1);
+            graph.removeEdge(left2, right2);
+            graph.addEdge(left1, right2);
+            graph.addEdge(left2, right1);
+
+            mutations++;
         }
+
     }
 
     /**
@@ -300,47 +307,16 @@ public class GraphGenerator {
 
         for (int u = 0; u < leftVertices; u++) {
             for (int v = leftVertices; v < n; v++) {
-                if (rand.nextDouble() < p) {
-                    if (graph.hasEdge(u, v)) {
-                        graph.removeEdge(u, v);
-                    } else {
-                        graph.addEdge(u, v);
-                    }
+                if (rand.nextDouble() >= p) {
+                    continue; 
+                }
+
+                if (graph.hasEdge(u, v)) {
+                    graph.removeEdge(u, v);
+                } else {
+                    graph.addEdge(u, v);
                 }
             }
-        }
-    }
-
-    public static void main(String[] args) {
-        try {
-            Graph starGraph = GraphGenerator.generateStarGraph(new SparseGraphImpl(100));
-            GraphUtils.generateDotFile(starGraph, new File("star.dot"));
-
-            Graph starGraphWithMatching = GraphGenerator.generateStarGraphWithMatching(new SparseGraphImpl(8), 3);
-            GraphUtils.generateDotFile(starGraphWithMatching, new File("star_with_matching.dot"));
-
-            Graph randomGraph = GraphGenerator.generateRandomGraph(new SparseGraphImpl(5), 0.3);
-            GraphUtils.generateDotFile(randomGraph, new File("randomGraph.dot"));
-
-            Graph regularGraph = GraphGenerator.generateRegularGraph(new SparseGraphImpl(6), 4);
-            GraphUtils.generateDotFile(regularGraph, new File("regularGraph.dot"));
-
-            GraphGenerator.mutateRegularGraph((MutableGraph) regularGraph, 100);
-            GraphUtils.generateDotFile(regularGraph, new File("regularGraphMutated.dot"));
-
-            Graph bipartiteGraph = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(8), 4, 2);
-            GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraph.dot"));
-            
-            GraphGenerator.mutateBipartiteGraph((MutableGraph) bipartiteGraph, 4, 1000);
-            GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraphMutated.dot"));
-
-            GraphGenerator.irregularizeGraph((MutableGraph) regularGraph, 0.1);
-            GraphUtils.generateDotFile(regularGraph, new File("regularGraphIrregularized.dot"));
-
-            GraphGenerator.irregularizeBipartiteGraph((MutableGraph) bipartiteGraph, 4, 0.1);
-            GraphUtils.generateDotFile(bipartiteGraph, new File("bipartiteGraphIrregularized.dot"));
-        } catch(IOException e) {
-            e.printStackTrace();
         }
     }
 }
