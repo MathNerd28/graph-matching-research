@@ -150,15 +150,6 @@ public class GraphGenerator {
             if (u == x || u == y || v == x || v == y) {
                 continue;
             }
-
-            if (graph.hasEdge(u, y) || graph.hasEdge(x, v)) {
-                continue;
-            }
-
-            graph.removeEdge(u, v);
-            graph.removeEdge(x, y);
-            graph.addEdge(u, y);
-            graph.addEdge(x, v);
             
             if (!graph.hasEdge(u, y) && !graph.hasEdge(x, v)) {
                 graph.removeEdge(u, v);
@@ -274,12 +265,14 @@ public class GraphGenerator {
 
         for (int u = 0; u < n; u++) {
             for (int v = u + 1; v < n; v++) {
-                if (rand.nextDouble() < p) {
-                    if (graph.hasEdge(u, v)) {
-                        graph.removeEdge(u, v);
-                    } else {
-                        graph.addEdge(u, v);
-                    }
+                if (rand.nextDouble() >= p) {
+                    continue; 
+                }
+
+                if (graph.hasEdge(u, v)) {
+                    graph.removeEdge(u, v);
+                } else {
+                    graph.addEdge(u, v);
                 }
             }
         }
