@@ -7,6 +7,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class GraphUtils {
+    private GraphUtils() {}
+
     /**
      * Takes in a set of edges and determines whether they are considered
      * matching The function basically keeps track of all vertices seen so far,
@@ -17,11 +19,11 @@ public class GraphUtils {
      *     the set of edges
      * @return true iff the edges are considered matching
      */
-    boolean isValidMatching(Set<Edge> edges) {
+    public static boolean isValidMatching(Set<Edge> edges) {
         Set<Integer> vertices = new HashSet<>();
         for (Edge edge : edges) {
             int v1 = edge.vertex1();
-            int v2 = edge.vertex1();
+            int v2 = edge.vertex2();
             if (vertices.contains(v1) || vertices.contains(v2)) {
                 return false;
             }
