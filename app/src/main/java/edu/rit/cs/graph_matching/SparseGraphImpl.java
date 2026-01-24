@@ -77,7 +77,6 @@ public class SparseGraphImpl implements MutableGraph {
   public boolean hasEdge(int vertex1, int vertex2) {
     checkVertexIndex(vertex1);
     checkVertexIndex(vertex2);
-    checkVerticesNotEqual(vertex1, vertex2);
 
     return adjacencyList.get(vertex1)
                         .contains(vertex2);
