@@ -2,6 +2,7 @@ package edu.rit.cs.graph_matching;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -22,10 +23,12 @@ class DaniHayesAlgorithmTest {
     "100000, 5",
   })
   void test(int size, int degree) {
+    Random rd = new Random(0);
     for (int j = 0; j < 10; j++) {
       MutableGraph g = GraphGenerator.generateRegularGraph(new SparseGraphImpl(size), degree);
       GraphGenerator.mutateRegularGraph(g, size * degree);
-      DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g));
+
+      DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
       Set<Edge> matching = alg.generatePerfectMatching();
 
       Set<Integer> vertices = matching.stream()

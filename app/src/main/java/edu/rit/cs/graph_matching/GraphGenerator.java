@@ -50,14 +50,14 @@ public class GraphGenerator {
 
     /**
      * Generates a random graph.
-     * This function builds a random graph by 
-     * considering every possible pair of vertices 
-     * and adding an edge between them with a fixed 
+     * This function builds a random graph by
+     * considering every possible pair of vertices
+     * and adding an edge between them with a fixed
      * probability.
      *
-     * @param vertices 
+     * @param vertices
      *      number of vertices
-     * @param edgeProb 
+     * @param edgeProb
      *      probability of adding an edge between any pair
      * @return the same graph instance
      */
@@ -81,13 +81,13 @@ public class GraphGenerator {
 
     /**
      * Generates a regular graph with a specific degree.
-     * This function generates a regular graph where every 
-     * vertex has the same degree. It connects each vertex 
-     * to nearby vertices in a circular pattern. If the 
-     * degree is odd, it also connects each vertex to the 
-     * one directly opposite it, which only works when the 
+     * This function generates a regular graph where every
+     * vertex has the same degree. It connects each vertex
+     * to nearby vertices in a circular pattern. If the
+     * degree is odd, it also connects each vertex to the
+     * one directly opposite it, which only works when the
      * total number of vertices is even.
-     * 
+     *
      * @param graph
      *      the graph to edit in-place
      * @param degree
@@ -123,13 +123,13 @@ public class GraphGenerator {
 
     /**
      * Mutates a regular graph by performing a double-edge swap.
-     * This function randomly changes a regular graph by picking 
-     * two edges and swapping their endpoints, while keeping all 
-     * vertex degrees the same. It skips invalid choices like 
-     * shared vertices or duplicate edges, and once a valid swap 
+     * This function randomly changes a regular graph by picking
+     * two edges and swapping their endpoints, while keeping all
+     * vertex degrees the same. It skips invalid choices like
+     * shared vertices or duplicate edges, and once a valid swap
      * is found, it performs it and exits. This process is repeated
      * a specific amount of this.
-     * 
+     *
      * @param graph
      *      the graph to mutate in-place
      * @param mutationCount
@@ -142,15 +142,15 @@ public class GraphGenerator {
         int mutations = 0;
         while (mutations < mutationCount) {
             int u = rand.nextInt(n);
-            int v = graph.getRandomNeighbor(u);
+            int v = graph.getRandomNeighbor(u, rand);
 
             int x = rand.nextInt(n);
-            int y = graph.getRandomNeighbor(x);
+            int y = graph.getRandomNeighbor(x, rand);
 
             if (u == x || u == y || v == x || v == y) {
                 continue;
             }
-            
+
             if (!graph.hasEdge(u, y) && !graph.hasEdge(x, v)) {
                 graph.removeEdge(u, v);
                 graph.removeEdge(x, y);
@@ -170,11 +170,11 @@ public class GraphGenerator {
 
     /**
      * Generates a regular bipartite graph with a specific window size.
-     * This function builds a bipartite graph with equal sized 
-     * left and right sides. Each left vertex is connected to 
-     * a specific amount of right vertices, ensuring every vertex 
+     * This function builds a bipartite graph with equal sized
+     * left and right sides. Each left vertex is connected to
+     * a specific amount of right vertices, ensuring every vertex
      * on both sides has the same number of edges.
-     * 
+     *
      * @param graph
      *      the graph to edit in-place
      * @param verticesPerSide
@@ -202,10 +202,10 @@ public class GraphGenerator {
 
     /**
      * Mutates a bipartite graph by performing a double-edge swap.
-     * This function performs a series of double-edge swaps on a 
-     * bipartite graph to randomly change connections while keeping 
+     * This function performs a series of double-edge swaps on a
+     * bipartite graph to randomly change connections while keeping
      * it bipartite.
-     * 
+     *
      * @param graph
      *      the graph to mutate in-place
      * @param leftVertices
@@ -215,7 +215,7 @@ public class GraphGenerator {
      */
     public static void mutateBipartiteGraph(MutableGraph graph, int leftVertices, int mutationCount) {
         Random rand = new Random();
-        
+
         int mutations = 0;
         while (mutations < mutationCount) {
             int left1 = rand.nextInt(leftVertices);
@@ -224,8 +224,8 @@ public class GraphGenerator {
                 continue;
             }
 
-            int right1 = graph.getRandomNeighbor(left1);
-            int right2 = graph.getRandomNeighbor(left2);
+            int right1 = graph.getRandomNeighbor(left1, rand);
+            int right2 = graph.getRandomNeighbor(left2, rand);
 
             if (right1 == right2) {
                 continue;
@@ -249,7 +249,7 @@ public class GraphGenerator {
      * Irregularizes a graph by randomly adding or removing edges.
      * This function modifies a graph by randomly adding or removing
      * edges based on a given probability, making the graph less regular.
-     * 
+     *
      * @param graph
      *      the graph to irregularize in-place
      * @param p
@@ -266,7 +266,7 @@ public class GraphGenerator {
         for (int u = 0; u < n; u++) {
             for (int v = u + 1; v < n; v++) {
                 if (rand.nextDouble() >= p) {
-                    continue; 
+                    continue;
                 }
 
                 if (graph.hasEdge(u, v)) {
@@ -282,7 +282,7 @@ public class GraphGenerator {
      * Irregularizes a bipartite graph by randomly adding or removing edges.
      * This function modifies a bipartite graph by randomly adding or removing
      * edges based on a given probability, making the graph less regular.
-     * 
+     *
      * @param graph
      *      the graph to irregularize in-place
      * @param leftVertices
@@ -301,7 +301,7 @@ public class GraphGenerator {
         for (int u = 0; u < leftVertices; u++) {
             for (int v = leftVertices; v < n; v++) {
                 if (rand.nextDouble() >= p) {
-                    continue; 
+                    continue;
                 }
 
                 if (graph.hasEdge(u, v)) {

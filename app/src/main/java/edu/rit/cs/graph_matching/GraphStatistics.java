@@ -1,5 +1,6 @@
 package edu.rit.cs.graph_matching;
 
+import java.util.Random;
 import java.util.Set;
 
 /**
@@ -9,8 +10,12 @@ public class GraphStatistics implements Graph {
   /** The backing graph */
   private final Graph source;
 
+  /** The number of times {@link #size()} has been called */
+  private int sizeCheckCount;
   /** The number of times {@link #hasEdge(int, int)} has been called */
   private int edgeCheckCount;
+  /** The number of times {@link #getDegree(int)} has been called */
+  private int degreeCheckCount;
   /** The number of times {@link #getRandomNeighbor(int)} has been called */
   private int randomNeighborCount;
   /** The number of times {@link #getAllNeighbors(int)} has been called */
@@ -28,7 +33,14 @@ public class GraphStatistics implements Graph {
 
   @Override
   public int size() {
+    sizeCheckCount++;
     return source.size();
+  }
+
+  @Override
+  public int getDegree(int vertex) {
+    degreeCheckCount++;
+    return source.getDegree(vertex);
   }
 
   /**
@@ -46,9 +58,9 @@ public class GraphStatistics implements Graph {
    *   {@link #getRandomNeighborCount()}.
    */
   @Override
-  public int getRandomNeighbor(int vertex) {
+  public int getRandomNeighbor(int vertex, Random random) {
     randomNeighborCount++;
-    return source.getRandomNeighbor(vertex);
+    return source.getRandomNeighbor(vertex, random);
   }
 
   /**
@@ -66,6 +78,20 @@ public class GraphStatistics implements Graph {
    */
   public Graph getSource() {
     return source;
+  }
+
+  /**
+   * @return the number of times {@link #getDegree(int)} has been called
+   */
+  public int getDegreeCheckCount() {
+    return degreeCheckCount;
+  }
+
+  /**
+   * @return the number of times {@link #size()} has been called
+   */
+  public int getSizeCheckCount() {
+    return sizeCheckCount;
   }
 
   /**

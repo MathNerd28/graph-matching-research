@@ -21,11 +21,6 @@ public class SparseGraphImpl implements MutableGraph {
   private final List<IntHashSet> adjacencyList;
 
   /**
-   * The pseudo-random number generator used for {@link #getRandomNeighbor(int)}
-   */
-  private final Random random;
-
-  /**
    * Construct a sparse graph with no edges.
    *
    * @param vertices
@@ -40,8 +35,6 @@ public class SparseGraphImpl implements MutableGraph {
     for (int i = 0; i < vertices; i++) {
       adjacencyList.add(new IntHashSet());
     }
-
-    this.random = new Random();
   }
 
   @Override
@@ -74,6 +67,14 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
+  public int getDegree(int vertex) {
+    checkVertexIndex(vertex);
+
+    return adjacencyList.get(vertex)
+                        .size();
+  }
+
+  @Override
   public boolean hasEdge(int vertex1, int vertex2) {
     checkVertexIndex(vertex1);
     checkVertexIndex(vertex2);
@@ -83,7 +84,7 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
-  public int getRandomNeighbor(int vertex) {
+  public int getRandomNeighbor(int vertex, Random random) {
     checkVertexIndex(vertex);
 
     return adjacencyList.get(vertex)
