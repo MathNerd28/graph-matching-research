@@ -1,7 +1,7 @@
 package edu.rit.cs.graph_matching;
 
-import java.util.Random;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 /**
  * A wrapper that tracks how many times graph methods are called.
@@ -58,7 +58,7 @@ public class GraphStatistics implements Graph {
    *   {@link #getRandomNeighborCount()}.
    */
   @Override
-  public int getRandomNeighbor(int vertex, Random random) {
+  public int getRandomNeighbor(int vertex, RandomGenerator random) {
     randomNeighborCount++;
     return source.getRandomNeighbor(vertex, random);
   }

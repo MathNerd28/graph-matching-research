@@ -2,8 +2,8 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 /**
  * A sparse undirected graph implementation with the following properties:
@@ -84,7 +84,7 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
-  public int getRandomNeighbor(int vertex, Random random) {
+  public int getRandomNeighbor(int vertex, RandomGenerator random) {
     checkVertexIndex(vertex);
 
     return adjacencyList.get(vertex)
