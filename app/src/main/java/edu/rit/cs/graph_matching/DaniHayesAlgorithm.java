@@ -1,14 +1,10 @@
 package edu.rit.cs.graph_matching;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class DaniHayesAlgorithm {
   private final Graph  graph;
@@ -68,28 +64,36 @@ public class DaniHayesAlgorithm {
   }
 
   private void buildMatching(int targetMatchingEdges) {
-    int failures = 0;
-    while ((graph.size() - unmatched.size()) / 2 < targetMatchingEdges) {
+    // Loop could run indefinitely; allow interruption for e.g. timeouts
+    while ((graph.size() - unmatched.size()) / 2 < targetMatchingEdges
+        && !Thread.currentThread()
+                  .isInterrupted()) {
       if (findAugmentingPath()) {
-        failures = 0;
-        continue;
-      }
+        // We have an augmenting path; augment it
 
-      failures++;
-      if (failures > 5) {
-        // If we fail 5 times in a row, give up
-        return;
+        int vertex = start;
+        while (true) {
+          int next = getAdjacent(vertex);
+
+          if (next == head) {
+            setMatch(vertex, head);
+            break;
+          }
+
+          int nextNext = getMatch(next);
+          setMatch(vertex, next);
+          vertex = nextNext;
+        }
+        unmatched.remove(start);
+        unmatched.remove(head);
       }
     }
   }
 
   private boolean findAugmentingPath() {
-    if (unmatched.isEmpty()) {
-      return false;
-    }
-
-    int maxAttempts = 10 * graph.size();
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+    // Loop could run indefinitely; allow interruption for e.g. timeouts
+    while (!Thread.currentThread()
+                  .isInterrupted()) {
       clearPath();
 
       start = unmatched.getRandom(random);
@@ -100,67 +104,7 @@ public class DaniHayesAlgorithm {
       while (status == PathStatus.ACTIVE) {
         status = growPath();
       }
-      if (status == PathStatus.FAIL) {
-        continue;
-      }
-
-      // We have an augmenting path; augment it
-
-      // Optimized version; currently broken
-      // int vertex = start;
-      // while (true) {
-      // int next = getAdjacent(vertex);
-
-      // if (next == head) {
-      // setMatch(vertex, head);
-      // break;
-      // } else if (next == -1) {
-      // // this shouldn't happen
-      // break;
-      // }
-
-      // int nextNext = getMatch(next);
-      // setMatch(vertex, next);
-      // vertex = nextNext;
-      // }
-      // unmatched.remove(start);
-      // unmatched.remove(head);
-      // return true;
-
-      // Unoptimized routine directly from Yongrui
-      List<Integer> path = new ArrayList<>();
-      path.add(start);
-      int curr = start;
-      int prev = -1;
-
-      while (curr != head) {
-        int next = -1;
-        if (path.size() % 2 != 0) {
-          next = getAdjacent(curr);
-        } else {
-          next = getMatch(curr);
-        }
-
-        if (next == -1 || next == prev) {
-          break;
-        }
-        if (path.contains(next)) {
-          break;
-        }
-
-        path.add(next);
-        prev = curr;
-        curr = next;
-      }
-
-      if (curr == head) {
-        for (int i = 0; i < path.size() - 1; i += 2) {
-          int u = path.get(i);
-          int v = path.get(i + 1);
-          setMatch(u, v);
-        }
-        unmatched.remove(start);
-        unmatched.remove(head);
+      if (status != PathStatus.FAIL) {
         return true;
       }
     }
@@ -192,70 +136,67 @@ public class DaniHayesAlgorithm {
     int w0 = getMatch(v0);
     if (w0 == -1) {
       // Case 1: v0 is unmatched, path is augmenting
+
+      // Add {h, v0} (unmatched) to path
       addEdge(head, v0);
       addVertex(v0);
+
       head = v0;
       return PathStatus.DONE;
     }
 
     if (!hasVertex(v0)) {
       // Case 2: v0 is matched but not in path
-      // Extend path to add v0 and w0
+
+      // Add {h, v0} (unmatched) to path
+      // Add {v0, w0} (matched) to path
       addEdge(head, v0);
       addVertex(v0);
       addVertex(w0);
+
       head = w0;
       return PathStatus.ACTIVE;
     }
 
     // v0 is already in P, forming a cycle
     // Attempt local repair
-    int v = v0;
     int w = w0;
-    int maxRepair = graph.size() + 10;
-    for (int repairSteps = 0; repairSteps < maxRepair; repairSteps++) {
+    while (true) {
       int vP = getAdjacent(w);
-      if (vP == -1) {
-        return PathStatus.FAIL;
-      }
-
       int wP = getMatch(vP);
+
+      // Delete {w, vP} (unmatched) from path
       removeEdge(w);
       removeVertex(w);
 
-      // TODO: why are both conditions necessary?
-      if (graph.hasEdge(vP, head) && getMatch(head) != vP && getMatch(vP) != head) {
+      if (graph.hasEdge(vP, head)) {
         // Shortcut (Odd Cycle)
+
+        // Add {vP, h} (unmatched) to path
         addEdge(vP, head);
-        addVertex(vP);
+
         addVertex(w0);
         head = w0;
         return PathStatus.ACTIVE;
-      }
-
-      if (wP == head) {
+      } else if (wP == head) {
         // Pop (Even Cycle)
-        removeEdge(vP); // implicitly removes head
-        removeVertex(vP);
-        removeVertex(head);
-        addVertex(v0);
-        addVertex(w0);
-        return PathStatus.ACTIVE;
-      }
 
-      if (vP == start) {
+        // Delete {vP, wP} (matched) from path
+        removeVertex(vP);
+        removeVertex(wP);
+
+        head = w0;
+        return PathStatus.ACTIVE;
+      } else if (vP == start) {
         return PathStatus.FAIL;
       }
 
+      // Delete {vP, wP} (matched) from path
       removeVertex(vP);
       removeVertex(wP);
-      v = vP;
+
       w = wP;
     }
-
-    // Repair took too many steps; fail
-    return PathStatus.FAIL; // TODO: why is this needed?
-    // can't we prove that the loop will terminate based on previous state?
   }
 
   private enum PathStatus {
@@ -285,9 +226,6 @@ public class DaniHayesAlgorithm {
   }
 
   private void removeEdge(int vertex) {
-    if (vertex == -1) {
-      return;
-    }
     int adjacent = adjacents[vertex];
     adjacents[vertex] = -1;
     if (adjacent == -1) {
@@ -311,26 +249,5 @@ public class DaniHayesAlgorithm {
   private void setMatch(int vertex1, int vertex2) {
     matches[vertex1] = vertex2;
     matches[vertex2] = vertex1;
-  }
-
-  public static void main(String[] args) {
-    MutableGraph g = GraphGenerator.generateRegularGraph(new SparseGraphImpl(100), 5);
-    // GraphGenerator.mutateRegularGraph(g, 100);
-    DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g));
-    Set<Edge> matching = alg.generatePerfectMatching();
-
-    List<Integer> vertices = matching.stream()
-                                     .flatMapToInt(e -> IntStream.of(e.vertex1(), e.vertex2()))
-                                     .boxed()
-                                     .collect(Collectors.toCollection(ArrayList::new));
-    vertices.sort(null);
-    System.out.println(vertices);
-    for (int i = 1; i < vertices.size(); i++) {
-      if (vertices.get(i) != vertices.get(i - 1) + 1) {
-        System.out.printf("%d ", vertices.get(i - 1));
-      }
-    }
-    System.out.println();
-    System.out.println(vertices.size());
   }
 }
