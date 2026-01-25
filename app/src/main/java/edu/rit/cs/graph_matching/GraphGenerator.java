@@ -2,7 +2,7 @@ package edu.rit.cs.graph_matching;
 
 import java.util.random.RandomGenerator;
 
-public class GraphGenerator {
+public final class GraphGenerator {
     private GraphGenerator() {}
 
     /**
@@ -50,19 +50,18 @@ public class GraphGenerator {
     }
 
     /**
-     * Generates a random graph.
-     * This function builds a random graph by
-     * considering every possible pair of vertices
-     * and adding an edge between them with a fixed
-     * probability.
+     * Generates a random graph. This function builds a random graph by
+     * considering every possible pair of vertices and adding an edge between
+     * them with a fixed probability.
      *
      * @param vertices
-     *      number of vertices
+     *     number of vertices
      * @param edgeProb
-     *      probability of adding an edge between any pair
+     *     probability of adding an edge between any pair
      * @return the same graph instance
      */
-    public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb, RandomGenerator random) {
+    public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb,
+                                                   RandomGenerator random) {
         if (edgeProb < 0.0 || edgeProb > 1.0) {
             throw new IllegalArgumentException("edgeProb must be between 0.0 and 1.0");
         }
@@ -80,18 +79,16 @@ public class GraphGenerator {
     }
 
     /**
-     * Generates a regular graph with a specific degree.
-     * This function generates a regular graph where every
-     * vertex has the same degree. It connects each vertex
-     * to nearby vertices in a circular pattern. If the
-     * degree is odd, it also connects each vertex to the
-     * one directly opposite it, which only works when the
-     * total number of vertices is even.
+     * Generates a regular graph with a specific degree. This function generates
+     * a regular graph where every vertex has the same degree. It connects each
+     * vertex to nearby vertices in a circular pattern. If the degree is odd, it
+     * also connects each vertex to the one directly opposite it, which only
+     * works when the total number of vertices is even.
      *
      * @param graph
-     *      the graph to edit in-place
+     *     the graph to edit in-place
      * @param degree
-     *      the desired degree of each vertex
+     *     the desired degree of each vertex
      * @return the same graph instance
      */
     public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
@@ -122,21 +119,22 @@ public class GraphGenerator {
     }
 
     /**
-     * Mutates a regular graph by performing a double-edge swap.
-     * This function randomly changes a regular graph by picking
-     * two edges and swapping their endpoints, while keeping all
-     * vertex degrees the same. It skips invalid choices like
-     * shared vertices or duplicate edges, and once a valid swap
-     * is found, it performs it and exits. This process is repeated
-     * a specific amount of this.
+     * Mutates a regular graph by performing a double-edge swap. This function
+     * randomly changes a regular graph by picking two edges and swapping their
+     * endpoints, while keeping all vertex degrees the same. It skips invalid
+     * choices like shared vertices or duplicate edges, and once a valid swap is
+     * found, it performs it and exits. This process is repeated a specific
+     * amount of this.
      *
      * @param graph
-     *      the graph to mutate in-place
+     *     the graph to mutate in-place
      * @param mutationCount
-     *      number of mutations to perform
-     * @param random the random number generator to use
+     *     number of mutations to perform
+     * @param random
+     *     the random number generator to use
      */
-    public static void mutateRegularGraph(MutableGraph graph, int mutationCount, RandomGenerator random) {
+    public static void mutateRegularGraph(MutableGraph graph, int mutationCount,
+                                          RandomGenerator random) {
         int n = graph.size();
 
         int mutations = 0;
@@ -168,26 +166,27 @@ public class GraphGenerator {
     }
 
     /**
-     * Generates a regular bipartite graph with a specific window size.
-     * This function builds a bipartite graph with equal sized
-     * left and right sides. Each left vertex is connected to
-     * a specific amount of right vertices, ensuring every vertex
-     * on both sides has the same number of edges.
+     * Generates a regular bipartite graph with a specific window size. This
+     * function builds a bipartite graph with equal sized left and right sides.
+     * Each left vertex is connected to a specific amount of right vertices,
+     * ensuring every vertex on both sides has the same number of edges.
      *
      * @param graph
-     *      the graph to edit in-place
+     *     the graph to edit in-place
      * @param degree
-     *      the desired degree of each vertex
+     *     the desired degree of each vertex
      * @return the same graph instance
      */
     public static MutableGraph generateRegularBipartiteGraph(MutableGraph graph, int degree) {
         if (graph.size() % 2 != 0) {
-            throw new IllegalArgumentException("Regular bipartite graphs must have an even number of vertices");
+            throw new IllegalArgumentException(
+                    "Regular bipartite graphs must have an even number of vertices");
         }
 
         int verticesPerSide = graph.size() / 2;
         if (degree > verticesPerSide) {
-            throw new IllegalArgumentException("Degree cannot exceed the number of vertices per side");
+            throw new IllegalArgumentException(
+                    "Degree cannot exceed the number of vertices per side");
         }
 
         graph.clear();
@@ -202,18 +201,19 @@ public class GraphGenerator {
     }
 
     /**
-     * Mutates a bipartite graph by performing a double-edge swap.
-     * This function performs a series of double-edge swaps on a
-     * bipartite graph to randomly change connections while keeping
-     * it bipartite.
+     * Mutates a bipartite graph by performing a double-edge swap. This function
+     * performs a series of double-edge swaps on a bipartite graph to randomly
+     * change connections while keeping it bipartite.
      *
      * @param graph
-     *      the graph to mutate in-place
+     *     the graph to mutate in-place
      * @param mutationCount
-     *      number of mutations to perform
-     * @param random the random number generator to use
+     *     number of mutations to perform
+     * @param random
+     *     the random number generator to use
      */
-    public static void mutateBipartiteRegularGraph(MutableGraph graph, int mutationCount, RandomGenerator random) {
+    public static void mutateBipartiteRegularGraph(MutableGraph graph, int mutationCount,
+                                                   RandomGenerator random) {
         int leftVertices = graph.size() / 2;
         int mutations = 0;
         while (mutations < mutationCount) {
@@ -241,19 +241,19 @@ public class GraphGenerator {
 
             mutations++;
         }
-
     }
 
     /**
-     * Irregularizes a graph by randomly adding or removing edges.
-     * This function modifies a graph by randomly adding or removing
-     * edges based on a given probability, making the graph less regular.
+     * Irregularizes a graph by randomly adding or removing edges. This function
+     * modifies a graph by randomly adding or removing edges based on a given
+     * probability, making the graph less regular.
      *
      * @param graph
-     *      the graph to irregularize in-place
+     *     the graph to irregularize in-place
      * @param p
-     *      the probability of adding or removing each edge
-     * @param random the random number generator to use
+     *     the probability of adding or removing each edge
+     * @param random
+     *     the random number generator to use
      */
     public static void irregularizeGraph(MutableGraph graph, double p, RandomGenerator random) {
         if (p < 0.0 || p > 1.0) {
@@ -282,11 +282,12 @@ public class GraphGenerator {
      * edges based on a given probability, making the graph less regular.
      *
      * @param graph
-     *      the graph to irregularize in-place
+     *     the graph to irregularize in-place
      * @param p
-     *      the probability of adding or removing each edge
+     *     the probability of adding or removing each edge
      */
-    public static void irregularizeBipartiteGraph(MutableGraph graph, double p, RandomGenerator random) {
+    public static void irregularizeBipartiteGraph(MutableGraph graph, double p,
+                                                  RandomGenerator random) {
         if (p < 0.0 || p > 1.0) {
             throw new IllegalArgumentException("Probability must be between 0 and 1");
         }

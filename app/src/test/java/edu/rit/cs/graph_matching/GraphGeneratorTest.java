@@ -1,4 +1,5 @@
 package edu.rit.cs.graph_matching;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -245,11 +246,13 @@ class GraphGeneratorTest {
         GraphGenerator.generateRegularBipartiteGraph(irregularBipartiteGraph, 2);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, -0.1, new Random(SEED));
+            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, -0.1,
+                    new Random(SEED));
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 1.1, new Random(SEED));
+            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 1.1,
+                    new Random(SEED));
         });
     }
 }

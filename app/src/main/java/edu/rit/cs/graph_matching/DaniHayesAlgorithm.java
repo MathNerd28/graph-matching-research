@@ -161,7 +161,7 @@ public class DaniHayesAlgorithm {
   /**
    * The BUILD_MATCHING procedure as specified in the paper. Modified only to
    * allow interruption of the algorithm by the user for the purpose of e.g.
-   * timeouts, and to parameterize the minumum matching size.
+   * timeouts, and to parameterize the minimum matching size.
    *
    * @param edgeCount
    *   the minimum number of edges in the matching
