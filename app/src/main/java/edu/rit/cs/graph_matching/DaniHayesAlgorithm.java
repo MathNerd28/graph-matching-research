@@ -1,7 +1,6 @@
 package edu.rit.cs.graph_matching;
 
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
@@ -44,9 +43,9 @@ public class DaniHayesAlgorithm {
   private final int[] adjacents;
 
   /**
-   * Tracks the vertices that are currently in the ALP.
+   * If inPath[v] == pathId, then vertex v is in the current ALP.
    */
-  private final BitSet inPath;
+  private final int[] inPath;
 
   /**
    * Tracks the vertices that have yet to be added to the matching.
@@ -58,6 +57,9 @@ public class DaniHayesAlgorithm {
 
   /** The head vertex of the current ALP */
   private int head;
+
+  /** The id of the current ALP */
+  private int pathId;
 
   /**
    * Initialize the algorithm with a particular input graph and a pre-seeded
@@ -74,7 +76,7 @@ public class DaniHayesAlgorithm {
 
     this.matches = new int[graph.size()];
     this.adjacents = new int[graph.size()];
-    this.inPath = new BitSet(graph.size());
+    this.inPath = new int[graph.size()];
     this.unmatched = new IntHashSet();
 
     Arrays.fill(matches, -1);
@@ -335,10 +337,9 @@ public class DaniHayesAlgorithm {
    * Resets the ALP to an empty state, without affecting the matching.
    */
   private void clearPath() {
-    Arrays.fill(adjacents, -1);
-    inPath.clear();
     this.start = -1;
     this.head = -1;
+    this.pathId++;
   }
 
   /**
@@ -401,7 +402,7 @@ public class DaniHayesAlgorithm {
    * @return true of the ALP contains {@code vertex}
    */
   private boolean hasVertex(int vertex) {
-    return inPath.get(vertex);
+    return inPath[vertex] == pathId;
   }
 
   /**
@@ -411,7 +412,7 @@ public class DaniHayesAlgorithm {
    *   the vertex to add
    */
   private void addVertex(int vertex) {
-    inPath.set(vertex);
+    inPath[vertex] = pathId;
   }
 
   /**
@@ -421,7 +422,7 @@ public class DaniHayesAlgorithm {
    *   the vertex to remove
    */
   private void removeVertex(int vertex) {
-    inPath.clear(vertex);
+    inPath[vertex] = -1;
   }
 
   /**
