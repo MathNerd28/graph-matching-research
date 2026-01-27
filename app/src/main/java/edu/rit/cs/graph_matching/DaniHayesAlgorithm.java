@@ -307,8 +307,8 @@ public class DaniHayesAlgorithm {
         removeVertex(vP);
         removeVertex(wP);
 
-        head = w0;
         addVertex(w0);
+        head = w0;
         return PathStatus.ACTIVE;
       } else if (vP == start) {
         return PathStatus.FAIL;
