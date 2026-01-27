@@ -291,7 +291,7 @@ public class DaniHayesAlgorithm {
       removeEdge(w);
       removeVertex(w);
 
-      if (graph.hasEdge(vP, head)) {
+      if (graph.hasEdge(vP, head) && head != wP) {
         // Shortcut (Odd Cycle)
 
         // Add {vP, h} (unmatched) to path
@@ -308,6 +308,7 @@ public class DaniHayesAlgorithm {
         removeVertex(wP);
 
         head = w0;
+        addVertex(w0);
         return PathStatus.ACTIVE;
       } else if (vP == start) {
         return PathStatus.FAIL;
@@ -315,7 +316,6 @@ public class DaniHayesAlgorithm {
 
       // Delete {vP, wP} (matched) from path
       removeVertex(vP);
-      removeVertex(wP);
 
       w = wP;
     }

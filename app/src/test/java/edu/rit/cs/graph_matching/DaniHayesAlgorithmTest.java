@@ -13,7 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class DaniHayesAlgorithmTest {
-  // Runs are seeded such that the generated graphs are always the same
+  /** Runs are seeded such that the generated graphs are always the same */
 
   @ParameterizedTest
   // @formatter:off
