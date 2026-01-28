@@ -87,8 +87,8 @@ public class SparseGraphImpl implements MutableGraph {
   public int getRandomNeighbor(int vertex, RandomGenerator random) {
     checkVertexIndex(vertex);
 
-    return adjacencyList.get(vertex)
-                        .getRandom(random);
+    IntHashSet neighbors = adjacencyList.get(vertex);
+    return neighbors.isEmpty() ? -1 : neighbors.getRandom(random);
   }
 
   @Override
