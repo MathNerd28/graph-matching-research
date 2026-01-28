@@ -2,6 +2,7 @@ package edu.rit.cs.graph_matching;
 
 import java.util.AbstractSet;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
@@ -32,11 +33,21 @@ import java.util.random.RandomGenerator;
  */
 public class IntHashSet extends AbstractSet<Integer> {
   /** The proportion of the hash table to fill before increasing its size */
-  private static final double LOAD_FACTOR = 0.75;
+  private static final double MAX_LOAD_FACTOR = 0.75;
+
+  /**
+   * The proportion of the hash table to remain full before decreasing its size
+   */
+  private static final double MIN_LOAD_FACTOR = MAX_LOAD_FACTOR / 4;
+
+  /**
+   * The maximum number of elements in the minimum size table.
+   */
+  private static final int DEFAULT_SIZE = (int) (8 * MAX_LOAD_FACTOR);
 
   /**
    * The hash table. The array indexes are the hashes, and the array values are
-   * pointers to the value in {@link #values}.
+   * the values in the set.
    */
   private int[] table;
 
@@ -57,15 +68,11 @@ public class IntHashSet extends AbstractSet<Integer> {
   /** The maximum permissible size of the hash table before growth. */
   private int maxFill;
 
+  /** The minimum permissible size of the hash table before growth. */
+  private int minFill;
+
   /** The current number of empty cells in the hash table. */
   private int empty;
-
-  /**
-   * The actual values in the hash table. All values in the range [0, size) can
-   * be safely iterated over; further values were previously deleted but not yet
-   * reclaimed.
-   */
-  private int[] values;
 
   /** The current number of valid values in the hash table. */
   private int size;
@@ -83,7 +90,6 @@ public class IntHashSet extends AbstractSet<Integer> {
     int capacity = tableSizeFor(expectedSize);
     occupied = new BitSet(capacity);
     deleted = new BitSet(capacity);
-    values = new int[expectedSize];
     createTable(capacity);
   }
 
@@ -91,7 +97,7 @@ public class IntHashSet extends AbstractSet<Integer> {
    * Construct an IntHashSet with a default initial capacity.
    */
   public IntHashSet() {
-    this(4);
+    this(DEFAULT_SIZE);
   }
 
   /**
@@ -108,7 +114,12 @@ public class IntHashSet extends AbstractSet<Integer> {
       throw new NoSuchElementException();
     }
 
-    return values[rd.nextInt(size)];
+    int index;
+    do {
+      index = rd.nextInt(table.length);
+    } while (!occupied.get(index));
+
+    return table[index];
   }
 
   /**
@@ -146,10 +157,7 @@ public class IntHashSet extends AbstractSet<Integer> {
    */
   public boolean add(int e) {
     if (table.length - empty >= maxFill) {
-      rehashTable();
-    }
-    if (size >= values.length) {
-      growValues();
+      growTable();
     }
 
     int index = hash1(e) & mask;
@@ -162,7 +170,7 @@ public class IntHashSet extends AbstractSet<Integer> {
           firstDeleted = index;
         }
       } else if (occupied.get(index)) {
-        if (values[table[index]] == e) {
+        if (table[index] == e) {
           // value is already present
           return false;
         }
@@ -175,8 +183,7 @@ public class IntHashSet extends AbstractSet<Integer> {
           empty--;
         }
 
-        table[index] = size;
-        values[size] = e;
+        table[index] = e;
         deleted.clear(index);
         occupied.set(index);
         size++;
@@ -216,12 +223,21 @@ public class IntHashSet extends AbstractSet<Integer> {
         // empty slot
         return false;
       }
-      if (occupied.get(index) && values[table[index]] == e) {
+      if (occupied.get(index) && table[index] == e) {
         // found value
         return true;
       }
       index = (index + increment) & mask;
     }
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> c) {
+    boolean removed = false;
+    for (Object o : c) {
+      removed |= remove(o);
+    }
+    return removed;
   }
 
   /**
@@ -259,20 +275,15 @@ public class IntHashSet extends AbstractSet<Integer> {
         // empty slot
         return false;
       }
-      if (occupied.get(index) && values[table[index]] == e) {
-        // found value
-        int removeIndex = table[index];
-
-        if (removeIndex != size - 1) {
-          // swap last value into removed slot
-          int toMove = values[size - 1];
-          updateIndex(toMove, removeIndex);
-          values[removeIndex] = toMove;
-        }
-
+      if (occupied.get(index) && table[index] == e) {
         occupied.clear(index);
         deleted.set(index);
         size--;
+
+        if (size < minFill) {
+          shrinkTable();
+        }
+
         return true;
       }
 
@@ -308,18 +319,32 @@ public class IntHashSet extends AbstractSet<Integer> {
     return size;
   }
 
+  // Make explicit that we want to use AbstractSet's equals & hashCode
+  // implementations
+
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
+
   // --- Implementation-only details ---
 
   /**
    * Initialize the hash table with the specified capacity, and clear it of all
-   * entries. Preserve {@link #values}.
+   * entries.
    *
    * @param capacity
    *   the capacity of the table, a power of 2
    */
   private void createTable(int capacity) {
     mask = capacity - 1;
-    maxFill = (int) (capacity * LOAD_FACTOR);
+    maxFill = (int) (capacity * MAX_LOAD_FACTOR);
+    minFill = (int) (capacity * MIN_LOAD_FACTOR);
     table = new int[capacity];
     size = 0;
     empty = capacity;
@@ -328,58 +353,44 @@ public class IntHashSet extends AbstractSet<Integer> {
   }
 
   /**
-   * Update the position of an integer in the {@link #values} array.
-   *
-   * @param e
-   *   the integer to update
-   * @param newIndex
-   *   the new index of that element in {@link #values}
-   * @implNote {@code e} must remain in its old position when calling this
-   *   method.
-   */
-  private void updateIndex(int e, int newIndex) {
-    int index = hash1(e) & mask;
-    int increment = hash2(e);
-    while (true) {
-      if (occupied.get(index) && values[table[index]] == e) {
-        table[index] = newIndex;
-        return;
-      }
-      index = (index + increment) & mask;
-    }
-  }
-
-  /**
-   * Increase the size of the {@link #values} array to accommodate more
-   * elements. All integers within this set are copied to the same index in the
-   * new array.
-   *
-   * @implNote This method doubles the size of {@link #values}.
-   */
-  private void growValues() {
-    int[] newValues = new int[values.length << 1];
-    System.arraycopy(values, 0, newValues, 0, size);
-    values = newValues;
-  }
-
-  /**
    * Increase the size of {@link #table} to accommodate more elements. All
    * integers within this set are copied to the new table, but not necessarily
    * to the same location.
    *
    * @implNote This method doubles the size of {@link #table}.
-   * @implNote {@link #values} is preserved as-is.
    */
-  private void rehashTable() {
-    int oldSize = size;
+  private void growTable() {
+    int[] oldTable = table;
+    BitSet oldOccupied = (BitSet) occupied.clone();
+
     createTable(table.length << 1); // double the previous size
 
     // re-add previous elements
-    // it's safe to iterate over values, because elements will be re-inserted
-    // at the same position
-    for (int i = 0; i < oldSize; i++) {
-      add(values[i]);
+    oldOccupied.stream()
+               .forEach(index -> add(oldTable[index]));
+  }
+
+  /**
+   * Decrease the size of {@link #table} to reduce memory usage and iteration
+   * overhead. All integers within this set are copied to the new table, but not
+   * necessarily to the same location.
+   *
+   * @implNote This method halves the size of {@link #table}.
+   */
+  private void shrinkTable() {
+    if (size <= DEFAULT_SIZE) {
+      // not permitted to shrink
+      return;
     }
+
+    int[] oldTable = table;
+    BitSet oldOccupied = (BitSet) occupied.clone();
+
+    createTable(table.length >>> 1); // half the previous size
+
+    // re-add previous elements
+    oldOccupied.stream()
+               .forEach(index -> add(oldTable[index]));
   }
 
   /**
@@ -428,23 +439,24 @@ public class IntHashSet extends AbstractSet<Integer> {
    * @return the size of the hash table
    */
   private static int tableSizeFor(int expected) {
-    int minCapacity = (int) (expected / LOAD_FACTOR);
+    int minCapacity = (int) (expected / MAX_LOAD_FACTOR);
     int n = -1 >>> Integer.numberOfLeadingZeros(minCapacity - 1);
     return (n < 0) ? 1 : (n + 1);
   }
 
   /**
-   * An iterator implementation for {@link IntHashSet}.
+   * An iterator implementation for {@link IntHashSet}. Does NOT support
+   * removal.
    */
   private final class IntHashSetIterator implements PrimitiveIterator.OfInt {
-    int     size       = IntHashSet.this.size;
-    int     pos        = 0;
-    boolean calledNext = false;
+    private int size      = IntHashSet.this.size;
+    private int remaining = IntHashSet.this.size;
+    private int pos       = -1;
 
     @Override
     public boolean hasNext() {
       checkModification();
-      return pos < size;
+      return remaining > 0;
     }
 
     @Override
@@ -455,40 +467,13 @@ public class IntHashSet extends AbstractSet<Integer> {
         throw new NoSuchElementException();
       }
 
-      int value = values[pos];
-      pos++;
-      calledNext = true;
+      do {
+        pos++;
+      } while (!occupied.get(pos));
+
+      int value = table[pos];
+      remaining--;
       return value;
-    }
-
-    /**
-     * Removes from the underlying collection the last element returned by this
-     * iterator. This method can be called only once per call to {@link #next}.
-     * <p>
-     * The behavior of an iterator is unspecified if the underlying collection
-     * is modified while the iteration is in progress in any way other than by
-     * calling this method.
-     * <p>
-     * The behavior of an iterator is unspecified if this method is called after
-     * a call to the {@link #forEachRemaining forEachRemaining} method.
-     *
-     * @throws IllegalStateException
-     *   if the {@code next} method has not yet been called, or the
-     *   {@code remove} method has already been called after the last call to
-     *   the {@code next} method
-     */
-    @Override
-    public void remove() {
-      checkModification();
-
-      if (!calledNext) {
-        throw new IllegalStateException();
-      }
-
-      pos--;
-      size--;
-      calledNext = false;
-      IntHashSet.this.remove(values[pos]);
     }
 
     /**
