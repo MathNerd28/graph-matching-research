@@ -237,19 +237,19 @@ public class DaniHayesAlgorithm {
    * @return the status of the current ALP
    */
   private PathStatus growPath() {
+    // Detect cases where there are no valid choices for v0
+    if (graph.getDegree(head) < 2 && (head != start || graph.getDegree(head) == 0)) {
+      return PathStatus.FAIL;
+    }
+
     // v0 = random element of N(h) \ M(h), i.e. a random neighbor of head except
     // its match
-    // scale attempts by degree to handle non-regular hubs correctly
-    int v0 = -1;
-    int maxAttempts = 2 * graph.getDegree(head) + 10;
     int headMatch = getMatch(head);
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      int neighbor = graph.getRandomNeighbor(head, random);
-      if (neighbor != headMatch) {
-        v0 = neighbor;
-        break;
-      }
-    }
+    int v0;
+    do {
+      v0 = graph.getRandomNeighbor(head, random);
+    } while (v0 == headMatch);
+
     if (v0 == -1 || v0 == start) {
       return PathStatus.FAIL;
     }
