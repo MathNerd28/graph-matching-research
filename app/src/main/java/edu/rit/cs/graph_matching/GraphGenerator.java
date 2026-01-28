@@ -116,7 +116,6 @@ public class GraphGenerator {
                 index++;
             }
         }
-        System.out.println("added");
 
         for (int i = edgeConnections.length - 1; i > 0; i--) {
             int i2 = random.nextInt(i);
@@ -124,7 +123,6 @@ public class GraphGenerator {
             edgeConnections[i] = edgeConnections[i2];
             edgeConnections[i2] = tmp;
         }
-        System.out.println("shuffled");
 
         graph.clear();
         List<Edge> conflictEdges = new ArrayList<>();
@@ -136,13 +134,8 @@ public class GraphGenerator {
             } else {
                 conflictEdges.add(new Edge(v1, v2));
             }
-            if ((i & 0xFFFFF) == 0) {
-                System.out.printf("%d: %d%n", i, conflictEdges.size());
-            }
         }
-        System.out.println("no conflict");
 
-        // 2. Add all edges with conflicts
         for (Edge e : conflictEdges) {
             int v1 = e.vertex1();
             int v2 = e.vertex2();
@@ -173,18 +166,6 @@ public class GraphGenerator {
 
         return graph;
     }
-
-    // public static void main(String[] args) {
-    //     int degree = 1_000;
-    //     MutableGraph g = generateRegularGraph2(new SparseGraphImpl(1_000_000), degree, new Random());
-    //     for (int v = 0; v < g.size(); v++) {
-    //         if (g.getAllNeighbors(v)
-    //              .size() != degree) {
-    //             System.out.println("fail");
-    //         }
-    //     }
-    //     System.out.println("done");
-    // }
 
     /**
      * Generates a regular graph with a specific degree.
@@ -325,15 +306,15 @@ public class GraphGenerator {
      *      random number generator
      * @return the same graph instance
      */
-    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int verticesPerSide, int degree[], Random random) {
+    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int leftVerticesCount, int rightVerticesCount, int[] leftDegrees, int[] rightDegrees, Random random) {
         int leftStubTotal = 0;
+        for (int i = 0; i < leftVerticesCount; i++) {
+            leftStubTotal += leftDegrees[i];
+        }
+
         int rightStubTotal = 0;
-        for (int i = 0; i < degree.length; i++) {
-            if (i < verticesPerSide) {
-                leftStubTotal += degree[i];
-            } else {
-                rightStubTotal += degree[i];
-            }
+        for (int i = 0; i < rightVerticesCount; i++) {
+            rightStubTotal += rightDegrees[i];
         }
 
         if (leftStubTotal != rightStubTotal) {
@@ -344,16 +325,18 @@ public class GraphGenerator {
         int rightStub[] = new int[rightStubTotal];
 
         int leftIndex = 0;
+        for (int i = 0; i < leftVerticesCount; i++) {
+            for (int d = 0; d < leftDegrees[i]; d++) {
+                leftStub[leftIndex] = i;
+                leftIndex++;
+            }
+        }
+
         int rightIndex = 0;
-        for (int i = 0; i < verticesPerSide * 2; i++) {
-            for (int d = 0; d < degree[i]; d++) {
-                if (i < verticesPerSide) {
-                    leftStub[leftIndex] = i;
-                    leftIndex++;
-                } else {
-                    rightStub[rightIndex] = i;
-                    rightIndex++;
-                }
+        for (int i = 0; i < rightVerticesCount; i++) {
+            for (int d = 0; d < rightDegrees[i]; d++) {
+                rightStub[rightIndex] = i + leftVerticesCount;
+                rightIndex++;
             }
         }
 
@@ -379,22 +362,19 @@ public class GraphGenerator {
             } else {
                 conflictEdges.add(new Edge(v1, v2));
             }
-            if ((i & 0xFFFFF) == 0) {
-                System.out.printf("%d: %d%n", i, conflictEdges.size());
-            }
         }
 
         for (Edge e : conflictEdges) {
             int v1 = e.vertex1();
             int v2 = e.vertex2();
             while (true) {
-                int w1 = random.nextInt(verticesPerSide);
+                int w1 = random.nextInt(leftVerticesCount);
                 if (w1 == v1) {
                     continue;
                 }
 
                 int w2 = graph.getRandomNeighbor(w1);
-                if (w2 == -1 || w2 == v2) {
+                if (w2 == -1 || w2 == v2 || w2 < leftVerticesCount) {
                     continue;
                 }
 

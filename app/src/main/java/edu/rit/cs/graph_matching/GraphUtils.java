@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Random;
 
 public class GraphUtils {
     private GraphUtils() {}
@@ -90,10 +91,10 @@ public class GraphUtils {
      *      the variation from the average degree
      * @return the degree sequence
      */
-    public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree, int variation) {
+    public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
         int[] degrees = new int[numVertices];
         for (int i = 0; i < numVertices; i++) {
-            degrees[i] = averageDegree - variation + (int) (Math.random() * (2 * variation + 1));
+            degrees[i] = averageDegree - variation + random.nextInt(2 * variation + 1);
         }
         return degrees;
     }
