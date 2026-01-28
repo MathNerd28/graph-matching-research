@@ -62,4 +62,39 @@ public class GraphUtils {
             writer.println("}");
         }
     }
+
+    /**
+     * Generate a regular degree sequence.
+     * 
+     * @param numVertices
+     *      the number of vertices
+     * @param degree
+     *      the degree of each vertex
+     * @return the degree sequence
+     */
+    public static int[] generateRegularDegreeSequence(int numVertices, int degree) {
+        int[] degrees = new int[numVertices];
+        for (int i = 0; i < numVertices; i++) {
+            degrees[i] = degree;
+        }
+        return degrees;
+    }
+
+    /**
+     * Generate a somewhat regular degree sequence.
+     * @param numVertices
+     *      the number of vertices
+     * @param averageDegree
+     *      the average degree
+     * @param variation
+     *      the variation from the average degree
+     * @return the degree sequence
+     */
+    public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree, int variation) {
+        int[] degrees = new int[numVertices];
+        for (int i = 0; i < numVertices; i++) {
+            degrees[i] = averageDegree - variation + (int) (Math.random() * (2 * variation + 1));
+        }
+        return degrees;
+    }
 }

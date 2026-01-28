@@ -82,12 +82,38 @@ public class GraphGenerator {
         return graph;
     }
 
-    public static MutableGraph generateRegularGraph2(MutableGraph graph, int degree,
-                                                     Random random) {
-        int[] edgeConnections = new int[graph.size() * degree];
+    /**
+     * Generates a graph with a specific degree sequence. It 
+     * creates a list of vertex stubs according to their 
+     * degrees, shuffles them, and pairs them to form edges 
+     * while avoiding self-loops and duplicates. Any conflicts 
+     * are resolved by swapping edges in the graph, ensuring 
+     * the final graph matches the specified degree sequence.
+     * 
+     * @param graph
+     *      the graph to edit in-place
+     * @param degrees
+     *      the desired degree sequence
+     * @param random
+     *      random number generator
+     * @return the same graph instance
+     */
+    public static MutableGraph generateGraph(MutableGraph graph, int[] degrees, Random random) {
+        int totalStubs = 0;
+        for (int d : degrees) {
+            totalStubs += d;
+        }
+
+        if ((totalStubs % 2) != 0) {
+            throw new IllegalArgumentException("Sum of degrees must be even");
+        }
+
+        int[] edgeConnections = new int[totalStubs];
+        int index = 0;
         for (int v = 0; v < graph.size(); v++) {
-            for (int d = 0; d < degree; d++) {
-                edgeConnections[v * degree + d] = v;
+            for (int d = 0; d < degrees[v]; d++) {
+                edgeConnections[index] = v;
+                index++;
             }
         }
         System.out.println("added");
@@ -148,17 +174,17 @@ public class GraphGenerator {
         return graph;
     }
 
-    public static void main(String[] args) {
-        int degree = 1_000;
-        MutableGraph g = generateRegularGraph2(new SparseGraphImpl(1_000_000), degree, new Random());
-        for (int v = 0; v < g.size(); v++) {
-            if (g.getAllNeighbors(v)
-                 .size() != degree) {
-                System.out.println("fail");
-            }
-        }
-        System.out.println("done");
-    }
+    // public static void main(String[] args) {
+    //     int degree = 1_000;
+    //     MutableGraph g = generateRegularGraph2(new SparseGraphImpl(1_000_000), degree, new Random());
+    //     for (int v = 0; v < g.size(); v++) {
+    //         if (g.getAllNeighbors(v)
+    //              .size() != degree) {
+    //             System.out.println("fail");
+    //         }
+    //     }
+    //     System.out.println("done");
+    // }
 
     /**
      * Generates a regular graph with a specific degree.
@@ -278,6 +304,109 @@ public class GraphGenerator {
             }
         }
 
+        return graph;
+    }
+
+    /**
+     * Generates a bipartite graph with a specific degree sequence. 
+     * It creates two list of vertex stubs (one of left and one for right) 
+     * according to their degrees, shuffles them, and pairs one from each 
+     * list to form edges while avoiding self-loops and duplicates. Any 
+     * conflicts are resolved by swapping edges in the graph, ensuring 
+     * the final graph matches the specified degree sequence.
+     * 
+     * @param graph
+     *      the graph to edit in-place
+     * @param verticesPerSide
+     *      number of vertices on each side
+     * @param degree
+     *      the desired degree sequence
+     * @param random
+     *      random number generator
+     * @return the same graph instance
+     */
+    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int verticesPerSide, int degree[], Random random) {
+        int leftStubTotal = 0;
+        int rightStubTotal = 0;
+        for (int i = 0; i < degree.length; i++) {
+            if (i < verticesPerSide) {
+                leftStubTotal += degree[i];
+            } else {
+                rightStubTotal += degree[i];
+            }
+        }
+
+        if (leftStubTotal != rightStubTotal) {
+            throw new IllegalArgumentException("Left and right degree sums must match");
+        }
+
+        int leftStub[] = new int[leftStubTotal];
+        int rightStub[] = new int[rightStubTotal];
+
+        int leftIndex = 0;
+        int rightIndex = 0;
+        for (int i = 0; i < verticesPerSide * 2; i++) {
+            for (int d = 0; d < degree[i]; d++) {
+                if (i < verticesPerSide) {
+                    leftStub[leftIndex] = i;
+                    leftIndex++;
+                } else {
+                    rightStub[rightIndex] = i;
+                    rightIndex++;
+                }
+            }
+        }
+
+        for (int i = leftStub.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            int temp = leftStub[i];
+            leftStub[i] = leftStub[j];
+            leftStub[j] = temp;
+
+            j = random.nextInt(i + 1);
+            temp = rightStub[i];
+            rightStub[i] = rightStub[j];
+            rightStub[j] = temp;
+        }
+
+        graph.clear();
+        List<Edge> conflictEdges = new ArrayList<>();
+        for (int i = 0; i < leftStub.length; i++) {
+            int v1 = leftStub[i];
+            int v2 = rightStub[i];
+            if (!graph.hasEdge(v1, v2)) {
+                graph.addEdge(v1, v2);
+            } else {
+                conflictEdges.add(new Edge(v1, v2));
+            }
+            if ((i & 0xFFFFF) == 0) {
+                System.out.printf("%d: %d%n", i, conflictEdges.size());
+            }
+        }
+
+        for (Edge e : conflictEdges) {
+            int v1 = e.vertex1();
+            int v2 = e.vertex2();
+            while (true) {
+                int w1 = random.nextInt(verticesPerSide);
+                if (w1 == v1) {
+                    continue;
+                }
+
+                int w2 = graph.getRandomNeighbor(w1);
+                if (w2 == -1 || w2 == v2) {
+                    continue;
+                }
+
+                if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
+                    graph.removeEdge(w1, w2);
+                    graph.addEdge(v1, w2);
+                    graph.addEdge(v2, w1);
+                    break;
+                }
+            }
+        }
+        
         return graph;
     }
 
