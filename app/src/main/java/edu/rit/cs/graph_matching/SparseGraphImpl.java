@@ -2,8 +2,8 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 /**
  * A sparse undirected graph implementation with the following properties:
@@ -21,11 +21,6 @@ public class SparseGraphImpl implements MutableGraph {
   private final List<IntHashSet> adjacencyList;
 
   /**
-   * The pseudo-random number generator used for {@link #getRandomNeighbor(int)}
-   */
-  private final Random random;
-
-  /**
    * Construct a sparse graph with no edges.
    *
    * @param vertices
@@ -40,8 +35,6 @@ public class SparseGraphImpl implements MutableGraph {
     for (int i = 0; i < vertices; i++) {
       adjacencyList.add(new IntHashSet());
     }
-
-    this.random = new Random();
   }
 
   @Override
@@ -74,21 +67,28 @@ public class SparseGraphImpl implements MutableGraph {
   }
 
   @Override
+  public int getDegree(int vertex) {
+    checkVertexIndex(vertex);
+
+    return adjacencyList.get(vertex)
+                        .size();
+  }
+
+  @Override
   public boolean hasEdge(int vertex1, int vertex2) {
     checkVertexIndex(vertex1);
     checkVertexIndex(vertex2);
-    checkVerticesNotEqual(vertex1, vertex2);
 
     return adjacencyList.get(vertex1)
                         .contains(vertex2);
   }
 
   @Override
-  public int getRandomNeighbor(int vertex) {
+  public int getRandomNeighbor(int vertex, RandomGenerator random) {
     checkVertexIndex(vertex);
 
-    return adjacencyList.get(vertex)
-                        .getRandom(random);
+    IntHashSet neighbors = adjacencyList.get(vertex);
+    return neighbors.isEmpty() ? -1 : neighbors.getRandom(random);
   }
 
   @Override

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashSet;
+import java.util.Random;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -80,6 +81,7 @@ class DenseGraphImplTest {
   @Test
   void query() {
     Set<Edge> edges = Set.of(new Edge(0, 1), new Edge(0, 2), new Edge(0, 3), new Edge(1, 2));
+    Random rd = new Random(0);
 
     MutableGraph g = new DenseGraphImpl(5);
     for (Edge e : edges) {
@@ -88,8 +90,8 @@ class DenseGraphImplTest {
 
     // getRandomNeighbor is tested 5 times for consistency
     for (int i = 0; i < 5; i++) {
-      assertEquals(0, g.getRandomNeighbor(3));
-      assertTrue(g.hasEdge(0, g.getRandomNeighbor(0)));
+      assertEquals(0, g.getRandomNeighbor(3, rd));
+      assertTrue(g.hasEdge(0, g.getRandomNeighbor(0, rd)));
     }
 
     for (Edge e : edges) {

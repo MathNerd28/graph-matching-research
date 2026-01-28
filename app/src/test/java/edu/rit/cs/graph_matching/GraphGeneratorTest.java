@@ -1,21 +1,26 @@
 package edu.rit.cs.graph_matching;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Random;
+
 import org.junit.jupiter.api.Test;
 
-public class GraphGeneratorTest {
+class GraphGeneratorTest {
+    private static final long SEED = 0x8294757462947573L;
+
     @Test
     void testGenerateStarGraph() {
         MutableGraph starGraph = new SparseGraphImpl(10);
         GraphGenerator.generateStarGraph(starGraph);
 
-        assertEquals(9, starGraph.getAllNeighbors(0).size());
+        assertEquals(9, starGraph.getDegree(0));
 
         for (int i = 1; i < starGraph.size(); i++) {
             assertTrue(starGraph.hasEdge(0, i));
-            assertEquals(1, starGraph.getAllNeighbors(i).size());
+            assertEquals(1, starGraph.getDegree(i));
         }
     }
 
@@ -26,11 +31,11 @@ public class GraphGeneratorTest {
 
         int edgeCount = 0;
         for (int i = 0; i < starGraphWithMatching.size(); i++) {
-            edgeCount += starGraphWithMatching.getAllNeighbors(i).size();
+            edgeCount += starGraphWithMatching.getDegree(i);
         }
         edgeCount /= 2;
 
-        assertEquals(edgeCount, 9);
+        assertEquals(9, edgeCount);
     }
 
     @Test
@@ -48,11 +53,11 @@ public class GraphGeneratorTest {
     @Test
     void testGenerateRandomGraphZeroProb() {
         MutableGraph randomGraph = new SparseGraphImpl(5);
-        GraphGenerator.generateRandomGraph(randomGraph, 0.0);
+        GraphGenerator.generateRandomGraph(randomGraph, 0.0, new Random(SEED));
 
         int edgeCount = 0;
         for (int i = 0; i < randomGraph.size(); i++) {
-            edgeCount += randomGraph.getAllNeighbors(i).size();
+            edgeCount += randomGraph.getDegree(i);
         }
         edgeCount /= 2;
 
@@ -62,11 +67,11 @@ public class GraphGeneratorTest {
     @Test
     void testGenerateRandomGraphFullProb() {
         MutableGraph randomGraph = new SparseGraphImpl(5);
-        GraphGenerator.generateRandomGraph(randomGraph, 1.0);
+        GraphGenerator.generateRandomGraph(randomGraph, 1.0, new Random(SEED));
 
         int edgeCount = 0;
         for (int i = 0; i < randomGraph.size(); i++) {
-            edgeCount += randomGraph.getAllNeighbors(i).size();
+            edgeCount += randomGraph.getDegree(i);
         }
         edgeCount /= 2;
 
@@ -78,11 +83,11 @@ public class GraphGeneratorTest {
         MutableGraph randomGraph = new SparseGraphImpl(5);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.generateRandomGraph(randomGraph, -0.1);
+            GraphGenerator.generateRandomGraph(randomGraph, -0.1, new Random(SEED));
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.generateRandomGraph(randomGraph, 1.1);
+            GraphGenerator.generateRandomGraph(randomGraph, 1.1, new Random(SEED));
         });
     }
 
@@ -92,7 +97,7 @@ public class GraphGeneratorTest {
         GraphGenerator.generateRegularGraph(regularGraph, 4);
 
         for (int i = 0; i < regularGraph.size(); i++) {
-            assertEquals(4, regularGraph.getAllNeighbors(i).size());
+            assertEquals(4, regularGraph.getDegree(i));
         }
     }
 
@@ -114,20 +119,20 @@ public class GraphGeneratorTest {
         MutableGraph mutatedRegularGraph = new SparseGraphImpl(6);
         GraphGenerator.generateRegularGraph(mutatedRegularGraph, 4);
 
-        GraphGenerator.mutateRegularGraph(mutatedRegularGraph, 50);
+        GraphGenerator.mutateRegularGraph(mutatedRegularGraph, 50, new Random(SEED));
 
         for (int i = 0; i < mutatedRegularGraph.size(); i++) {
-            assertEquals(4, mutatedRegularGraph.getAllNeighbors(i).size());
+            assertEquals(4, mutatedRegularGraph.getDegree(i));
         }
     }
 
     @Test
     void testBipartiteGraph() {
         MutableGraph bipartiteGraph = new SparseGraphImpl(8);
-        GraphGenerator.generateRegularBipartiteGraph(bipartiteGraph, 4, 2);
+        GraphGenerator.generateRegularBipartiteGraph(bipartiteGraph, 2);
 
         for (int u = 0; u < 4; u++) {
-            assertEquals(2, bipartiteGraph.getAllNeighbors(u).size());
+            assertEquals(2, bipartiteGraph.getDegree(u));
             for (int v : bipartiteGraph.getAllNeighbors(u)) {
                 assertTrue(v >= 4);
             }
@@ -139,35 +144,35 @@ public class GraphGeneratorTest {
         MutableGraph bipartiteGraph = new SparseGraphImpl(8);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.generateRegularBipartiteGraph(bipartiteGraph, 4, 5);
+            GraphGenerator.generateRegularBipartiteGraph(bipartiteGraph, 5);
         });
     }
 
-    @Test 
+    @Test
     void testMutatedBipartiteGraph() {
         MutableGraph mutatedBipartiteGraph = new SparseGraphImpl(8);
-        GraphGenerator.generateRegularBipartiteGraph(mutatedBipartiteGraph, 4, 2);
+        GraphGenerator.generateRegularBipartiteGraph(mutatedBipartiteGraph, 2);
 
-        GraphGenerator.mutateBipartiteGraph(mutatedBipartiteGraph, 4, 100);
+        GraphGenerator.mutateBipartiteRegularGraph(mutatedBipartiteGraph, 100, new Random(SEED));
 
         for (int i = 0; i < 4; i++) {
-            assertEquals(2, mutatedBipartiteGraph.getAllNeighbors(i).size());
+            assertEquals(2, mutatedBipartiteGraph.getDegree(i));
             for (int v : mutatedBipartiteGraph.getAllNeighbors(i)) {
                 assertTrue(v >= 4);
             }
         }
     }
 
-    @Test 
+    @Test
     void testIrregularizeGraph() {
         MutableGraph irregularGraph = new SparseGraphImpl(5);
         GraphGenerator.generateRegularGraph(irregularGraph, 4);
 
-        GraphGenerator.irregularizeGraph(irregularGraph, 0.5);
+        GraphGenerator.irregularizeGraph(irregularGraph, 0.5, new Random(SEED));
 
         int edgeCount = 0;
         for (int i = 0; i < irregularGraph.size(); i++) {
-            edgeCount += irregularGraph.getAllNeighbors(i).size();
+            edgeCount += irregularGraph.getDegree(i);
         }
         edgeCount /= 2;
 
@@ -181,15 +186,15 @@ public class GraphGeneratorTest {
 
         int edgeCount = 0;
         for (int i = 0; i < irregularGraph.size(); i++) {
-            edgeCount += irregularGraph.getAllNeighbors(i).size();
+            edgeCount += irregularGraph.getDegree(i);
         }
         edgeCount /= 2;
         int edgesBefore = edgeCount;
 
-        GraphGenerator.irregularizeGraph(irregularGraph, 0.0);
+        GraphGenerator.irregularizeGraph(irregularGraph, 0.0, new Random(SEED));
         edgeCount = 0;
         for (int i = 0; i < irregularGraph.size(); i++) {
-            edgeCount += irregularGraph.getAllNeighbors(i).size();
+            edgeCount += irregularGraph.getDegree(i);
         }
         edgeCount /= 2;
         assertEquals(edgesBefore, edgeCount);
@@ -201,20 +206,20 @@ public class GraphGeneratorTest {
         GraphGenerator.generateRegularGraph(irregularGraph, 2);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.irregularizeGraph(irregularGraph, -0.1);
+            GraphGenerator.irregularizeGraph(irregularGraph, -0.1, new Random(SEED));
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.irregularizeGraph(irregularGraph, 1.1);
+            GraphGenerator.irregularizeGraph(irregularGraph, 1.1, new Random(SEED));
         });
     }
 
     @Test
     void testIrregularizeBipartiteGraph() {
         MutableGraph irregularBipartiteGraph = new SparseGraphImpl(8);
-        GraphGenerator.generateRegularBipartiteGraph(irregularBipartiteGraph, 4, 2);
+        GraphGenerator.generateRegularBipartiteGraph(irregularBipartiteGraph, 2);
 
-        GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 4, 0.5);
+        GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 0.5, new Random(SEED));
 
         for (int u = 0; u < 4; u++) {
             for (int v : irregularBipartiteGraph.getAllNeighbors(u)) {
@@ -230,7 +235,7 @@ public class GraphGeneratorTest {
 
         int edges = 0;
         for (int u = 0; u < 4; u++) {
-            edges += irregularBipartiteGraph.getAllNeighbors(u).size();
+            edges += irregularBipartiteGraph.getDegree(u);
         }
         assertTrue(edges >= 0 && edges <= 16);
     }
@@ -238,14 +243,16 @@ public class GraphGeneratorTest {
     @Test
     void testIrregularizeBipartiteGraphInvalid() {
         MutableGraph irregularBipartiteGraph = new SparseGraphImpl(8);
-        GraphGenerator.generateRegularBipartiteGraph(irregularBipartiteGraph, 4, 2);
+        GraphGenerator.generateRegularBipartiteGraph(irregularBipartiteGraph, 2);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 4, -0.1);
+            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, -0.1,
+                    new Random(SEED));
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 4, 1.1);
+            GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 1.1,
+                    new Random(SEED));
         });
     }
 }
