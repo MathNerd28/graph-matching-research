@@ -3,6 +3,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Random;
+
 import org.junit.jupiter.api.Test;
 
 public class GraphGeneratorTest {
@@ -246,6 +248,87 @@ public class GraphGeneratorTest {
 
         assertThrows(IllegalArgumentException.class, () -> {
             GraphGenerator.irregularizeBipartiteGraph(irregularBipartiteGraph, 4, 1.1);
+        });
+    }
+
+    @Test
+    void testGenerateGraph() {
+        MutableGraph graph = new SparseGraphImpl(6);
+        Random random = new Random();
+        int[] degreeSequence = GraphUtils.generateRegularDegreeSequence(6, 3);
+
+        graph = GraphGenerator.generateGraph(graph, degreeSequence, random);
+
+        int expectedEdges = 0;
+        for (int d : degreeSequence) {
+            expectedEdges += d;
+        }
+        expectedEdges /= 2;
+
+        int actualEdges = 0;
+        for (int i = 0; i < graph.size(); i++) {
+            actualEdges += graph.getAllNeighbors(i).size();
+        }
+        actualEdges /= 2;
+
+        assertEquals(expectedEdges, actualEdges);
+
+        for (int i = 0; i < 6; i++) {
+            assertEquals(degreeSequence[i], graph.getAllNeighbors(i).size());
+        }
+    }
+
+    @Test
+    void testGenerateGraphInvalidDegreeSequence() {
+        MutableGraph graph = new SparseGraphImpl(6);
+        Random random = new Random();
+        int[] invalidDegreeSequence = {3, 3, 3, 3, 3, 2};
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateGraph(graph, invalidDegreeSequence, random);
+        });
+    }
+
+    @Test
+    void testGenerateBipartiteGraph() {
+        MutableGraph bipartiteGraph = new SparseGraphImpl(6);
+        Random random = new Random();
+        int[] leftDegreeSequence = GraphUtils.generateRegularDegreeSequence(3, 2);
+        int[] rightDegreeSequence = GraphUtils.generateRegularDegreeSequence(3, 2);
+
+        bipartiteGraph = GraphGenerator.generateBipartiteGraph(bipartiteGraph, 3, 3, leftDegreeSequence, rightDegreeSequence, random);
+
+        int expectedEdges = 0;
+        for (int d : leftDegreeSequence) {
+            expectedEdges += d;
+        }
+
+        int actualEdges = 0;
+        for (int i = 0; i < bipartiteGraph.size(); i++) {
+            actualEdges += bipartiteGraph.getAllNeighbors(i).size();
+        }
+        actualEdges /= 2;
+
+        assertEquals(expectedEdges, actualEdges);
+
+        for (int i = 0; i < 3; i++) {
+            assertEquals(leftDegreeSequence[i], bipartiteGraph.getAllNeighbors(i).size());
+        }
+
+        for (int i = 3; i < 6; i++) {
+            assertEquals(rightDegreeSequence[i - 3], bipartiteGraph.getAllNeighbors(i).size());
+        }
+    }
+
+    @Test
+    void testGenerateBipartiteGraphInvalidDegreeSequence() {
+        MutableGraph bipartiteGraph = new SparseGraphImpl(6);
+        Random random = new Random();
+        int[] invalidLeftDegreeSequence = {2, 2, 2};
+        int[] invalidRightDegreeSequence = {2, 2, 3};
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateBipartiteGraph(bipartiteGraph, 3, 3, invalidLeftDegreeSequence, invalidRightDegreeSequence, random);
         });
     }
 }
