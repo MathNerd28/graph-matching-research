@@ -3,10 +3,9 @@ package edu.rit.cs.graph_matching;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Collection;
 
-public class GraphUtils {
+public final class GraphUtils {
     private GraphUtils() {}
 
     /**
@@ -19,16 +18,16 @@ public class GraphUtils {
      *     the set of edges
      * @return true iff the edges are considered matching
      */
-    public static boolean isValidMatching(Set<Edge> edges) {
-        Set<Integer> vertices = new HashSet<>();
+    public static boolean isValidMatching(Graph graph, Collection<Edge> edges) {
+        IntHashSet vertices = new IntHashSet(edges.size() * 2);
         for (Edge edge : edges) {
-            int v1 = edge.vertex1();
-            int v2 = edge.vertex2();
-            if (vertices.contains(v1) || vertices.contains(v2)) {
+            if (!graph.hasEdge(edge)) {
                 return false;
             }
-            vertices.add(v1);
-            vertices.add(v2);
+
+            if (!vertices.add(edge.vertex1()) || !vertices.add(edge.vertex2())) {
+                return false;
+            }
         }
         return true;
     }

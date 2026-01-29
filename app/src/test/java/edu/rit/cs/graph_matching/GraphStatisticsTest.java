@@ -42,7 +42,7 @@ class GraphStatisticsTest {
 
     MutableGraph g = new DenseGraphImpl(5);
     for (Edge e : edges) {
-      g.addEdge(e.vertex1(), e.vertex2());
+      g.addEdge(e);
     }
 
     GraphStatistics stats = new GraphStatistics(g);

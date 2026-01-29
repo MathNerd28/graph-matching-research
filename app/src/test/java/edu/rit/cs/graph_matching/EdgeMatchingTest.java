@@ -9,7 +9,8 @@ class EdgeMatchingTest {
     @Test
     void testEmptySet() {
         Set<Edge> edges = new HashSet<>();
-        boolean result = GraphUtils.isValidMatching(edges);
+        Graph g = new SparseGraphImpl(0);
+        boolean result = GraphUtils.isValidMatching(g, edges);
         assertTrue(result, "An empty set of edges should be a valid matching");
     }
 
@@ -19,7 +20,13 @@ class EdgeMatchingTest {
         edges.add(new Edge(0, 1));
         edges.add(new Edge(2, 3));
         edges.add(new Edge(4, 5));
-        boolean result = GraphUtils.isValidMatching(edges);
+
+        MutableGraph g = new SparseGraphImpl(6);
+        for (Edge e : edges) {
+            g.addEdge(e);
+        }
+
+        boolean result = GraphUtils.isValidMatching(g, edges);
         assertTrue(result, "These edges should form a valid matching");
     }
 
@@ -29,7 +36,13 @@ class EdgeMatchingTest {
         edges.add(new Edge(0, 1));
         edges.add(new Edge(1, 2));
         edges.add(new Edge(3, 4));
-        boolean result = GraphUtils.isValidMatching(edges);
+
+        MutableGraph g = new SparseGraphImpl(5);
+        for (Edge e : edges) {
+            g.addEdge(e);
+        }
+
+        boolean result = GraphUtils.isValidMatching(g, edges);
         assertFalse(result, "These edges should not form a valid matching");
     }
 
@@ -37,7 +50,13 @@ class EdgeMatchingTest {
     void testSingleEdge() {
         Set<Edge> edges = new HashSet<>();
         edges.add(new Edge(0, 1));
-        boolean result = GraphUtils.isValidMatching(edges);
+
+        MutableGraph g = new SparseGraphImpl(2);
+        for (Edge e : edges) {
+            g.addEdge(e);
+        }
+
+        boolean result = GraphUtils.isValidMatching(g, edges);
         assertTrue(result, "A single edge should form a valid matching");
     }
 }
