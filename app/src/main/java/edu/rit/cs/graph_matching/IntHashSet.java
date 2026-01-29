@@ -6,7 +6,7 @@ import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 /**
  * A performant and memory-efficient hash set implementation specialized for
@@ -98,12 +98,12 @@ public class IntHashSet extends AbstractSet<Integer> {
    * Get a random integer contained in this set with uniform probability.
    *
    * @param rd
-   *   the {@link Random} to use to choose an element
+   *   the random number generator to use to choose an element
    * @return a random integer from this set
    * @throws NoSuchElementException
    *   if this set contains no elements
    */
-  public int getRandom(Random rd) {
+  public int getRandom(RandomGenerator rd) {
     if (isEmpty()) {
       throw new NoSuchElementException();
     }

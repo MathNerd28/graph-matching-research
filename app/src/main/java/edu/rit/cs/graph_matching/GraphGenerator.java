@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class GraphGenerator {
+import java.util.random.RandomGenerator;
+
+public final class GraphGenerator {
     private GraphGenerator() {}
 
     /**
@@ -64,13 +66,13 @@ public class GraphGenerator {
      *      probability of adding an edge between any pair
      * @return the same graph instance
      */
-    public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb) {
-        graph.clear();
-        Random random = new Random();
+    public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb,
+                                                   RandomGenerator random) {
         if (edgeProb < 0.0 || edgeProb > 1.0) {
             throw new IllegalArgumentException("edgeProb must be between 0.0 and 1.0");
         }
 
+        graph.clear();
         for (int u = 0; u < graph.size(); u++) {
             for (int v = u + 1; v < graph.size(); v++) {
                 if (random.nextDouble() < edgeProb) {
@@ -179,23 +181,23 @@ public class GraphGenerator {
      * total number of vertices is even.
      *
      * @param graph
-     *      the graph to edit in-place
+     *     the graph to edit in-place
      * @param degree
-     *      the desired degree of each vertex
+     *     the desired degree of each vertex
      * @return the same graph instance
      */
     public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
-        graph.clear();
         int n = graph.size();
-
         if (degree >= n) {
             throw new IllegalArgumentException("Degree must be less than number of vertices");
         }
 
         if (degree % 2 != 0 && n % 2 != 0) {
-            throw new IllegalArgumentException("Cannot create a regular graph with odd degree and odd number of vertices");
+            throw new IllegalArgumentException(
+                    "Cannot create a regular graph with odd degree and odd number of vertices");
         }
 
+        graph.clear();
         for (int i = 0; i < n; i++) {
             for (int offset = 1; offset <= degree / 2; offset++) {
                 int j = (i + offset) % n;
@@ -221,21 +223,23 @@ public class GraphGenerator {
      * a specific amount of this.
      *
      * @param graph
-     *      the graph to mutate in-place
+     *     the graph to mutate in-place
      * @param mutationCount
-     *      number of mutations to perform
+     *     number of mutations to perform
+     * @param random
+     *     the random number generator to use
      */
-    public static void mutateRegularGraph(MutableGraph graph, int mutationCount) {
-        Random rand = new Random();
+    public static void mutateRegularGraph(MutableGraph graph, int mutationCount,
+                                          RandomGenerator random) {
         int n = graph.size();
 
         int mutations = 0;
         while (mutations < mutationCount) {
-            int u = rand.nextInt(n);
-            int v = graph.getRandomNeighbor(u);
+            int u = random.nextInt(n);
+            int v = graph.getRandomNeighbor(u, random);
 
-            int x = rand.nextInt(n);
-            int y = graph.getRandomNeighbor(x);
+            int x = random.nextInt(n);
+            int y = graph.getRandomNeighbor(x, random);
 
             if (u == x || u == y || v == x || v == y) {
                 continue;
@@ -247,8 +251,7 @@ public class GraphGenerator {
                 graph.addEdge(u, y);
                 graph.addEdge(x, v);
                 mutations++;
-            }
-            else if (!graph.hasEdge(u, x) && !graph.hasEdge(v, y)) {
+            } else if (!graph.hasEdge(u, x) && !graph.hasEdge(v, y)) {
                 graph.removeEdge(u, v);
                 graph.removeEdge(x, y);
                 graph.addEdge(u, x);
@@ -266,20 +269,24 @@ public class GraphGenerator {
      * on both sides has the same number of edges.
      *
      * @param graph
-     *      the graph to edit in-place
-     * @param verticesPerSide
-     *      number of vertices on each side
+     *     the graph to edit in-place
      * @param degree
-     *      the desired degree of each vertex
+     *     the desired degree of each vertex
      * @return the same graph instance
      */
-    public static MutableGraph generateRegularBipartiteGraph(MutableGraph graph, int verticesPerSide, int degree) {
-        graph.clear();
-
-        if (degree > verticesPerSide) {
-            throw new IllegalArgumentException("Degree cannot exceed the number of vertices per side");
+    public static MutableGraph generateRegularBipartiteGraph(MutableGraph graph, int degree) {
+        if (graph.size() % 2 != 0) {
+            throw new IllegalArgumentException(
+                    "Regular bipartite graphs must have an even number of vertices");
         }
 
+        int verticesPerSide = graph.size() / 2;
+        if (degree > verticesPerSide) {
+            throw new IllegalArgumentException(
+                    "Degree cannot exceed the number of vertices per side");
+        }
+
+        graph.clear();
         for (int i = 0; i < verticesPerSide; i++) {
             for (int w = 0; w < degree; w++) {
                 int j = (i + w) % verticesPerSide;
@@ -399,25 +406,25 @@ public class GraphGenerator {
      * it bipartite.
      *
      * @param graph
-     *      the graph to mutate in-place
-     * @param leftVertices
-     *      number of left side vertices
+     *     the graph to mutate in-place
      * @param mutationCount
-     *      number of mutations to perform
+     *     number of mutations to perform
+     * @param random
+     *     the random number generator to use
      */
-    public static void mutateBipartiteGraph(MutableGraph graph, int leftVertices, int mutationCount) {
-        Random rand = new Random();
-
+    public static void mutateBipartiteRegularGraph(MutableGraph graph, int mutationCount,
+                                                   RandomGenerator random) {
+        int leftVertices = graph.size() / 2;
         int mutations = 0;
         while (mutations < mutationCount) {
-            int left1 = rand.nextInt(leftVertices);
-            int left2 = rand.nextInt(leftVertices);
+            int left1 = random.nextInt(leftVertices);
+            int left2 = random.nextInt(leftVertices);
             if (left1 == left2) {
                 continue;
             }
 
-            int right1 = graph.getRandomNeighbor(left1);
-            int right2 = graph.getRandomNeighbor(left2);
+            int right1 = graph.getRandomNeighbor(left1, random);
+            int right2 = graph.getRandomNeighbor(left2, random);
 
             if (right1 == right2) {
                 continue;
@@ -434,7 +441,6 @@ public class GraphGenerator {
 
             mutations++;
         }
-
     }
 
     /**
@@ -443,21 +449,21 @@ public class GraphGenerator {
      * edges based on a given probability, making the graph less regular.
      *
      * @param graph
-     *      the graph to irregularize in-place
+     *     the graph to irregularize in-place
      * @param p
-     *      the probability of adding or removing each edge
+     *     the probability of adding or removing each edge
+     * @param random
+     *     the random number generator to use
      */
-    public static void irregularizeGraph(MutableGraph graph, double p) {
+    public static void irregularizeGraph(MutableGraph graph, double p, RandomGenerator random) {
         if (p < 0.0 || p > 1.0) {
             throw new IllegalArgumentException("Probability must be between 0 and 1");
         }
 
-        Random rand = new Random();
         int n = graph.size();
-
         for (int u = 0; u < n; u++) {
             for (int v = u + 1; v < n; v++) {
-                if (rand.nextDouble() >= p) {
+                if (random.nextDouble() >= p) {
                     continue;
                 }
 
@@ -476,23 +482,22 @@ public class GraphGenerator {
      * edges based on a given probability, making the graph less regular.
      *
      * @param graph
-     *      the graph to irregularize in-place
-     * @param leftVertices
-     *      number of left side vertices
+     *     the graph to irregularize in-place
      * @param p
-     *      the probability of adding or removing each edge
+     *     the probability of adding or removing each edge
      */
-    public static void irregularizeBipartiteGraph(MutableGraph graph, int leftVertices, double p) {
+    public static void irregularizeBipartiteGraph(MutableGraph graph, double p,
+                                                  RandomGenerator random) {
         if (p < 0.0 || p > 1.0) {
             throw new IllegalArgumentException("Probability must be between 0 and 1");
         }
 
-        Random rand = new Random();
         int n = graph.size();
+        int leftVertices = n / 2;
 
         for (int u = 0; u < leftVertices; u++) {
             for (int v = leftVertices; v < n; v++) {
-                if (rand.nextDouble() >= p) {
+                if (random.nextDouble() >= p) {
                     continue;
                 }
 
