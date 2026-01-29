@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Random;
+import java.util.Arrays;
 
 public class GraphUtils {
     private GraphUtils() {}
@@ -83,6 +84,7 @@ public class GraphUtils {
 
     /**
      * Generate a somewhat regular degree sequence.
+     * 
      * @param numVertices
      *      the number of vertices
      * @param averageDegree
@@ -97,5 +99,49 @@ public class GraphUtils {
             degrees[i] = averageDegree - variation + random.nextInt(2 * variation + 1);
         }
         return degrees;
+    }
+
+    /**
+     * Determine if a degree sequence is graphical using the Havel-Hakimi algorithm.
+     * 
+     * @param degrees
+     *      the degree sequence
+     * @return true iff the degree sequence is graphical
+     */
+    public static boolean isGraphical(int[] degrees) {
+        int[] degreeCopy = degrees.clone();
+
+        while (true) {
+            Arrays.sort(degreeCopy);
+            for (int i = 0, j = degreeCopy.length - 1; i < j; i++, j--) {
+                int temp = degreeCopy[i];
+                degreeCopy[i] = degreeCopy[j];
+                degreeCopy[j] = temp;
+            }
+
+            boolean allZero = true;
+            for (int degree : degreeCopy) {
+                if (degree != 0) {
+                    allZero = false;
+                    break;
+                }
+            }
+            if (allZero) {
+                return true;
+            }
+
+            int d = degreeCopy[0];
+            if (d < 0 || d >= degreeCopy.length) {
+                return false;
+            }
+
+            for (int i = 1; i <= d; i++) {
+                degreeCopy[i]--;
+                if (degreeCopy[i] < 0) {
+                    return false;
+                }
+            }
+            degreeCopy[0] = 0;
+        }
     }
 }

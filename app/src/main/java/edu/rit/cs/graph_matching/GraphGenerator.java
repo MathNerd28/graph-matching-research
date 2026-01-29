@@ -90,6 +90,8 @@ public class GraphGenerator {
      * are resolved by swapping edges in the graph, ensuring 
      * the final graph matches the specified degree sequence.
      * 
+     * Note: This method may run slower for dense graphs.
+     * 
      * @param graph
      *      the graph to edit in-place
      * @param degrees
@@ -104,8 +106,8 @@ public class GraphGenerator {
             totalStubs += d;
         }
 
-        if ((totalStubs % 2) != 0) {
-            throw new IllegalArgumentException("Sum of degrees must be even");
+        if (!GraphUtils.isGraphical(degrees)) {
+            throw new IllegalArgumentException("Degree sequence is not graphical");
         }
 
         int[] edgeConnections = new int[totalStubs];

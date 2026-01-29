@@ -253,9 +253,12 @@ public class GraphGeneratorTest {
 
     @Test
     void testGenerateGraph() {
-        MutableGraph graph = new SparseGraphImpl(6);
+        int vertices = 6;
+        int degree = 3;
+
+        MutableGraph graph = new SparseGraphImpl(vertices);
         Random random = new Random();
-        int[] degreeSequence = GraphUtils.generateRegularDegreeSequence(6, 3);
+        int[] degreeSequence = GraphUtils.generateRegularDegreeSequence(vertices, degree);
 
         graph = GraphGenerator.generateGraph(graph, degreeSequence, random);
 
@@ -273,7 +276,7 @@ public class GraphGeneratorTest {
 
         assertEquals(expectedEdges, actualEdges);
 
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < vertices; i++) {
             assertEquals(degreeSequence[i], graph.getAllNeighbors(i).size());
         }
     }
