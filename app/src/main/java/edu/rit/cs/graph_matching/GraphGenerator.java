@@ -147,7 +147,7 @@ public class GraphGenerator {
                     continue;
                 }
 
-                int w2 = graph.getRandomNeighbor(w1);
+                int w2 = graph.getRandomNeighbor(w1, random);
                 if (w2 == -1 || w2 == v1 || w2 == v2) {
                     continue;
                 }
@@ -232,10 +232,10 @@ public class GraphGenerator {
         int mutations = 0;
         while (mutations < mutationCount) {
             int u = rand.nextInt(n);
-            int v = graph.getRandomNeighbor(u);
+            int v = graph.getRandomNeighbor(u, rand);
 
             int x = rand.nextInt(n);
-            int y = graph.getRandomNeighbor(x);
+            int y = graph.getRandomNeighbor(x, rand);
 
             if (u == x || u == y || v == x || v == y) {
                 continue;
@@ -375,7 +375,7 @@ public class GraphGenerator {
                     continue;
                 }
 
-                int w2 = graph.getRandomNeighbor(w1);
+                int w2 = graph.getRandomNeighbor(w1, random);
                 if (w2 == -1 || w2 == v2 || w2 < leftVerticesCount) {
                     continue;
                 }
@@ -416,8 +416,8 @@ public class GraphGenerator {
                 continue;
             }
 
-            int right1 = graph.getRandomNeighbor(left1);
-            int right2 = graph.getRandomNeighbor(left2);
+            int right1 = graph.getRandomNeighbor(left1, rand);
+            int right2 = graph.getRandomNeighbor(left2, rand);
 
             if (right1 == right2) {
                 continue;

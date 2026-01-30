@@ -1,6 +1,7 @@
 package edu.rit.cs.graph_matching;
 
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 /**
  * An undirected graph that the Dani-Hayes algorithm works with. As stated in
@@ -39,13 +40,25 @@ public interface Graph {
   boolean hasEdge(int vertex1, int vertex2);
 
   /**
+   * Get the number of edges connected to a vertex that are present in this
+   * graph.
+   *
+   * @param vertex
+   *   the vertex
+   * @return the degree of {@code vertex}
+   */
+  int getDegree(int vertex);
+
+  /**
    * Gets a random neighbor of a vertex, or indicates that no neighbors exist.
    *
    * @param vertex
    *   the vertex
+   * @param random
+   *   the random number generator to use
    * @return a random neighbor of the vertex, or -1 if no such neighbors exist.
    */
-  int getRandomNeighbor(int vertex);
+  int getRandomNeighbor(int vertex, RandomGenerator random);
 
   /**
    * Get all vertices that share an edge with a vertex.
