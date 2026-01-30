@@ -32,18 +32,14 @@ import java.util.random.RandomGenerator;
  * detect bugs.</i>
  */
 public class IntHashSet extends AbstractSet<Integer> {
-  /** The proportion of the hash table to fill before increasing its size */
+  /** The maximum size/capacity ratio before increasing capacity */
   private static final double MAX_LOAD_FACTOR = 0.75;
 
-  /**
-   * The proportion of the hash table to remain full before decreasing its size
-   */
-  private static final double MIN_LOAD_FACTOR = MAX_LOAD_FACTOR / 4;
+  /** The minimum size/capacity ratio before decreasing capacity */
+  private static final double MIN_LOAD_FACTOR = 0.25;
 
-  /**
-   * The maximum number of elements in the minimum size table.
-   */
-  private static final int DEFAULT_SIZE = (int) (8 * MAX_LOAD_FACTOR);
+  /** The minimum capacity of the hash table */
+  private static final int MIN_CAPACITY = 8;
 
   /**
    * The hash table. The array indexes are the hashes, and the array values are
@@ -54,28 +50,31 @@ public class IntHashSet extends AbstractSet<Integer> {
   /**
    * Tracks whether each position in {@link #table} contains a live value.
    */
-  private final BitSet occupied;
+  private BitSet occupied;
 
   /**
    * Tracks whether each position in {@link #table} contains a deleted value
    * that hasn't yet been reclaimed.
    */
-  private final BitSet deleted;
+  private BitSet deleted;
 
-  /** The bitmask applied to hashes to generate table indexes. */
-  private int mask;
-
-  /** The maximum permissible size of the hash table before growth. */
+  /** The maximum size of the hash table before growth. */
   private int maxFill;
 
-  /** The minimum permissible size of the hash table before growth. */
+  /** The minimum size of the hash table before shrinking. */
   private int minFill;
 
-  /** The current number of empty cells in the hash table. */
-  private int empty;
+  /**
+   * The current number of deleted cells in the hash table. Equal to
+   * {@link #deleted}.{@link BitSet#cardinality() cardinality()}.
+   */
+  private int deletedCount;
 
-  /** The current number of valid values in the hash table. */
-  private int size;
+  /**
+   * The current number of values in the hash table. Equal to
+   * {@link #occupied}.{@link BitSet#cardinality() cardinality()}.
+   */
+  private int occupiedCount;
 
   // --- Public API ---
 
@@ -88,8 +87,6 @@ public class IntHashSet extends AbstractSet<Integer> {
    */
   public IntHashSet(int expectedSize) {
     int capacity = tableSizeFor(expectedSize);
-    occupied = new BitSet(capacity);
-    deleted = new BitSet(capacity);
     createTable(capacity);
   }
 
@@ -97,7 +94,7 @@ public class IntHashSet extends AbstractSet<Integer> {
    * Construct an IntHashSet with a default initial capacity.
    */
   public IntHashSet() {
-    this(DEFAULT_SIZE);
+    createTable(MIN_CAPACITY);
   }
 
   /**
@@ -156,12 +153,17 @@ public class IntHashSet extends AbstractSet<Integer> {
    *   integer
    */
   public boolean add(int e) {
-    if (table.length - empty >= maxFill) {
-      growTable();
+    if (occupiedCount >= maxFill) {
+      // increase size of table
+      rehashTable(table.length << 1);
+    } else if (occupiedCount + deletedCount >= maxFill) {
+      // reclaim all deleted cells
+      rehashTable(table.length);
     }
 
+    int mask = table.length - 1;
     int index = hash1(e) & mask;
-    int increment = hash2(e);
+    int increment = hash2(e) & mask;
     int firstDeleted = -1;
 
     while (true) {
@@ -179,14 +181,13 @@ public class IntHashSet extends AbstractSet<Integer> {
 
         if (firstDeleted >= 0) {
           index = firstDeleted;
-        } else {
-          empty--;
+          deleted.clear(index);
+          deletedCount--;
         }
 
         table[index] = e;
-        deleted.clear(index);
         occupied.set(index);
-        size++;
+        occupiedCount++;
         return true;
       }
 
@@ -216,8 +217,9 @@ public class IntHashSet extends AbstractSet<Integer> {
    * @return {@code true} if this set contains the specified integer
    */
   public boolean contains(int e) {
+    int mask = table.length - 1;
     int index = hash1(e) & mask;
-    int increment = hash2(e);
+    int increment = hash2(e) & mask;
     while (true) {
       if (!occupied.get(index) && !deleted.get(index)) {
         // empty slot
@@ -268,8 +270,9 @@ public class IntHashSet extends AbstractSet<Integer> {
    * @return {@code true} if this set contained the specified integer
    */
   public boolean remove(int e) {
+    int mask = table.length - 1;
     int index = hash1(e) & mask;
-    int increment = hash2(e);
+    int increment = hash2(e) & mask;
     while (true) {
       if (!occupied.get(index) && !deleted.get(index)) {
         // empty slot
@@ -278,10 +281,12 @@ public class IntHashSet extends AbstractSet<Integer> {
       if (occupied.get(index) && table[index] == e) {
         occupied.clear(index);
         deleted.set(index);
-        size--;
+        occupiedCount--;
+        deletedCount++;
 
-        if (size < minFill) {
-          shrinkTable();
+        if (occupiedCount < minFill) {
+          // decrease size of table
+          rehashTable(table.length >>> 1);
         }
 
         return true;
@@ -297,8 +302,8 @@ public class IntHashSet extends AbstractSet<Integer> {
    */
   @Override
   public void clear() {
-    size = 0;
-    empty = table.length;
+    occupiedCount = 0;
+    deletedCount = 0;
     occupied.clear();
     deleted.clear();
   }
@@ -316,7 +321,7 @@ public class IntHashSet extends AbstractSet<Integer> {
 
   @Override
   public int size() {
-    return size;
+    return occupiedCount;
   }
 
   // Make explicit that we want to use AbstractSet's equals & hashCode
@@ -342,51 +347,37 @@ public class IntHashSet extends AbstractSet<Integer> {
    *   the capacity of the table, a power of 2
    */
   private void createTable(int capacity) {
-    mask = capacity - 1;
-    maxFill = (int) (capacity * MAX_LOAD_FACTOR);
-    minFill = (int) (capacity * MIN_LOAD_FACTOR);
+    if ((capacity & (capacity - 1)) != 0) {
+      throw new IllegalArgumentException("capacity is not a power of 2");
+    }
+
     table = new int[capacity];
-    size = 0;
-    empty = capacity;
-    occupied.clear();
-    deleted.clear();
+    occupied = new BitSet(capacity);
+    deleted = new BitSet(capacity);
+
+    maxFill = (int) (capacity * MAX_LOAD_FACTOR);
+    minFill = (capacity <= MIN_CAPACITY) ? 0 : (int) (capacity * MIN_LOAD_FACTOR);
+    occupiedCount = 0;
+    deletedCount = 0;
   }
 
   /**
-   * Increase the size of {@link #table} to accommodate more elements. All
-   * integers within this set are copied to the new table, but not necessarily
-   * to the same location.
+   * Reallocate {@link #table} and supporting structure with a new capacity, and
+   * re-insert all existing entries. All values that were previously present in
+   * this set will still be present after this operation, but not necessarily in
+   * the same location. No cells will be marked 'deleted' after this operation.
    *
-   * @implNote This method doubles the size of {@link #table}.
+   * @param capacity
+   *   new capacity, a power of 2
    */
-  private void growTable() {
-    int[] oldTable = table;
-    BitSet oldOccupied = (BitSet) occupied.clone();
-
-    createTable(table.length << 1); // double the previous size
-
-    // re-add previous elements
-    oldOccupied.stream()
-               .forEach(index -> add(oldTable[index]));
-  }
-
-  /**
-   * Decrease the size of {@link #table} to reduce memory usage and iteration
-   * overhead. All integers within this set are copied to the new table, but not
-   * necessarily to the same location.
-   *
-   * @implNote This method halves the size of {@link #table}.
-   */
-  private void shrinkTable() {
-    if (size <= DEFAULT_SIZE) {
-      // not permitted to shrink
-      return;
+  private void rehashTable(int capacity) {
+    if (capacity < MIN_CAPACITY) {
+      throw new IllegalArgumentException("capacity must be at least MIN_CAPACITY");
     }
 
     int[] oldTable = table;
-    BitSet oldOccupied = (BitSet) occupied.clone();
-
-    createTable(table.length >>> 1); // half the previous size
+    BitSet oldOccupied = occupied;
+    createTable(capacity);
 
     // re-add previous elements
     oldOccupied.stream()
@@ -439,9 +430,9 @@ public class IntHashSet extends AbstractSet<Integer> {
    * @return the size of the hash table
    */
   private static int tableSizeFor(int expected) {
-    int minCapacity = (int) (expected / MAX_LOAD_FACTOR);
-    int n = -1 >>> Integer.numberOfLeadingZeros(minCapacity - 1);
-    return (n < 0) ? 1 : (n + 1);
+    int requiredCapacity = (int) (expected / MAX_LOAD_FACTOR);
+    int capacity = (-1 >>> Integer.numberOfLeadingZeros(requiredCapacity - 1)) + 1;
+    return (capacity < MIN_CAPACITY) ? MIN_CAPACITY : capacity;
   }
 
   /**
@@ -449,8 +440,9 @@ public class IntHashSet extends AbstractSet<Integer> {
    * removal.
    */
   private final class IntHashSetIterator implements PrimitiveIterator.OfInt {
-    private int size      = IntHashSet.this.size;
-    private int remaining = IntHashSet.this.size;
+    private final int expectedSize = size();
+
+    private int remaining = size();
     private int pos       = -1;
 
     @Override
@@ -492,7 +484,7 @@ public class IntHashSet extends AbstractSet<Integer> {
      *   if a concurrent modification was detected
      */
     private void checkModification() {
-      if (size != IntHashSet.this.size) {
+      if (expectedSize != size()) {
         // someone else must have modified the set during iteration
         throw new ConcurrentModificationException();
       }
