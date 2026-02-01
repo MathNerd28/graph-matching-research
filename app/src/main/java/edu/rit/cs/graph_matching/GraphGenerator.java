@@ -92,7 +92,9 @@ public final class GraphGenerator {
      * are resolved by swapping edges in the graph, ensuring 
      * the final graph matches the specified degree sequence.
      * 
-     * Note: This method may run slower for dense graphs.
+     * Note: This method may run slower (jump from polynomial to 
+     * exponential runtime) for dense graphs (graphs with an 
+     * average degree greater than 50% of total vertices).
      * 
      * @param graph
      *      the graph to edit in-place
@@ -122,7 +124,7 @@ public final class GraphGenerator {
         }
 
         for (int i = edgeConnections.length - 1; i > 0; i--) {
-            int i2 = random.nextInt(i);
+            int i2 = random.nextInt(i + 1);
             int tmp = edgeConnections[i];
             edgeConnections[i] = edgeConnections[i2];
             edgeConnections[i2] = tmp;
@@ -172,132 +174,6 @@ public final class GraphGenerator {
     }
 
     /**
-     * Generates a regular graph with a specific degree.
-     * This function generates a regular graph where every
-     * vertex has the same degree. It connects each vertex
-     * to nearby vertices in a circular pattern. If the
-     * degree is odd, it also connects each vertex to the
-     * one directly opposite it, which only works when the
-     * total number of vertices is even.
-     *
-     * @param graph
-     *     the graph to edit in-place
-     * @param degree
-     *     the desired degree of each vertex
-     * @return the same graph instance
-     */
-    public static MutableGraph generateRegularGraph(MutableGraph graph, int degree) {
-        int n = graph.size();
-        if (degree >= n) {
-            throw new IllegalArgumentException("Degree must be less than number of vertices");
-        }
-
-        if (degree % 2 != 0 && n % 2 != 0) {
-            throw new IllegalArgumentException(
-                    "Cannot create a regular graph with odd degree and odd number of vertices");
-        }
-
-        graph.clear();
-        for (int i = 0; i < n; i++) {
-            for (int offset = 1; offset <= degree / 2; offset++) {
-                int j = (i + offset) % n;
-                graph.addEdge(i, j);
-            }
-
-            if (degree % 2 != 0) {
-                int opposite = (i + n / 2) % n;
-                graph.addEdge(i, opposite);
-            }
-        }
-
-        return graph;
-    }
-
-    /**
-     * Mutates a regular graph by performing a double-edge swap.
-     * This function randomly changes a regular graph by picking
-     * two edges and swapping their endpoints, while keeping all
-     * vertex degrees the same. It skips invalid choices like
-     * shared vertices or duplicate edges, and once a valid swap
-     * is found, it performs it and exits. This process is repeated
-     * a specific amount of this.
-     *
-     * @param graph
-     *     the graph to mutate in-place
-     * @param mutationCount
-     *     number of mutations to perform
-     * @param random
-     *     the random number generator to use
-     */
-    public static void mutateRegularGraph(MutableGraph graph, int mutationCount,
-                                          RandomGenerator random) {
-        int n = graph.size();
-
-        int mutations = 0;
-        while (mutations < mutationCount) {
-            int u = random.nextInt(n);
-            int v = graph.getRandomNeighbor(u, random);
-
-            int x = random.nextInt(n);
-            int y = graph.getRandomNeighbor(x, random);
-
-            if (u == x || u == y || v == x || v == y) {
-                continue;
-            }
-
-            if (!graph.hasEdge(u, y) && !graph.hasEdge(x, v)) {
-                graph.removeEdge(u, v);
-                graph.removeEdge(x, y);
-                graph.addEdge(u, y);
-                graph.addEdge(x, v);
-                mutations++;
-            } else if (!graph.hasEdge(u, x) && !graph.hasEdge(v, y)) {
-                graph.removeEdge(u, v);
-                graph.removeEdge(x, y);
-                graph.addEdge(u, x);
-                graph.addEdge(v, y);
-                mutations++;
-            }
-        }
-    }
-
-    /**
-     * Generates a regular bipartite graph with a specific window size.
-     * This function builds a bipartite graph with equal sized
-     * left and right sides. Each left vertex is connected to
-     * a specific amount of right vertices, ensuring every vertex
-     * on both sides has the same number of edges.
-     *
-     * @param graph
-     *     the graph to edit in-place
-     * @param degree
-     *     the desired degree of each vertex
-     * @return the same graph instance
-     */
-    public static MutableGraph generateRegularBipartiteGraph(MutableGraph graph, int degree) {
-        if (graph.size() % 2 != 0) {
-            throw new IllegalArgumentException(
-                    "Regular bipartite graphs must have an even number of vertices");
-        }
-
-        int verticesPerSide = graph.size() / 2;
-        if (degree > verticesPerSide) {
-            throw new IllegalArgumentException(
-                    "Degree cannot exceed the number of vertices per side");
-        }
-
-        graph.clear();
-        for (int i = 0; i < verticesPerSide; i++) {
-            for (int w = 0; w < degree; w++) {
-                int j = (i + w) % verticesPerSide;
-                graph.addEdge(i, verticesPerSide + j);
-            }
-        }
-
-        return graph;
-    }
-
-    /**
      * Generates a bipartite graph with a specific degree sequence. 
      * It creates two list of vertex stubs (one of left and one for right) 
      * according to their degrees, shuffles them, and pairs one from each 
@@ -315,7 +191,13 @@ public final class GraphGenerator {
      *      random number generator
      * @return the same graph instance
      */
-    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int leftVerticesCount, int rightVerticesCount, int[] leftDegrees, int[] rightDegrees, Random random) {
+    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int[] leftDegrees, int[] rightDegrees, Random random) {
+        int leftVerticesCount = leftDegrees.length;
+        int rightVerticesCount = rightDegrees.length;
+        if (graph.size() != leftVerticesCount + rightVerticesCount) {
+            throw new IllegalArgumentException("Degree sequence size does not add up to the graph size");
+        }
+        
         int leftStubTotal = 0;
         for (int i = 0; i < leftVerticesCount; i++) {
             leftStubTotal += leftDegrees[i];
@@ -326,8 +208,11 @@ public final class GraphGenerator {
             rightStubTotal += rightDegrees[i];
         }
 
-        if (leftStubTotal != rightStubTotal) {
-            throw new IllegalArgumentException("Left and right degree sums must match");
+        int[] combinedDegrees = new int[leftVerticesCount + rightVerticesCount]; 
+        System.arraycopy(leftDegrees, 0, combinedDegrees, 0, leftVerticesCount);
+        System.arraycopy(rightDegrees, 0, combinedDegrees, leftVerticesCount, rightVerticesCount);
+        if (!GraphUtils.isGraphical(combinedDegrees)) { // this is a necessary but not sufficient condition to prove a bipartite graph exists
+            throw new IllegalArgumentException("A bipartite graph does not exist for the given degree sequences");
         }
 
         int leftStub[] = new int[leftStubTotal];
@@ -383,7 +268,7 @@ public final class GraphGenerator {
                 }
 
                 int w2 = graph.getRandomNeighbor(w1, random);
-                if (w2 == -1 || w2 == v2 || w2 < leftVerticesCount) {
+                if (w2 == -1 || w2 == v2) {
                     continue;
                 }
 
@@ -397,116 +282,5 @@ public final class GraphGenerator {
         }
         
         return graph;
-    }
-
-    /**
-     * Mutates a bipartite graph by performing a double-edge swap.
-     * This function performs a series of double-edge swaps on a
-     * bipartite graph to randomly change connections while keeping
-     * it bipartite.
-     *
-     * @param graph
-     *     the graph to mutate in-place
-     * @param mutationCount
-     *     number of mutations to perform
-     * @param random
-     *     the random number generator to use
-     */
-    public static void mutateBipartiteRegularGraph(MutableGraph graph, int mutationCount,
-                                                   RandomGenerator random) {
-        int leftVertices = graph.size() / 2;
-        int mutations = 0;
-        while (mutations < mutationCount) {
-            int left1 = random.nextInt(leftVertices);
-            int left2 = random.nextInt(leftVertices);
-            if (left1 == left2) {
-                continue;
-            }
-
-            int right1 = graph.getRandomNeighbor(left1, random);
-            int right2 = graph.getRandomNeighbor(left2, random);
-
-            if (right1 == right2) {
-                continue;
-            }
-
-            if (graph.hasEdge(left1, right2) || graph.hasEdge(left2, right1)) {
-                continue;
-            }
-
-            graph.removeEdge(left1, right1);
-            graph.removeEdge(left2, right2);
-            graph.addEdge(left1, right2);
-            graph.addEdge(left2, right1);
-
-            mutations++;
-        }
-    }
-
-    /**
-     * Irregularizes a graph by randomly adding or removing edges.
-     * This function modifies a graph by randomly adding or removing
-     * edges based on a given probability, making the graph less regular.
-     *
-     * @param graph
-     *     the graph to irregularize in-place
-     * @param p
-     *     the probability of adding or removing each edge
-     * @param random
-     *     the random number generator to use
-     */
-    public static void irregularizeGraph(MutableGraph graph, double p, RandomGenerator random) {
-        if (p < 0.0 || p > 1.0) {
-            throw new IllegalArgumentException("Probability must be between 0 and 1");
-        }
-
-        int n = graph.size();
-        for (int u = 0; u < n; u++) {
-            for (int v = u + 1; v < n; v++) {
-                if (random.nextDouble() >= p) {
-                    continue;
-                }
-
-                if (graph.hasEdge(u, v)) {
-                    graph.removeEdge(u, v);
-                } else {
-                    graph.addEdge(u, v);
-                }
-            }
-        }
-    }
-
-    /**
-     * Irregularizes a bipartite graph by randomly adding or removing edges.
-     * This function modifies a bipartite graph by randomly adding or removing
-     * edges based on a given probability, making the graph less regular.
-     *
-     * @param graph
-     *     the graph to irregularize in-place
-     * @param p
-     *     the probability of adding or removing each edge
-     */
-    public static void irregularizeBipartiteGraph(MutableGraph graph, double p,
-                                                  RandomGenerator random) {
-        if (p < 0.0 || p > 1.0) {
-            throw new IllegalArgumentException("Probability must be between 0 and 1");
-        }
-
-        int n = graph.size();
-        int leftVertices = n / 2;
-
-        for (int u = 0; u < leftVertices; u++) {
-            for (int v = leftVertices; v < n; v++) {
-                if (random.nextDouble() >= p) {
-                    continue;
-                }
-
-                if (graph.hasEdge(u, v)) {
-                    graph.removeEdge(u, v);
-                } else {
-                    graph.addEdge(u, v);
-                }
-            }
-        }
     }
 }

@@ -31,11 +31,12 @@ class DaniHayesAlgorithmTest {
   // @formatter:on
   void regularTest(int size, int degree) {
     Random random = new Random(Objects.hash(size, degree));
+    int[] degrees = GraphUtils.generateRegularDegreeSequence(size, degree);
+
     for (int j = 0; j < 10; j++) {
       Random rd = new Random(random.nextLong());
 
-      MutableGraph g = GraphGenerator.generateRegularGraph(new SparseGraphImpl(size), degree);
-      GraphGenerator.mutateRegularGraph(g, size * degree, rd);
+      MutableGraph g = GraphGenerator.generateGraph(new SparseGraphImpl(size), degrees, rd);
 
       DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
       Set<Edge> matching = alg.generatePerfectMatching();
@@ -63,12 +64,13 @@ class DaniHayesAlgorithmTest {
   // @formatter:on
   void regularBipartiteTest(int size, int degree) {
     Random random = new Random(Objects.hash(size, degree));
+    int[] leftDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);
+    int[] rightDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);
+
     for (int j = 0; j < 10; j++) {
       Random rd = new Random(random.nextLong());
 
-      MutableGraph g =
-          GraphGenerator.generateRegularBipartiteGraph(new SparseGraphImpl(size), degree);
-      GraphGenerator.mutateRegularGraph(g, size * degree, rd);
+      MutableGraph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(size), leftDegrees, rightDegrees, rd);
 
       DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
       Set<Edge> matching = alg.generatePerfectMatching();

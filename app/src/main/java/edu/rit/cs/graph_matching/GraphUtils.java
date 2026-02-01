@@ -3,10 +3,10 @@ package edu.rit.cs.graph_matching;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Random;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
 
 public class GraphUtils {
     private GraphUtils() {}
@@ -96,13 +96,16 @@ public class GraphUtils {
     public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
         int[] degrees = new int[numVertices];
         for (int i = 0; i < numVertices; i++) {
-            degrees[i] = averageDegree - variation + random.nextInt(2 * variation + 1);
+            degrees[i] = random.nextInt(averageDegree - variation, averageDegree + variation + 1);
         }
         return degrees;
     }
 
     /**
-     * Determine if a degree sequence is graphical using the Havel-Hakimi algorithm.
+     * Determine whether a degree sequence is graphical, 
+     * meaning that there exists at least one graph 
+     * whose vertex degrees exactly match the sequence, 
+     * using the Havel–Hakimi algorithm.
      * 
      * @param degrees
      *      the degree sequence
@@ -110,28 +113,22 @@ public class GraphUtils {
      */
     public static boolean isGraphical(int[] degrees) {
         int[] degreeCopy = degrees.clone();
+        int[] auxArray = new int[degrees.length];
+
+        Arrays.sort(degreeCopy);
+        for (int i = 0, j = degrees.length - 1; i < j; i++, j--) {
+            int temp = degreeCopy[i];
+            degreeCopy[i] = degreeCopy[j];
+            degreeCopy[j] = temp;
+        }
 
         while (true) {
-            Arrays.sort(degreeCopy);
-            for (int i = 0, j = degreeCopy.length - 1; i < j; i++, j--) {
-                int temp = degreeCopy[i];
-                degreeCopy[i] = degreeCopy[j];
-                degreeCopy[j] = temp;
-            }
-
-            boolean allZero = true;
-            for (int degree : degreeCopy) {
-                if (degree != 0) {
-                    allZero = false;
-                    break;
-                }
-            }
-            if (allZero) {
+            if (degreeCopy[0] == 0) {
                 return true;
             }
 
             int d = degreeCopy[0];
-            if (d < 0 || d >= degreeCopy.length) {
+            if (d < 0 || d >= degrees.length) {
                 return false;
             }
 
@@ -142,6 +139,40 @@ public class GraphUtils {
                 }
             }
             degreeCopy[0] = 0;
+
+            int i = 1;
+            int j = d + 1;
+            int k = 0;
+
+            while (i <= d && j < degrees.length) {
+                if (degreeCopy[i] >= degreeCopy[j]) {
+                    auxArray[k] = degreeCopy[i];
+                    k++;
+                    i++;
+                } else {
+                    auxArray[k] = degreeCopy[j];
+                    k++;
+                    j++;
+                }
+            }
+            while (i <= d) {
+                auxArray[k] = degreeCopy[i];
+                k++;
+                i++;
+            }
+            while (j < degrees.length) {
+                auxArray[k] = degreeCopy[j];
+                k++;
+                j++;
+            }
+            while (k < degrees.length) {
+                auxArray[k] = 0;
+                k++;
+            }
+
+            int[] temp = degreeCopy;
+            degreeCopy = auxArray;
+            auxArray = temp;
         }
     }
 }
