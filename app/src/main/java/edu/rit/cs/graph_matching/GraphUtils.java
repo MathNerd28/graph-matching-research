@@ -67,11 +67,11 @@ public class GraphUtils {
 
     /**
      * Generate a regular degree sequence.
-     * 
+     *
      * @param numVertices
-     *      the number of vertices
+     *     the number of vertices
      * @param degree
-     *      the degree of each vertex
+     *     the degree of each vertex
      * @return the degree sequence
      */
     public static int[] generateRegularDegreeSequence(int numVertices, int degree) {
@@ -84,16 +84,17 @@ public class GraphUtils {
 
     /**
      * Generate a somewhat regular degree sequence.
-     * 
+     *
      * @param numVertices
-     *      the number of vertices
+     *     the number of vertices
      * @param averageDegree
-     *      the average degree
+     *     the average degree
      * @param variation
-     *      the variation from the average degree
+     *     the variation from the average degree
      * @return the degree sequence
      */
-    public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
+    public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree,
+                                                              int variation, Random random) {
         int[] degrees = new int[numVertices];
         for (int i = 0; i < numVertices; i++) {
             degrees[i] = random.nextInt(averageDegree - variation, averageDegree + variation + 1);
@@ -102,13 +103,12 @@ public class GraphUtils {
     }
 
     /**
-     * Determine whether a degree sequence is graphical, 
-     * meaning that there exists at least one graph 
-     * whose vertex degrees exactly match the sequence, 
-     * using the Havel–Hakimi algorithm.
-     * 
+     * Determine whether a degree sequence is graphical, meaning that there
+     * exists at least one graph whose vertex degrees exactly match the
+     * sequence, using the Havel–Hakimi algorithm.
+     *
      * @param degrees
-     *      the degree sequence
+     *     the degree sequence
      * @return true iff the degree sequence is graphical
      */
     public static boolean isGraphical(int[] degrees) {
@@ -123,56 +123,73 @@ public class GraphUtils {
         }
 
         while (true) {
-            if (degreeCopy[0] == 0) {
-                return true;
-            }
-
-            int d = degreeCopy[0];
-            if (d < 0 || d >= degrees.length) {
-                return false;
-            }
-
-            for (int i = 1; i <= d; i++) {
-                degreeCopy[i]--;
-                if (degreeCopy[i] < 0) {
-                    return false;
-                }
-            }
-            degreeCopy[0] = 0;
-
-            int i = 1;
-            int j = d + 1;
-            int k = 0;
-
-            while (i <= d && j < degrees.length) {
-                if (degreeCopy[i] >= degreeCopy[j]) {
-                    auxArray[k] = degreeCopy[i];
-                    k++;
-                    i++;
-                } else {
-                    auxArray[k] = degreeCopy[j];
-                    k++;
-                    j++;
-                }
-            }
-            while (i <= d) {
-                auxArray[k] = degreeCopy[i];
-                k++;
-                i++;
-            }
-            while (j < degrees.length) {
-                auxArray[k] = degreeCopy[j];
-                k++;
-                j++;
-            }
-            while (k < degrees.length) {
-                auxArray[k] = 0;
-                k++;
+            Boolean result = isGraphicalIteration(degreeCopy, auxArray);
+            if (result != null) {
+                return result;
             }
 
             int[] temp = degreeCopy;
             degreeCopy = auxArray;
             auxArray = temp;
         }
+    }
+
+    /**
+     * The inner loop body of {@link #isGraphical(int[])}, broken out as a
+     * dedicated function for performance.
+     *
+     * @param degrees
+     *     the degrees array, in sorted order
+     * @param auxArray
+     *     the array to swap with degrees, with unspecified contents
+     * @return true of the distribution is graphical, false if it isn't, null if
+     *     more iterations are needed
+     */
+    private static Boolean isGraphicalIteration(int[] degrees, int[] auxArray) {
+        if (degrees[0] == 0) {
+            return true;
+        }
+
+        int d = degrees[0];
+        if (d < 0 || d >= degrees.length) {
+            return false;
+        }
+
+        for (int i = 1; i <= d; i++) {
+            degrees[i]--;
+            if (degrees[i] < 0) {
+                return false;
+            }
+        }
+
+        int i = 1;
+        int j = d + 1;
+        int k = 0;
+
+        while (i <= d && j < degrees.length) {
+            if (degrees[i] >= degrees[j]) {
+                auxArray[k] = degrees[i];
+                k++;
+                i++;
+            } else {
+                auxArray[k] = degrees[j];
+                k++;
+                j++;
+            }
+        }
+
+        if (i <= d) {
+            System.arraycopy(degrees, i, auxArray, k, d - i + 1);
+            k += d - i + 1;
+        } else {
+            System.arraycopy(degrees, j, auxArray, k, degrees.length - j);
+            k += degrees.length - j;
+        }
+
+        if (k < auxArray.length) {
+            Arrays.fill(auxArray, k, auxArray.length, 0);
+        }
+
+        return null;
     }
 }
