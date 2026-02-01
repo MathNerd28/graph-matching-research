@@ -3,7 +3,9 @@ package edu.rit.cs.graph_matching;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 
 public class GraphUtils {
@@ -61,5 +63,151 @@ public class GraphUtils {
 
             writer.println("}");
         }
+    }
+
+    /**
+     * Generate a regular degree sequence.
+     *
+     * @param numVertices
+     *     the number of vertices
+     * @param degree
+     *     the degree of each vertex
+     * @return the degree sequence
+     */
+    public static int[] generateRegularDegreeSequence(int numVertices, int degree) {
+        int[] degrees = new int[numVertices];
+        for (int i = 0; i < numVertices; i++) {
+            degrees[i] = degree;
+        }
+        return degrees;
+    }
+
+    /**
+     * Produces a uniform distribution of degrees over the 
+     * range: [averageDegree - variation, averageDegree + variation]
+     * 
+     * @param numVertices
+     *     the number of vertices
+     * @param averageDegree
+     *     the average degree
+     * @param variation
+     *     the variation from the average degree
+     * @return the degree sequence
+     */
+    public static int[] generateUniformDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
+        int[] degrees = new int[numVertices];
+        int sum = 0;
+        for (int i = 0; i < numVertices; i++) {
+            degrees[i] = random.nextInt(averageDegree - variation, averageDegree + variation + 1);
+            sum += degrees[i];
+        }
+
+        if ((sum % 2) == 1) {
+            int i = random.nextInt(numVertices);
+            if (degrees[i] == averageDegree + variation) {
+                degrees[i]--;
+            } else if (degrees[i] == averageDegree - variation) {
+                degrees[i]++;
+            } else {
+                if (random.nextBoolean()) {
+                    degrees[i]++;
+                } else {
+                    degrees[i]--;
+                }
+            }
+        }
+
+        return degrees;
+    }
+
+    /**
+     * Determine whether a degree sequence is graphical, meaning that there
+     * exists at least one graph whose vertex degrees exactly match the
+     * sequence, using the Havel–Hakimi algorithm.
+     *
+     * @param degrees
+     *     the degree sequence
+     * @return true iff the degree sequence is graphical
+     */
+    public static boolean isGraphical(int[] degrees) {
+        int[] degreeCopy = degrees.clone();
+        int[] auxArray = new int[degrees.length];
+
+        Arrays.sort(degreeCopy);
+        for (int i = 0, j = degrees.length - 1; i < j; i++, j--) {
+            int temp = degreeCopy[i];
+            degreeCopy[i] = degreeCopy[j];
+            degreeCopy[j] = temp;
+        }
+
+        while (true) {
+            Boolean result = isGraphicalIteration(degreeCopy, auxArray);
+            if (result != null) {
+                return result;
+            }
+
+            int[] temp = degreeCopy;
+            degreeCopy = auxArray;
+            auxArray = temp;
+        }
+    }
+
+    /**
+     * The inner loop body of {@link #isGraphical(int[])}, broken out as a
+     * dedicated function for performance.
+     *
+     * @param degrees
+     *     the degrees array, in sorted order
+     * @param auxArray
+     *     the array to swap with degrees, with unspecified contents
+     * @return true of the distribution is graphical, false if it isn't, null if
+     *     more iterations are needed
+     */
+    private static Boolean isGraphicalIteration(int[] degrees, int[] auxArray) {
+        if (degrees[0] == 0) {
+            return true;
+        }
+
+        int d = degrees[0];
+        if (d < 0 || d >= degrees.length) {
+            return false;
+        }
+
+        for (int i = 1; i <= d; i++) {
+            degrees[i]--;
+            if (degrees[i] < 0) {
+                return false;
+            }
+        }
+
+        int i = 1;
+        int j = d + 1;
+        int k = 0;
+
+        while (i <= d && j < degrees.length) {
+            if (degrees[i] >= degrees[j]) {
+                auxArray[k] = degrees[i];
+                k++;
+                i++;
+            } else {
+                auxArray[k] = degrees[j];
+                k++;
+                j++;
+            }
+        }
+
+        if (i <= d) {
+            System.arraycopy(degrees, i, auxArray, k, d - i + 1);
+            k += d - i + 1;
+        } else {
+            System.arraycopy(degrees, j, auxArray, k, degrees.length - j);
+            k += degrees.length - j;
+        }
+
+        if (k < auxArray.length) {
+            Arrays.fill(auxArray, k, auxArray.length, 0);
+        }
+
+        return null;
     }
 }
