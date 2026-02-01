@@ -83,8 +83,9 @@ public class GraphUtils {
     }
 
     /**
-     * Generate a somewhat regular degree sequence.
-     *
+     * Produces a uniform distribution of degrees over the 
+     * range: [averageDegree - variation, averageDegree + variation]
+     * 
      * @param numVertices
      *     the number of vertices
      * @param averageDegree
@@ -93,12 +94,29 @@ public class GraphUtils {
      *     the variation from the average degree
      * @return the degree sequence
      */
-    public static int[] generateSomewhatRegularDegreeSequence(int numVertices, int averageDegree,
-                                                              int variation, Random random) {
+    public static int[] generateUniformDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
         int[] degrees = new int[numVertices];
+        int sum = 0;
         for (int i = 0; i < numVertices; i++) {
             degrees[i] = random.nextInt(averageDegree - variation, averageDegree + variation + 1);
+            sum += degrees[i];
         }
+
+        if ((sum % 2) == 1) {
+            int i = random.nextInt(numVertices);
+            if (degrees[i] == averageDegree + variation) {
+                degrees[i]--;
+            } else if (degrees[i] == averageDegree - variation) {
+                degrees[i]++;
+            } else {
+                if (random.nextBoolean()) {
+                    degrees[i]++;
+                } else {
+                    degrees[i]--;
+                }
+            }
+        }
+
         return degrees;
     }
 

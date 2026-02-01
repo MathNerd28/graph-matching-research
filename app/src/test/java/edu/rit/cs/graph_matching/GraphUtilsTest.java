@@ -1,12 +1,20 @@
 package edu.rit.cs.graph_matching;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
+import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class GraphUtilsTest {
     @Test
@@ -42,6 +50,25 @@ class GraphUtilsTest {
         edges.add(new Edge(0, 1));
         boolean result = GraphUtils.isValidMatching(edges);
         assertTrue(result, "A single edge should form a valid matching");
+    }
+
+    @ParameterizedTest
+    // @formatter:off
+    @CsvSource({
+        "10, 4, 0",
+        "10, 4, 2",
+        "50, 10, 3",
+        "100, 5, 1",
+        "100, 20, 5",
+        "1000, 50, 10",
+        "10000, 100, 20",
+    })
+    // @formatter:on
+    void generateUniformDegreeSequenceTest(int size, int degree, int variation) {
+        Random random = new Random(Objects.hash(size, degree, variation));
+        int[] degrees = GraphUtils.generateUniformDegreeSequence(size, degree, variation, random);
+
+        assertTrue(GraphUtils.isGraphical(degrees));
     }
 
     @Test
