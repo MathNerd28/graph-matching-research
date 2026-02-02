@@ -35,8 +35,11 @@ public class IntHashSet extends AbstractSet<Integer> {
   /** The maximum size/capacity ratio before increasing capacity */
   private static final double MAX_LOAD_FACTOR = 0.75;
 
+  /** The maximum (size+deleted)/capacity ratio before rehashing */
+  private static final double REHASH_LOAD_FACTOR = 0.8;
+
   /** The minimum size/capacity ratio before decreasing capacity */
-  private static final double MIN_LOAD_FACTOR = 0.25;
+  private static final double MIN_LOAD_FACTOR  = 0.25;
 
   /** The minimum capacity of the hash table */
   private static final int MIN_CAPACITY = 8;
@@ -60,6 +63,9 @@ public class IntHashSet extends AbstractSet<Integer> {
 
   /** The maximum size of the hash table before growth. */
   private int maxFill;
+
+  /** The maximum (size+deleted) of the hash table before rehashing. */
+  private int rehashFill;
 
   /** The minimum size of the hash table before shrinking. */
   private int minFill;
@@ -156,7 +162,7 @@ public class IntHashSet extends AbstractSet<Integer> {
     if (occupiedCount >= maxFill) {
       // increase size of table
       rehashTable(table.length << 1);
-    } else if (occupiedCount + deletedCount >= maxFill) {
+    } else if (occupiedCount + deletedCount >= rehashFill) {
       // reclaim all deleted cells
       rehashTable(table.length);
     }
@@ -356,7 +362,9 @@ public class IntHashSet extends AbstractSet<Integer> {
     deleted = new BitSet(capacity);
 
     maxFill = (int) (capacity * MAX_LOAD_FACTOR);
+    rehashFill = (int) (capacity * REHASH_LOAD_FACTOR);
     minFill = (capacity <= MIN_CAPACITY) ? 0 : (int) (capacity * MIN_LOAD_FACTOR);
+
     occupiedCount = 0;
     deletedCount = 0;
   }
