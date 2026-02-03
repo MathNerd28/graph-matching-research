@@ -16,16 +16,16 @@ class HopcroftKarpAlgorithmTest {
         "10, 4",
         "100, 5",
         "100, 10",
-        "101, 6",
+        "100, 6",
         "1000, 5",
         "1000, 101",
-        "1001, 6",
+        "1000, 6",
         "10000, 5",
         "100000, 5",
     })
     void regularBipartiteGraphs(int vertices, int degree) {
         Random random = new Random(Objects.hash(vertices, degree));
-        int[] degrees = GraphUtils.generateRegularDegreeSequence(vertices, degree / 2);
+        int[] degrees = GraphUtils.generateRegularDegreeSequence(vertices / 2, degree);
         Graph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(vertices), degrees, degrees, random);
         HopcroftKarpAlgorithm algorithm = new HopcroftKarpAlgorithm(g);
         Set<Edge> matching = algorithm.getMaximumMatching();

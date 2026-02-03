@@ -3,6 +3,7 @@ package edu.rit.cs.graph_matching;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.Set;
+import java.util.HashSet;
 
 public class HopcroftKarpAlgorithm {
     private Graph graph; // original graph
@@ -15,6 +16,7 @@ public class HopcroftKarpAlgorithm {
         this.graph = graph;
         this.bipartiteGraph = new BipartiteGraph(graph);
         this.level = new int[graph.size() + 1];
+        this.maximumMatching = new HashSet<>();
     }
 
     /**
