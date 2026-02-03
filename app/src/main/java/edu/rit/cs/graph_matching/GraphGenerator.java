@@ -85,17 +85,17 @@ public final class GraphGenerator {
     }
 
     /**
-     * Generates a graph with a specific degree sequence. It 
-     * creates a list of vertex stubs according to their 
-     * degrees, shuffles them, and pairs them to form edges 
-     * while avoiding self-loops and duplicates. Any conflicts 
-     * are resolved by swapping edges in the graph, ensuring 
+     * Generates a graph with a specific degree sequence. It
+     * creates a list of vertex stubs according to their
+     * degrees, shuffles them, and pairs them to form edges
+     * while avoiding self-loops and duplicates. Any conflicts
+     * are resolved by swapping edges in the graph, ensuring
      * the final graph matches the specified degree sequence.
-     * 
-     * Note: This method may run slower (jump from polynomial to 
-     * exponential runtime) for dense graphs (graphs with an 
+     *
+     * Note: This method may run slower (jump from polynomial to
+     * exponential runtime) for dense graphs (graphs with an
      * average degree greater than 50% of total vertices).
-     * 
+     *
      * @param graph
      *      the graph to edit in-place
      * @param degrees
@@ -145,6 +145,13 @@ public final class GraphGenerator {
         for (Edge e : conflictEdges) {
             int v1 = e.vertex1();
             int v2 = e.vertex2();
+
+            // Check if repeat edge was already removed by an earlier conflict
+            if (v1 != v2 && !graph.hasEdge(v1, v2)) {
+                graph.addEdge(v1, v2);
+                continue;
+            }
+
             while (true) {
                 int w1 = random.nextInt(graph.size());
                 if (w1 == v1 || w1 == v2) {
@@ -174,13 +181,13 @@ public final class GraphGenerator {
     }
 
     /**
-     * Generates a bipartite graph with a specific degree sequence. 
-     * It creates two list of vertex stubs (one of left and one for right) 
-     * according to their degrees, shuffles them, and pairs one from each 
-     * list to form edges while avoiding self-loops and duplicates. Any 
-     * conflicts are resolved by swapping edges in the graph, ensuring 
+     * Generates a bipartite graph with a specific degree sequence.
+     * It creates two list of vertex stubs (one of left and one for right)
+     * according to their degrees, shuffles them, and pairs one from each
+     * list to form edges while avoiding self-loops and duplicates. Any
+     * conflicts are resolved by swapping edges in the graph, ensuring
      * the final graph matches the specified degree sequence.
-     * 
+     *
      * @param graph
      *      the graph to edit in-place
      * @param verticesPerSide
@@ -197,7 +204,7 @@ public final class GraphGenerator {
         if (graph.size() != leftVerticesCount + rightVerticesCount) {
             throw new IllegalArgumentException("Degree sequence size does not add up to the graph size");
         }
-        
+
         int leftStubTotal = 0;
         for (int i = 0; i < leftVerticesCount; i++) {
             leftStubTotal += leftDegrees[i];
@@ -208,7 +215,7 @@ public final class GraphGenerator {
             rightStubTotal += rightDegrees[i];
         }
 
-        int[] combinedDegrees = new int[leftVerticesCount + rightVerticesCount]; 
+        int[] combinedDegrees = new int[leftVerticesCount + rightVerticesCount];
         System.arraycopy(leftDegrees, 0, combinedDegrees, 0, leftVerticesCount);
         System.arraycopy(rightDegrees, 0, combinedDegrees, leftVerticesCount, rightVerticesCount);
         if (!GraphUtils.isGraphical(combinedDegrees)) { // this is a necessary but not sufficient condition to prove a bipartite graph exists
@@ -261,6 +268,13 @@ public final class GraphGenerator {
         for (Edge e : conflictEdges) {
             int v1 = e.vertex1();
             int v2 = e.vertex2();
+
+            // Check if repeat edge was already removed by an earlier conflict
+            if (!graph.hasEdge(v1, v2)) {
+                graph.addEdge(v1, v2);
+                continue;
+            }
+
             while (true) {
                 int w1 = random.nextInt(leftVerticesCount);
                 if (w1 == v1) {
@@ -280,7 +294,7 @@ public final class GraphGenerator {
                 }
             }
         }
-        
+
         return graph;
     }
 }
