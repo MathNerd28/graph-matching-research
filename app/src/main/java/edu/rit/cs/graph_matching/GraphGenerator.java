@@ -54,16 +54,14 @@ public final class GraphGenerator {
     }
 
     /**
-     * Generates a random graph.
-     * This function builds a random graph by
-     * considering every possible pair of vertices
-     * and adding an edge between them with a fixed
-     * probability.
+     * Generates a random graph. This function builds a random graph by
+     * considering every possible pair of vertices and adding an edge between
+     * them with a fixed probability.
      *
      * @param vertices
-     *      number of vertices
+     *     number of vertices
      * @param edgeProb
-     *      probability of adding an edge between any pair
+     *     probability of adding an edge between any pair
      * @return the same graph instance
      */
     public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb,
@@ -85,23 +83,20 @@ public final class GraphGenerator {
     }
 
     /**
-     * Generates a graph with a specific degree sequence. It
-     * creates a list of vertex stubs according to their
-     * degrees, shuffles them, and pairs them to form edges
-     * while avoiding self-loops and duplicates. Any conflicts
-     * are resolved by swapping edges in the graph, ensuring
-     * the final graph matches the specified degree sequence.
-     *
-     * Note: This method may run slower (jump from polynomial to
-     * exponential runtime) for dense graphs (graphs with an
+     * Generates a graph with a specific degree sequence. It creates a list of
+     * vertex stubs according to their degrees, shuffles them, and pairs them to
+     * form edges while avoiding self-loops and duplicates. Any conflicts are
+     * resolved by swapping edges in the graph, ensuring the final graph matches
+     * the specified degree sequence. Note: This method may run slower (jump
+     * from polynomial to exponential runtime) for dense graphs (graphs with an
      * average degree greater than 50% of total vertices).
      *
      * @param graph
-     *      the graph to edit in-place
+     *     the graph to edit in-place
      * @param degrees
-     *      the desired degree sequence
+     *     the desired degree sequence
      * @param random
-     *      random number generator
+     *     random number generator
      * @return the same graph instance
      */
     public static MutableGraph generateGraph(MutableGraph graph, int[] degrees, Random random) {
@@ -111,7 +106,7 @@ public final class GraphGenerator {
         }
 
         if (!GraphUtils.isGraphical(degrees)) {
-            throw new IllegalArgumentException("Degree sequence is not graphical");
+            throw new IllegalArgumentException("The given degree sequence is not graphical");
         }
 
         int[] edgeConnections = new int[totalStubs];
@@ -123,86 +118,98 @@ public final class GraphGenerator {
             }
         }
 
-        for (int i = edgeConnections.length - 1; i > 0; i--) {
-            int i2 = random.nextInt(i + 1);
-            int tmp = edgeConnections[i];
-            edgeConnections[i] = edgeConnections[i2];
-            edgeConnections[i2] = tmp;
-        }
-
-        graph.clear();
         List<Edge> conflictEdges = new ArrayList<>();
-        for (int i = 0; i < edgeConnections.length; i += 2) {
-            int v1 = edgeConnections[i];
-            int v2 = edgeConnections[i + 1];
-            if (v1 != v2 && !graph.hasEdge(v1, v2)) {
-                graph.addEdge(v1, v2);
-            } else {
-                conflictEdges.add(new Edge(v1, v2));
-            }
-        }
+        graph.clear();
 
-        for (Edge e : conflictEdges) {
-            int v1 = e.vertex1();
-            int v2 = e.vertex2();
+        do {
+            conflictEdges.clear();
+            shuffle(edgeConnections, random);
 
-            // Check if repeat edge was already removed by an earlier conflict
-            if (v1 != v2 && !graph.hasEdge(v1, v2)) {
-                graph.addEdge(v1, v2);
-                continue;
-            }
+            for (int i = 0; i < edgeConnections.length; i += 2) {
+                int v1 = edgeConnections[i];
+                int v2 = edgeConnections[i + 1];
+                if (v1 != v2 && !graph.hasEdge(v1, v2)) {
+                    // no conflict
+                    graph.addEdge(v1, v2);
+                    continue;
+                }
 
-            while (true) {
                 int w1 = random.nextInt(graph.size());
                 if (w1 == v1 || w1 == v2) {
+                    // bad generation; conflict
+                    conflictEdges.add(new Edge(v1, v2));
                     continue;
                 }
 
                 int w2 = graph.getRandomNeighbor(w1, random);
                 if (w2 == -1 || w2 == v1 || w2 == v2) {
+                    // bad generation; conflict
+                    conflictEdges.add(new Edge(v1, v2));
                     continue;
                 }
 
                 if (!graph.hasEdge(v1, w1) && !graph.hasEdge(v2, w2)) {
+                    // mutation fixes conflict
                     graph.removeEdge(w1, w2);
                     graph.addEdge(v1, w1);
                     graph.addEdge(v2, w2);
-                    break;
                 } else if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
+                    // mutation fixes conflict
                     graph.removeEdge(w1, w2);
                     graph.addEdge(v1, w2);
                     graph.addEdge(v2, w1);
-                    break;
+                } else {
+                    // bad generation; conflict
+                    conflictEdges.add(new Edge(v1, v2));
                 }
             }
-        }
+
+            // reshuffle conflicts
+            edgeConnections = new int[conflictEdges.size() * 2];
+            for (int i = 0; i < conflictEdges.size(); i++) {
+                Edge e = conflictEdges.get(i);
+                edgeConnections[2 * i] = e.vertex1();
+                edgeConnections[2 * i + 1] = e.vertex2();
+            }
+        } while (!conflictEdges.isEmpty());
 
         return graph;
     }
 
+    private static void shuffle(int[] array, Random random) {
+        for (int i = array.length - 1; i > 0; i--) {
+            int i2 = random.nextInt(i + 1);
+            int tmp = array[i];
+            array[i] = array[i2];
+            array[i2] = tmp;
+        }
+    }
+
     /**
-     * Generates a bipartite graph with a specific degree sequence.
-     * It creates two list of vertex stubs (one of left and one for right)
-     * according to their degrees, shuffles them, and pairs one from each
-     * list to form edges while avoiding self-loops and duplicates. Any
-     * conflicts are resolved by swapping edges in the graph, ensuring
-     * the final graph matches the specified degree sequence.
+     * Generates a bipartite graph with a specific degree sequence. It creates
+     * two list of vertex stubs (one of left and one for right) according to
+     * their degrees, shuffles them, and pairs one from each list to form edges
+     * while avoiding self-loops and duplicates. Any conflicts are resolved by
+     * swapping edges in the graph, ensuring the final graph matches the
+     * specified degree sequence.
      *
      * @param graph
-     *      the graph to edit in-place
+     *     the graph to edit in-place
      * @param verticesPerSide
-     *      number of vertices on each side
+     *     number of vertices on each side
      * @param degree
-     *      the desired degree sequence
+     *     the desired degree sequence
      * @param random
-     *      random number generator
+     *     random number generator
      * @return the same graph instance
      */
-    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int[] leftDegrees, int[] rightDegrees, Random random) {
+    public static MutableGraph generateBipartiteGraph(MutableGraph graph, int[] leftDegrees,
+                                                      int[] rightDegrees, Random random) {
         int leftVerticesCount = leftDegrees.length;
         int rightVerticesCount = rightDegrees.length;
         if (graph.size() != leftVerticesCount + rightVerticesCount) {
-            throw new IllegalArgumentException("Degree sequence size does not add up to the graph size");
+            throw new IllegalArgumentException(
+                    "Degree sequence size does not add up to the graph size");
         }
 
         int leftStubTotal = 0;
@@ -215,15 +222,20 @@ public final class GraphGenerator {
             rightStubTotal += rightDegrees[i];
         }
 
+        if (leftStubTotal != rightStubTotal) {
+            throw new IllegalArgumentException("The given degree sequences are not bigraphical");
+        }
+
         int[] combinedDegrees = new int[leftVerticesCount + rightVerticesCount];
         System.arraycopy(leftDegrees, 0, combinedDegrees, 0, leftVerticesCount);
         System.arraycopy(rightDegrees, 0, combinedDegrees, leftVerticesCount, rightVerticesCount);
-        if (!GraphUtils.isGraphical(combinedDegrees)) { // this is a necessary but not sufficient condition to prove a bipartite graph exists
-            throw new IllegalArgumentException("A bipartite graph does not exist for the given degree sequences");
+        if (!GraphUtils.isGraphical(combinedDegrees)) {
+            // Havel-Hakimi is necessary but not sufficient for bipartite graphs
+            throw new IllegalArgumentException("The given degree sequences are not bigraphical");
         }
 
-        int leftStub[] = new int[leftStubTotal];
-        int rightStub[] = new int[rightStubTotal];
+        int[] leftStub = new int[leftStubTotal];
+        int[] rightStub = new int[rightStubTotal];
 
         int leftIndex = 0;
         for (int i = 0; i < leftVerticesCount; i++) {
@@ -241,59 +253,62 @@ public final class GraphGenerator {
             }
         }
 
-        for (int i = leftStub.length - 1; i > 0; i--) {
-            int j = random.nextInt(i + 1);
-            int temp = leftStub[i];
-            leftStub[i] = leftStub[j];
-            leftStub[j] = temp;
-
-            j = random.nextInt(i + 1);
-            temp = rightStub[i];
-            rightStub[i] = rightStub[j];
-            rightStub[j] = temp;
-        }
-
-        graph.clear();
         List<Edge> conflictEdges = new ArrayList<>();
-        for (int i = 0; i < leftStub.length; i++) {
-            int v1 = leftStub[i];
-            int v2 = rightStub[i];
-            if (!graph.hasEdge(v1, v2)) {
-                graph.addEdge(v1, v2);
-            } else {
-                conflictEdges.add(new Edge(v1, v2));
-            }
-        }
+        graph.clear();
 
-        for (Edge e : conflictEdges) {
-            int v1 = e.vertex1();
-            int v2 = e.vertex2();
+        do {
+            conflictEdges.clear();
+            shuffle(leftStub, random);
+            shuffle(rightStub, random);
 
-            // Check if repeat edge was already removed by an earlier conflict
-            if (!graph.hasEdge(v1, v2)) {
-                graph.addEdge(v1, v2);
-                continue;
-            }
+            for (int i = 0; i < leftStub.length; i++) {
+                int v1 = leftStub[i];
+                int v2 = rightStub[i];
+                if (!graph.hasEdge(v1, v2)) {
+                    // no conflict
+                    graph.addEdge(v1, v2);
+                    continue;
+                }
 
-            while (true) {
-                int w1 = random.nextInt(leftVerticesCount);
-                if (w1 == v1) {
+                int w1 = random.nextInt(graph.size());
+                if (w1 == v1 || w1 == v2) {
+                    // bad generation; conflict
+                    conflictEdges.add(new Edge(v1, v2));
                     continue;
                 }
 
                 int w2 = graph.getRandomNeighbor(w1, random);
-                if (w2 == -1 || w2 == v2) {
+                if (w2 == -1 || w2 == v1 || w2 == v2) {
+                    // bad generation; conflict
+                    conflictEdges.add(new Edge(v1, v2));
                     continue;
                 }
 
-                if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
+                if (!graph.hasEdge(v1, w1) && !graph.hasEdge(v2, w2)) {
+                    // mutation fixes conflict
+                    graph.removeEdge(w1, w2);
+                    graph.addEdge(v1, w1);
+                    graph.addEdge(v2, w2);
+                } else if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
+                    // mutation fixes conflict
                     graph.removeEdge(w1, w2);
                     graph.addEdge(v1, w2);
                     graph.addEdge(v2, w1);
-                    break;
+                } else {
+                    // bad generation; conflict
+                    conflictEdges.add(new Edge(v1, v2));
                 }
             }
-        }
+
+            // setup remaining stubs to reshuffle
+            leftStub = new int[conflictEdges.size()];
+            rightStub = new int[conflictEdges.size()];
+            for (int i = 0; i < conflictEdges.size(); i++) {
+                Edge e = conflictEdges.get(i);
+                leftStub[i] = e.vertex1();
+                rightStub[i] = e.vertex2();
+            }
+        } while (!conflictEdges.isEmpty());
 
         return graph;
     }
