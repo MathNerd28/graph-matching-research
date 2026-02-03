@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class HopcroftKarpAlgorithm {
-    private Graph graph; // original graph
+    final private Graph graph; // original graph
     private BipartiteGraph bipartiteGraph;
     protected int[] level;
     private IntHashSet blocked;
