@@ -2,8 +2,6 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-
 import java.util.random.RandomGenerator;
 
 public final class GraphGenerator {
@@ -99,7 +97,8 @@ public final class GraphGenerator {
      *     random number generator
      * @return the same graph instance
      */
-    public static MutableGraph generateGraph(MutableGraph graph, int[] degrees, Random random) {
+    public static MutableGraph generateGraph(MutableGraph graph, int[] degrees,
+                                             RandomGenerator random) {
         int totalStubs = 0;
         for (int d : degrees) {
             totalStubs += d;
@@ -176,15 +175,6 @@ public final class GraphGenerator {
         return graph;
     }
 
-    private static void shuffle(int[] array, Random random) {
-        for (int i = array.length - 1; i > 0; i--) {
-            int i2 = random.nextInt(i + 1);
-            int tmp = array[i];
-            array[i] = array[i2];
-            array[i2] = tmp;
-        }
-    }
-
     /**
      * Generates a bipartite graph with a specific degree sequence. It creates
      * two list of vertex stubs (one of left and one for right) according to
@@ -204,7 +194,7 @@ public final class GraphGenerator {
      * @return the same graph instance
      */
     public static MutableGraph generateBipartiteGraph(MutableGraph graph, int[] leftDegrees,
-                                                      int[] rightDegrees, Random random) {
+                                                      int[] rightDegrees, RandomGenerator random) {
         int leftVerticesCount = leftDegrees.length;
         int rightVerticesCount = rightDegrees.length;
         if (graph.size() != leftVerticesCount + rightVerticesCount) {
@@ -311,5 +301,22 @@ public final class GraphGenerator {
         } while (!conflictEdges.isEmpty());
 
         return graph;
+    }
+
+    /**
+     * Randomly shuffle the given integer array.
+     *
+     * @param array
+     *     the array to shuffle
+     * @param random
+     *     the random generator to use
+     */
+    private static void shuffle(int[] array, RandomGenerator random) {
+        for (int i = array.length - 1; i > 0; i--) {
+            int i2 = random.nextInt(i + 1);
+            int tmp = array[i];
+            array[i] = array[i2];
+            array[i2] = tmp;
+        }
     }
 }
