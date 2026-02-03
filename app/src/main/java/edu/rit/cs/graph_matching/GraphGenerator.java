@@ -117,8 +117,8 @@ public final class GraphGenerator {
             }
         }
 
-        List<Edge> conflictEdges = new ArrayList<>();
         graph.clear();
+        List<Edge> conflictEdges = new ArrayList<>();
 
         do {
             conflictEdges.clear();
@@ -243,8 +243,8 @@ public final class GraphGenerator {
             }
         }
 
-        List<Edge> conflictEdges = new ArrayList<>();
         graph.clear();
+        List<Edge> conflictEdges = new ArrayList<>();
 
         do {
             conflictEdges.clear();
@@ -274,12 +274,7 @@ public final class GraphGenerator {
                     continue;
                 }
 
-                if (!graph.hasEdge(v1, w1) && !graph.hasEdge(v2, w2)) {
-                    // mutation fixes conflict
-                    graph.removeEdge(w1, w2);
-                    graph.addEdge(v1, w1);
-                    graph.addEdge(v2, w2);
-                } else if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
+                if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
                     // mutation fixes conflict
                     graph.removeEdge(w1, w2);
                     graph.addEdge(v1, w2);
