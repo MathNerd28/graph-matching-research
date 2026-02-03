@@ -12,10 +12,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Data that can be serialized to a binary graph file format. Byte order is
- * big-endian. The header format of the file is as follows:
+ * big-endian. Data is written to a single-file compressed ZIP archive. The
+ * header format of the uncompressed file is as follows:
  * <p>
  * <ul>
  * <li>A magic header containing raw UTF-8 bytes of "GraphFileData v1" (without
@@ -58,8 +63,12 @@ public record GraphFileData(String name,
      *     if an IO error occurs
      */
     public void writeToFile(File file) throws IOException {
-        try (DataOutputStream out =
-                new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
+        try (ZipOutputStream zip =
+                new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+             DataOutputStream out = new DataOutputStream(zip)) {
+            zip.setLevel(Deflater.BEST_COMPRESSION);
+            zip.putNextEntry(new ZipEntry(name()));
+
             out.write(GraphFileData.HEADER);
 
             out.writeUTF(name);
@@ -94,6 +103,8 @@ public record GraphFileData(String name,
                     out.writeInt(w);
                 }
             }
+
+            zip.closeEntry();
         }
     }
 
@@ -107,8 +118,11 @@ public record GraphFileData(String name,
      *     if an IO error occurs
      */
     public static GraphFileData readFile(File file) throws IOException {
-        try (DataInputStream in =
-                new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+        try (ZipInputStream zip =
+                new ZipInputStream(new BufferedInputStream(new FileInputStream(file)));
+             DataInputStream in = new DataInputStream(zip)) {
+            zip.getNextEntry();
+
             byte[] header = new byte[GraphFileData.HEADER.length];
             in.readFully(header);
             if (!Arrays.equals(header, GraphFileData.HEADER)) {
@@ -134,6 +148,7 @@ public record GraphFileData(String name,
                 edges -= edgeCount;
             }
 
+            zip.closeEntry();
             if (in.available() > 0) {
                 throw new IllegalStateException(
                         "Graph file continues beyond end of protocol content");
