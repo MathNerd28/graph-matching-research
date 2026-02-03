@@ -2,12 +2,14 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.Set;
 
 public class HopcroftKarpAlgorithm {
     private Graph graph; // original graph
     private BipartiteGraph bipartiteGraph;
     protected int[] level;
     private IntHashSet blocked;
+    private Set<Edge> maximumMatching;
 
     public HopcroftKarpAlgorithm(Graph graph) {
         this.graph = graph;
@@ -96,18 +98,21 @@ public class HopcroftKarpAlgorithm {
      *
      * @return the number of matched pairs in the maximum matching
      */
-    public int getMaximumMatching() {
-        int matchingSize = 0;
+    public Set<Edge> getMaximumMatching() {
         while (bfs()) {
             blocked = new IntHashSet();
             for (int u: bipartiteGraph.left) {
                 if (bipartiteGraph.getMatch(u) == -1 && !blocked.contains(u)) {
-                    if (dfs(u)) {
-                        matchingSize++;
-                    }
+                    dfs(u);
                 }
             }
         }
-        return matchingSize;
+        for (int u: bipartiteGraph.left) {
+            int v = bipartiteGraph.getMatch(u);
+            if (v != -1) {
+                maximumMatching.add(new Edge(u, v));
+            }
+        }
+        return maximumMatching;
     }
 }
