@@ -7,7 +7,7 @@ public class HopcroftKarpAlgorithm {
     private Graph graph; // original graph
     private BipartiteGraph bipartiteGraph;
     protected int[] level;
-    private IntHashSet Blocked;
+    private IntHashSet blocked;
 
     public HopcroftKarpAlgorithm(Graph graph) {
         this.graph = graph;
@@ -19,18 +19,9 @@ public class HopcroftKarpAlgorithm {
      * Performs a bfs
      * to build the level graph used by the Hopcroft–Karp maximum matching algorithm.
      * This corresponds to Step 1 in Algorithm A in the paper.
-     *
-     * Effects:
-     * - Initializes the per-vertex level values for left-side vertices: free left vertices
-     *   are assigned level 0; non-free or unreachable left vertices are set to -1; reachable
-     *   matched left vertices get levels corresponding to their distance from a free left vertex.
-     * - Uses bipartiteGraph.getMatch() to follow matched edges and graph.getAllNeighbors()
-     *   to iterate over neighbors.
-     *
-     * Behavior:
-     * - Enqueues all free left vertices (level = 0) and performs BFS along alternating paths.
-     * - Tracks the length of the shortest augmenting paths discovered and prunes further
-     *   exploration beyond that length to limit search to the current layering.
+     * Enqueues all free left vertices (level = 0) and performs BFS along alternating paths.
+     * Tracks the length of the shortest augmenting paths discovered and prunes further
+     * exploration beyond that length to limit search to the current layering.
      *
      * @return true if at least one augmenting path was discovered (i.e., the level graph
      *         contains augmenting paths); false if no augmenting path exists.
@@ -72,21 +63,7 @@ public class HopcroftKarpAlgorithm {
      * Performs a depth-first search for an augmenting path starting at the given vertex,
      * guided by the layering produced by the Hopcroft–Karp BFS (level[]).
      *
-     * For each neighbor of the vertex this method:
-     *  - skips exploration if the starting vertex is already marked in Blocked,
-     *  - checks the neighbor's current match,
-     *  - if the neighbor is free or its matched partner lies on the next level and
-     *    a recursive DFS from that partner succeeds, updates the matching arrays
-     *    (bipartiteGraph.leftMatch and bipartiteGraph.rightMatch) and returns true.
-     *
-     * If no augmenting path is found, the vertex is added to Blocked to avoid
-     * redundant work in the current phase and the method returns false.
-     *
-     * Side effects:
-     *  - May modify bipartiteGraph.leftMatch and bipartiteGraph.rightMatch on success.
-     *  - Adds vertex to Blocked on failure.
-     *
-     * Preconditions:
+     * REQUIRES:
      *  - level[] must be initialized by the BFS layering step.
      *  - graph.getAllNeighbors(vertex) should iterate neighbors in the opposite partition.
      *
@@ -95,19 +72,19 @@ public class HopcroftKarpAlgorithm {
      */
     private boolean dfs(int vertex) {
         for (int neighbor: graph.getAllNeighbors(vertex)) {
-            if (Blocked.contains(vertex)) {
+            if (blocked.contains(vertex)) {
                 continue;
             }
             int matchingNode = bipartiteGraph.getMatch(neighbor);
             if (matchingNode == -1 ||
                     (level[matchingNode] == level[vertex] + 1 && dfs(matchingNode))) {
                 // Found an augmenting path
-                bipartiteGraph.leftMatch[vertex] = neighbor;
-                bipartiteGraph.rightMatch[neighbor] = vertex;
+                bipartiteGraph.match[vertex] = neighbor;
+                bipartiteGraph.match[neighbor] = vertex;
                 return true;
             }
         }
-        Blocked.add(vertex);
+        blocked.add(vertex);
         return false;
     }
 
@@ -122,9 +99,9 @@ public class HopcroftKarpAlgorithm {
     public int getMaximumMatching() {
         int matchingSize = 0;
         while (bfs()) {
-            Blocked = new IntHashSet();
+            blocked = new IntHashSet();
             for (int u: bipartiteGraph.left) {
-                if (bipartiteGraph.getMatch(u) == -1 && !Blocked.contains(u)) {
+                if (bipartiteGraph.getMatch(u) == -1 && !blocked.contains(u)) {
                     if (dfs(u)) {
                         matchingSize++;
                     }
