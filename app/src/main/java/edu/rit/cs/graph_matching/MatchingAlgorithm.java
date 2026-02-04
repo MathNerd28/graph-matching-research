@@ -1,23 +1,11 @@
 package edu.rit.cs.graph_matching;
 
 import java.util.Set;
-import java.util.random.RandomGenerator;
 
 /**
  * A common interface for running and testing matching algorithms. Algorithms
  */
-public interface MatchingAlgorithmRunner {
-  /**
-   * Initialize the runner with a new input graph and random generator.
-   *
-   * @param g
-   *   the input graph
-   * @param random
-   *   the random generator
-   * @return true if initialization was successful
-   */
-  boolean initialize(Graph g, RandomGenerator random);
-
+public interface MatchingAlgorithm {
   /**
    * Asks the algorithm to search for a single augmenting path, and to augment
    * it, increasing the size of the matching by one.
@@ -26,16 +14,25 @@ public interface MatchingAlgorithmRunner {
    * periodically check {@link Thread#interrupted()}, and if so return swiftly.
    * This method may be called again after an interruption; implementations
    * should account for this.
+   *
+   * @return the length of the path that was augmented, or 0 if unsuccessful
    */
-  void augmentOnce();
+  int augment();
 
   /**
    * Get the current matching produced by the algorithm. The size of the
-   * matching should be exactly equal to the number of times
-   * {@link #augmentOnce()} returned {@code true}. This must not change the
-   * state of the algorithm.
+   * matching should be exactly equal to the number of times {@link #augment()}
+   * returned {@code true}. This must not change the state of the algorithm.
    *
    * @return the current matching produced by the algorithm
    */
   Set<Edge> getCurrentMatching();
+
+  /**
+   * Check if the algorithm has run to completion, i.e. it knows it cannot
+   * improve the matching any further.
+   *
+   * @return true if the algorithm cannot improve the current matching
+   */
+  boolean isFinished();
 }
