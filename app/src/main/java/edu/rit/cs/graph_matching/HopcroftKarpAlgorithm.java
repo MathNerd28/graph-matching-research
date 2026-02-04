@@ -1,23 +1,71 @@
 package edu.rit.cs.graph_matching;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Queue;
 import java.util.Set;
+
+
 import java.util.HashSet;
+import java.util.Map;
 
 public class HopcroftKarpAlgorithm {
-    final private Graph graph; // original graph
-    private BipartiteGraph bipartiteGraph;
-    protected int[] level;
-    private IntHashSet blocked;
-    private Set<Edge> maximumMatching;
+    private final Graph graph; // original graph
+    private final BipartiteGraph bipartiteGraph;
+    private final int[] level;
+    private final IntHashSet blocked;
 
     public HopcroftKarpAlgorithm(Graph graph) {
         this.graph = graph;
         this.bipartiteGraph = new BipartiteGraph(graph);
         this.level = new int[graph.size() + 1];
-        this.maximumMatching = new HashSet<>();
+        this.blocked = new IntHashSet();
     }
+
+    public class BipartiteGraph {
+    public IntHashSet left;
+    public IntHashSet right;
+    public int[] match;
+
+    /** 
+     * The bipartite graph with explciit bipartite partitions that the algorithm requires.
+     * 
+     * **/ 
+    private BipartiteGraph(Graph graph) {
+        int[] coloring = GraphUtils.colorBipartite(graph);
+        left = new IntHashSet();
+        right = new IntHashSet();
+        match = new int[graph.size()];
+        Arrays.fill(match, -1);
+        for (int node = 0; node < coloring.length; node++) {
+            if (coloring[node] == 0) {
+                left.add(node);
+            } else {
+                right.add(node);
+            }
+        }
+    }
+
+    public int getMatch(int vertex) {
+        if (left.contains(vertex)) {
+            return match[vertex];
+        } else if (right.contains(vertex)) {
+            return match[vertex];
+        } else {
+            return -1;
+        }
+    }
+
+        public int getLeftSize() {
+            return left.size();
+        }
+
+        public int getRightSize() {
+            return right.size();
+        }
+
+    }
+
 
     /**
      * Performs a bfs
@@ -101,8 +149,9 @@ public class HopcroftKarpAlgorithm {
      * @return the number of matched pairs in the maximum matching
      */
     public Set<Edge> getMaximumMatching() {
+        Set<Edge> maximumMatching = new HashSet<>();
         while (bfs()) {
-            blocked = new IntHashSet();
+            blocked.clear();
             for (int u: bipartiteGraph.left) {
                 if (bipartiteGraph.getMatch(u) == -1 && !blocked.contains(u)) {
                     dfs(u);

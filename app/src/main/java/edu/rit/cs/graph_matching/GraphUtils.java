@@ -3,8 +3,12 @@ package edu.rit.cs.graph_matching;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 
@@ -210,4 +214,58 @@ public class GraphUtils {
 
         return null;
     }
+
+        public enum BipartiteColor {
+            LEFT,
+            RIGHT;
+        }
+        /**
+         * An algorithm to perform 2-coloring on a graph to identify its 
+         * bipartite partitions.
+         * Ported from the C++ code on this page: https://www.scipublications.com/journal/index.php/ijmebac/article/view/422
+         * @param graph The input graph to color.
+         * @return A Map where keys are vertex IDs and values are partition IDs (0 or 1).
+         * @throws IllegalArgumentException if the graph is found to be non-bipartite.
+         */
+        public static int[] colorBipartite(Graph graph) {
+            int n = graph.size();
+            int[] colors = new int[n];
+            Arrays.fill(colors, -1); 
+            
+            // Transverse all connected components with a loop
+            for (int i = 0; i < n; i++) {
+                if (colors[i] == -1) {
+                    bfsColor(graph, i, colors);
+                }
+            }
+            
+            return colors;
+        }
+
+        private static void bfsColor(Graph graph, int startVertex, int[] colors) {
+            Queue<Integer> queue = new ArrayDeque<>();
+            
+            // Initialize the first node in this component with color 0
+            colors[startVertex] = 0;
+            queue.add(startVertex);
+
+            while (!queue.isEmpty()) {
+                int current = queue.poll();
+                int currentColor = colors[current];
+                int neighborColor = 1 - currentColor; // Toggle between 0 and 1
+
+                Set<Integer> neighbors = graph.getAllNeighbors(current);
+                for (int neighbor : neighbors) {
+                    if (colors[neighbor] == -1) {
+                        // Assign the opposite color to the neighbor
+                        colors[neighbor] = neighborColor;
+                        queue.add(neighbor);
+                    } else if (colors[neighbor] == currentColor) {
+                        // If neighbor has same color, it's not bipartite
+                        throw new IllegalArgumentException("Graph contains an odd cycle and is not bipartite.");
+                    }
+                }
+            }
+        }
+        
 }
