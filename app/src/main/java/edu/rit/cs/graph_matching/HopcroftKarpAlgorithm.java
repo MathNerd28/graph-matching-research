@@ -81,26 +81,26 @@ public class HopcroftKarpAlgorithm {
      * Complexity: O(V + E).
      */
     private boolean bfs() {
-        Queue<Integer> Q = new ArrayDeque<>();
+        Queue<Integer> queue = new ArrayDeque<>();
         int shortestAugmentingPathLength = Integer.MAX_VALUE;
         for (int u: bipartiteGraph.left) {
             if (bipartiteGraph.getMatch(u) == -1) {
                 level[u] = 0;
-                Q.offer(u);
+                queue.offer(u);
             } else {
                 level[u] = -1;
             }
         }
 
-        while (!Q.isEmpty()) {
-            int u = Q.poll();
+        while (!queue.isEmpty()) {
+            int u = queue.poll();
             if (level[u] == -1 || level[u] + 1 > shortestAugmentingPathLength) continue;
             for (int v: graph.getAllNeighbors(u)) {
                 int matchingNode = bipartiteGraph.getMatch(v);
                 if (matchingNode != -1) {
                     if (level[matchingNode] == -1) {
                         level[matchingNode] = level[u] + 1;
-                        Q.offer(matchingNode);
+                        queue.offer(matchingNode);
                         shortestAugmentingPathLength = level[matchingNode];
                     }
                 } else {
