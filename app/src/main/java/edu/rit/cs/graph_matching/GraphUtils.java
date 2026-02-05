@@ -227,14 +227,14 @@ public class GraphUtils {
          * @return A Map where keys are vertex IDs and values are partition IDs (0 or 1).
          * @throws IllegalArgumentException if the graph is found to be non-bipartite.
          */
-        public static int[] colorBipartite(Graph graph) {
+        public static BipartiteColor[] colorBipartite(Graph graph) {
             int n = graph.size();
-            int[] colors = new int[n];
-            Arrays.fill(colors, -1); 
+            BipartiteColor[] colors = new BipartiteColor[n];
+            Arrays.fill(colors, null); 
             
             // Transverse all connected components with a loop
             for (int i = 0; i < n; i++) {
-                if (colors[i] == -1) {
+                if (colors[i] == null) {
                     bfsColor(graph, i, colors);
                 }
             }
@@ -242,21 +242,21 @@ public class GraphUtils {
             return colors;
         }
 
-        private static void bfsColor(Graph graph, int startVertex, int[] colors) {
+        private static void bfsColor(Graph graph, int startVertex, BipartiteColor[] colors) {
             Queue<Integer> queue = new ArrayDeque<>();
             
-            // Initialize the first node in this component with color 0
-            colors[startVertex] = 0;
+            // Initialize the first node in this component with color LEFT
+            colors[startVertex] = BipartiteColor.LEFT;
             queue.add(startVertex);
 
             while (!queue.isEmpty()) {
                 int current = queue.poll();
-                int currentColor = colors[current];
-                int neighborColor = 1 - currentColor; // Toggle between 0 and 1
+                BipartiteColor currentColor = colors[current];
+                BipartiteColor neighborColor = (currentColor == BipartiteColor.LEFT) ? BipartiteColor.RIGHT : BipartiteColor.LEFT;
 
                 Set<Integer> neighbors = graph.getAllNeighbors(current);
                 for (int neighbor : neighbors) {
-                    if (colors[neighbor] == -1) {
+                    if (colors[neighbor] == null) {
                         // Assign the opposite color to the neighbor
                         colors[neighbor] = neighborColor;
                         queue.add(neighbor);
