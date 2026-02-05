@@ -124,7 +124,7 @@ public final class GraphGenerator {
             conflictEdges.clear();
             shuffle(edgeConnections, random);
 
-            for (long i = 0; i < edgeConnections.size; i += 2) {
+            for (long i = 0; i < edgeConnections.getSize(); i += 2) {
                 int v1 = edgeConnections.get(i);
                 int v2 = edgeConnections.get(i + 1);
                 if (v1 != v2 && !graph.hasEdge(v1, v2)) {
@@ -251,7 +251,7 @@ public final class GraphGenerator {
             shuffle(leftStub, random);
             shuffle(rightStub, random);
 
-            for (long i = 0; i < leftStub.size; i++) {
+            for (long i = 0; i < leftStub.getSize(); i++) {
                 int v1 = leftStub.get(i);
                 int v2 = rightStub.get(i);
                 if (!graph.hasEdge(v1, v2)) {
@@ -307,7 +307,7 @@ public final class GraphGenerator {
      *     the random generator to use
      */
     private static void shuffle(LongIntArray array, RandomGenerator random) {
-        for (long i = array.size - 1; i > 0; i--) {
+        for (long i = array.getSize() - 1; i > 0; i--) {
             long i2 = random.nextLong(i + 1);
             int tmp = array.get(i);
             array.set(i, array.get(i2));
@@ -316,21 +316,28 @@ public final class GraphGenerator {
     }
 
     static class LongIntArray {
-        final int BLOCK_SIZE = 1 << 30;
-        int[][] array;
-        long size;
+        private static final int BLOCK_SIZE = 1 << 30;
+        private final int[][] array;
+        private final long size;
 
         LongIntArray(long size) {
             this.size = size;
-            long numBlocks = size / BLOCK_SIZE;
-            if (size % BLOCK_SIZE != 0) {
-                numBlocks++;
-            }
+            long numBlocks = (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
             array = new int[(int) numBlocks][];
 
+            long remaining = size;
             for (int i = 0; i < numBlocks; i++) {
+                if (remaining < BLOCK_SIZE) {
+                    array[i] = new int[(int) remaining];
+                    break;
+                }
                 array[i] = new int[BLOCK_SIZE];
+                remaining -= BLOCK_SIZE;
             }
+        }
+
+        public long getSize() {
+            return size;
         }
 
         public int get(long index) {
