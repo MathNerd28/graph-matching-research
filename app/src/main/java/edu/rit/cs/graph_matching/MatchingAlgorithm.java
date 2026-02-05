@@ -7,15 +7,15 @@ import java.util.Set;
  */
 public interface MatchingAlgorithm {
   /**
-   * Asks the algorithm to search for a single augmenting path, and to augment
-   * it, increasing the size of the matching by one.
+   * Search for a single augmenting path and augment it, increasing the size of the
+   * matching by one.
    * <p>
    * Implementations should be cooperatively interruptible; that is, they should
    * periodically check {@link Thread#interrupted()}, and if so return swiftly.
    * This method may be called again after an interruption; implementations
    * should account for this.
    *
-   * @return the length of the path that was augmented, or 0 if unsuccessful
+   * @return the length of the path that was augmented, or -1 if unsuccessful
    */
   int augment();
 

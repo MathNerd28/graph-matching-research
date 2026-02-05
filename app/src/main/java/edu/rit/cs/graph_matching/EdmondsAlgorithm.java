@@ -152,7 +152,7 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
     bfsQueue.add(root);
     enqueued.add(root);
 
-    while (!bfsQueue.isEmpty()) {
+    while (!bfsQueue.isEmpty() && !Thread.interrupted()) {
       int vertex = bfsQueue.poll();
 
       for (int neighbor : graph.getAllNeighbors(vertex)) {
@@ -199,7 +199,7 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
         }
       }
     }
-    return 0;
+    return -1;
   }
 
   /**
@@ -209,11 +209,11 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
    *   the initial vertex in the augmenting path
    */
   private int augmentMatching(int freeVertex) {
-    int length = 0;
+    int length = -1;
     int current = freeVertex;
 
     while (current >= 0) {
-      length++;
+      length += 2;
       int previous = parents[current];
       int next = (previous >= 0) ? matches[previous] : -1;
 
@@ -248,11 +248,15 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
   public int augment() {
     for (; nextRoot < graph.size(); nextRoot++) {
       if (matches[nextRoot] < 0) {
-        return findAugmentingPath(nextRoot);
+        int result = findAugmentingPath(nextRoot);
+        if (result != -1) {
+          nextRoot++;
+          return result;
+        }
       }
     }
 
-    return 0;
+    return -1;
   }
 
   @Override

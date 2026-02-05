@@ -160,9 +160,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
 
     // Loop could run indefinitely; allow interruption for e.g. timeouts
     int maxUnmatched = graph.size() - edgeCount * 2;
-    while (unmatched.size() > maxUnmatched
-        && !Thread.currentThread()
-                  .isInterrupted()) {
+    while (unmatched.size() > maxUnmatched && !Thread.interrupted()) {
       if (!findAugmentingPath()) {
         break;
       }
@@ -171,6 +169,13 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
     }
   }
 
+  /**
+   * Augment the path that was previously found. Toggle each of the edges
+   * between matched/unmatched, and remove the start and head vertices from the
+   * unmatched set.
+   *
+   * @return the number of edges in the path
+   */
   private int augmentPath() {
     int length = 1;
     int vertex = start;
@@ -201,8 +206,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
    */
   private boolean findAugmentingPath() {
     // Loop could run indefinitely; allow interruption for e.g. timeouts
-    while (!Thread.currentThread()
-                  .isInterrupted()) {
+    while (!Thread.interrupted()) {
       clearPath();
 
       start = unmatched.getRandom(random);
@@ -436,7 +440,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
     if (findAugmentingPath()) {
       return augmentPath();
     } else {
-      return 0;
+      return -1;
     }
   }
 

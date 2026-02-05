@@ -104,10 +104,6 @@ public final class GraphGenerator {
             totalStubs += d;
         }
 
-        if (!GraphUtils.isGraphical(degrees)) {
-            throw new IllegalArgumentException("The given degree sequence is not graphical");
-        }
-
         int[] edgeConnections = new int[totalStubs];
         int index = 0;
         for (int v = 0; v < graph.size(); v++) {
@@ -213,14 +209,6 @@ public final class GraphGenerator {
         }
 
         if (leftStubTotal != rightStubTotal) {
-            throw new IllegalArgumentException("The given degree sequences are not bigraphical");
-        }
-
-        int[] combinedDegrees = new int[leftVerticesCount + rightVerticesCount];
-        System.arraycopy(leftDegrees, 0, combinedDegrees, 0, leftVerticesCount);
-        System.arraycopy(rightDegrees, 0, combinedDegrees, leftVerticesCount, rightVerticesCount);
-        if (!GraphUtils.isGraphical(combinedDegrees)) {
-            // Havel-Hakimi is necessary but not sufficient for bipartite graphs
             throw new IllegalArgumentException("The given degree sequences are not bigraphical");
         }
 

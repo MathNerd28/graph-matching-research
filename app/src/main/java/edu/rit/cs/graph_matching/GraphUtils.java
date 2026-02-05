@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 public final class GraphUtils {
     private GraphUtils() {}
@@ -75,15 +75,13 @@ public final class GraphUtils {
      */
     public static int[] generateRegularDegreeSequence(int numVertices, int degree) {
         int[] degrees = new int[numVertices];
-        for (int i = 0; i < numVertices; i++) {
-            degrees[i] = degree;
-        }
+        Arrays.fill(degrees, degree);
         return degrees;
     }
 
     /**
-     * Produces a uniform distribution of degrees over the
-     * range: [averageDegree - variation, averageDegree + variation]
+     * Produces a uniform distribution of degrees over the range: [averageDegree
+     * - variation, averageDegree + variation]
      *
      * @param numVertices
      *     the number of vertices
@@ -93,7 +91,8 @@ public final class GraphUtils {
      *     the variation from the average degree
      * @return the degree sequence
      */
-    public static int[] generateUniformDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
+    public static int[] generateUniformDegreeSequence(int numVertices, int averageDegree,
+                                                      int variation, RandomGenerator random) {
         int[] degrees = new int[numVertices];
         int sum = 0;
         for (int i = 0; i < numVertices; i++) {
@@ -117,6 +116,26 @@ public final class GraphUtils {
         }
 
         return degrees;
+    }
+
+    /**
+     * Determine whether degree sequences for a bipartite graph is graphical,
+     * meaning that there exists at least one graph whose vertex degrees exactly
+     * match the sequence, using the Havel–Hakimi algorithm.
+     *
+     * @param leftDegrees
+     *     the left degree sequence
+     * @param rightDegrees
+     *     the right degree sequence
+     * @return false iff the degree sequences are not graphical
+     * @implNote This is a necessary condition for being bigraphical, but it is
+     *     not sufficient.
+     */
+    public static boolean isGraphical(int[] leftDegrees, int[] rightDegrees) {
+        int[] degrees = new int[leftDegrees.length + rightDegrees.length];
+        System.arraycopy(leftDegrees, 0, degrees, 0, leftDegrees.length);
+        System.arraycopy(rightDegrees, 0, degrees, leftDegrees.length, rightDegrees.length);
+        return isGraphical(degrees);
     }
 
     /**

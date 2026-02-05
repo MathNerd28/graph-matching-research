@@ -120,7 +120,7 @@ public record GraphFileData(String name,
     public static GraphFileData readFile(File file) throws IOException {
         try (ZipInputStream zip =
                 new ZipInputStream(new BufferedInputStream(new FileInputStream(file)));
-             DataInputStream in = new DataInputStream(zip)) {
+             DataInputStream in = new DataInputStream(new BufferedInputStream(zip))) {
             zip.getNextEntry();
 
             byte[] header = new byte[GraphFileData.HEADER.length];

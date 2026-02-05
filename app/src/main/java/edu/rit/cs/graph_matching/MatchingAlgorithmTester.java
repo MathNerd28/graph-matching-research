@@ -1,8 +1,6 @@
 package edu.rit.cs.graph_matching;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -17,16 +15,14 @@ import java.util.random.RandomGenerator;
 import edu.rit.cs.graph_matching.GraphStatistics.Stats;
 
 public class MatchingAlgorithmTester implements AutoCloseable {
-  private final MatchingAlgorithm algorithm;
-  private final Graph             inputGraph;
-  private final GraphStatistics   statistics;
+  private final MatchingAlgorithm     algorithm;
+  private final Graph                 inputGraph;
+  private final Consumer<DataPoint>[] callbacks;
+
+  private final ExecutorService executor;
+  private final GraphStatistics statistics;
 
   private int matchingSize;
-
-  private final List<DataPoint> data;
-  private final ExecutorService executor;
-
-  private final Consumer<DataPoint>[] callbacks;
 
   @SafeVarargs
   public MatchingAlgorithmTester(BiFunction<Graph, RandomGenerator, MatchingAlgorithm> supplier,
@@ -34,7 +30,6 @@ public class MatchingAlgorithmTester implements AutoCloseable {
                                  Consumer<DataPoint>... callbacks) {
     this.inputGraph = inputGraph;
     this.statistics = new GraphStatistics(inputGraph);
-    this.data = new ArrayList<>();
     this.executor = Executors.newSingleThreadExecutor();
     this.callbacks = callbacks.clone();
 
@@ -56,7 +51,8 @@ public class MatchingAlgorithmTester implements AutoCloseable {
       throw new IllegalStateException("Algorithm initialized with non-empty matching");
     }
 
-    data.add(new InitializationDataPoint(Duration.ofNanos(end - start), statistics.getSnapshot()));
+    runCallbacks(
+        new InitializationDataPoint(Duration.ofNanos(end - start), statistics.getSnapshot()));
   }
 
   private IterationResult iterationTask() {
@@ -73,16 +69,11 @@ public class MatchingAlgorithmTester implements AutoCloseable {
       IterationResult result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
       GraphStatistics.Stats stats = statistics.getSnapshot();
       this.matchingSize++;
-      // Set<Edge> matching = algorithm.getCurrentMatching();
 
-      if (result.pathLength() == 0) {
+      if (result.pathLength() == -1 || result.pathLength() % 2 == 0) {
         // augmentation failed
         return new FailureDataPoint(matchingSize, result.time(), stats);
       }
-
-      // if (!GraphUtils.isValidMatching(inputGraph, matching)) {
-      // return new InvalidDataPoint(result.time(), stats);
-      // }
 
       return new AugmentationDataPoint(matchingSize, result.pathLength(), result.time(), stats);
     } catch (TimeoutException e) {
@@ -95,8 +86,8 @@ public class MatchingAlgorithmTester implements AutoCloseable {
     }
   }
 
-  public void run(int targetSize, int maxRetries, Duration iterationTimeout,
-                  Duration globalTimeout) {
+  public int run(int targetSize, int maxRetries, Duration iterationTimeout,
+                 Duration globalTimeout) {
     long start = System.currentTimeMillis();
     int retries = 0;
     while (this.matchingSize < targetSize
@@ -104,9 +95,7 @@ public class MatchingAlgorithmTester implements AutoCloseable {
         && (System.currentTimeMillis() - start) < globalTimeout.toMillis()) {
       DataPoint dataPoint = runIteration(iterationTimeout);
 
-      for (Consumer<DataPoint> callback : callbacks) {
-        callback.accept(dataPoint);
-      }
+      runCallbacks(dataPoint);
 
       if (dataPoint instanceof AugmentationDataPoint) {
         // successful iteration
@@ -115,12 +104,24 @@ public class MatchingAlgorithmTester implements AutoCloseable {
         // failure, but potentially recoverable
         retries++;
         if (retries >= maxRetries) {
-          return;
+          break;
         }
       } else {
         // failure, and not recoverable
-        return;
+        break;
       }
+    }
+
+    if (GraphUtils.isValidMatching(inputGraph, algorithm.getCurrentMatching())) {
+      return matchingSize;
+    } else {
+      return -1;
+    }
+  }
+
+  private void runCallbacks(DataPoint dataPoint) {
+    for (Consumer<DataPoint> callback : callbacks) {
+      callback.accept(dataPoint);
     }
   }
 
@@ -151,10 +152,6 @@ public class MatchingAlgorithmTester implements AutoCloseable {
 
   public record FailureDataPoint(int matchingSize,
                                  Duration time,
-                                 Stats statsSnapshot)
-      implements DataPoint {}
-
-  public record InvalidDataPoint(Duration time,
                                  Stats statsSnapshot)
       implements DataPoint {}
 
