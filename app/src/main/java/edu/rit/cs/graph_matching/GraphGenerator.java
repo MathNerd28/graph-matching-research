@@ -235,7 +235,7 @@ public final class GraphGenerator {
             }
         }
 
-        int rightIndex = 0;
+        long rightIndex = 0;
         for (int i = 0; i < rightVerticesCount; i++) {
             for (int d = 0; d < rightDegrees[i]; d++) {
                 rightStub.set(rightIndex, i + leftVerticesCount);
