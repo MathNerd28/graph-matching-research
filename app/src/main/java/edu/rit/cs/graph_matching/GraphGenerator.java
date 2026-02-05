@@ -2,6 +2,7 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.random.RandomGenerator;
 
 public final class GraphGenerator {
@@ -97,9 +98,8 @@ public final class GraphGenerator {
      *     random number generator
      * @return the same graph instance
      */
-    public static MutableGraph generateGraph(MutableGraph graph, int[] degrees,
-                                             RandomGenerator random) {
-        int totalStubs = 0;
+    public static MutableGraph generateGraph(MutableGraph graph, int[] degrees, Random random) {
+        long totalStubs = 0;
         for (int d : degrees) {
             totalStubs += d;
         }
@@ -108,11 +108,11 @@ public final class GraphGenerator {
             throw new IllegalArgumentException("The given degree sequence is not graphical");
         }
 
-        int[] edgeConnections = new int[totalStubs];
-        int index = 0;
+        LongIntArray edgeConnections = new LongIntArray(totalStubs);
+        long index = 0;
         for (int v = 0; v < graph.size(); v++) {
             for (int d = 0; d < degrees[v]; d++) {
-                edgeConnections[index] = v;
+                edgeConnections.set(index, v);
                 index++;
             }
         }
@@ -124,9 +124,9 @@ public final class GraphGenerator {
             conflictEdges.clear();
             shuffle(edgeConnections, random);
 
-            for (int i = 0; i < edgeConnections.length; i += 2) {
-                int v1 = edgeConnections[i];
-                int v2 = edgeConnections[i + 1];
+            for (long i = 0; i < edgeConnections.getSize(); i += 2) {
+                int v1 = edgeConnections.get(i);
+                int v2 = edgeConnections.get(i + 1);
                 if (v1 != v2 && !graph.hasEdge(v1, v2)) {
                     // no conflict
                     graph.addEdge(v1, v2);
@@ -164,11 +164,11 @@ public final class GraphGenerator {
             }
 
             // reshuffle conflicts
-            edgeConnections = new int[conflictEdges.size() * 2];
+            edgeConnections = new LongIntArray(conflictEdges.size() * 2);
             for (int i = 0; i < conflictEdges.size(); i++) {
                 Edge e = conflictEdges.get(i);
-                edgeConnections[2 * i] = e.vertex1();
-                edgeConnections[2 * i + 1] = e.vertex2();
+                edgeConnections.set(2 * i, e.vertex1());
+                edgeConnections.set(2 * i + 1, e.vertex2());
             }
         } while (!conflictEdges.isEmpty());
 
@@ -201,13 +201,13 @@ public final class GraphGenerator {
             throw new IllegalArgumentException(
                     "Degree sequence size does not add up to the graph size");
         }
-
-        int leftStubTotal = 0;
+        
+        long leftStubTotal = 0;
         for (int i = 0; i < leftVerticesCount; i++) {
             leftStubTotal += leftDegrees[i];
         }
 
-        int rightStubTotal = 0;
+        long rightStubTotal = 0;
         for (int i = 0; i < rightVerticesCount; i++) {
             rightStubTotal += rightDegrees[i];
         }
@@ -224,21 +224,21 @@ public final class GraphGenerator {
             throw new IllegalArgumentException("The given degree sequences are not bigraphical");
         }
 
-        int[] leftStub = new int[leftStubTotal];
-        int[] rightStub = new int[rightStubTotal];
+        LongIntArray leftStub = new LongIntArray(leftStubTotal);
+        LongIntArray rightStub = new LongIntArray(rightStubTotal);
 
-        int leftIndex = 0;
+        long leftIndex = 0;
         for (int i = 0; i < leftVerticesCount; i++) {
             for (int d = 0; d < leftDegrees[i]; d++) {
-                leftStub[leftIndex] = i;
+                leftStub.set(leftIndex , i);
                 leftIndex++;
             }
         }
 
-        int rightIndex = 0;
+        long rightIndex = 0;
         for (int i = 0; i < rightVerticesCount; i++) {
             for (int d = 0; d < rightDegrees[i]; d++) {
-                rightStub[rightIndex] = i + leftVerticesCount;
+                rightStub.set(rightIndex, i + leftVerticesCount);
                 rightIndex++;
             }
         }
@@ -251,9 +251,9 @@ public final class GraphGenerator {
             shuffle(leftStub, random);
             shuffle(rightStub, random);
 
-            for (int i = 0; i < leftStub.length; i++) {
-                int v1 = leftStub[i];
-                int v2 = rightStub[i];
+            for (long i = 0; i < leftStub.getSize(); i++) {
+                int v1 = leftStub.get(i);
+                int v2 = rightStub.get(i);
                 if (!graph.hasEdge(v1, v2)) {
                     // no conflict
                     graph.addEdge(v1, v2);
@@ -286,12 +286,12 @@ public final class GraphGenerator {
             }
 
             // setup remaining stubs to reshuffle
-            leftStub = new int[conflictEdges.size()];
-            rightStub = new int[conflictEdges.size()];
+            leftStub = new LongIntArray(conflictEdges.size());
+            rightStub = new LongIntArray(conflictEdges.size());
             for (int i = 0; i < conflictEdges.size(); i++) {
                 Edge e = conflictEdges.get(i);
-                leftStub[i] = e.vertex1();
-                rightStub[i] = e.vertex2();
+                leftStub.set(i, e.vertex1());
+                rightStub.set(i, e.vertex2());
             }
         } while (!conflictEdges.isEmpty());
 
@@ -306,12 +306,50 @@ public final class GraphGenerator {
      * @param random
      *     the random generator to use
      */
-    private static void shuffle(int[] array, RandomGenerator random) {
-        for (int i = array.length - 1; i > 0; i--) {
-            int i2 = random.nextInt(i + 1);
-            int tmp = array[i];
-            array[i] = array[i2];
-            array[i2] = tmp;
+    private static void shuffle(LongIntArray array, RandomGenerator random) {
+        for (long i = array.getSize() - 1; i > 0; i--) {
+            long i2 = random.nextLong(i + 1);
+            int tmp = array.get(i);
+            array.set(i, array.get(i2));
+            array.set(i2, tmp);
+        }
+    }
+
+    static class LongIntArray {
+        private static final int BLOCK_SIZE = 1 << 30;
+        private final int[][] array;
+        private final long size;
+
+        LongIntArray(long size) {
+            this.size = size;
+            long numBlocks = (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+            array = new int[(int) numBlocks][];
+
+            long remaining = size;
+            for (int i = 0; i < numBlocks; i++) {
+                if (remaining < BLOCK_SIZE) {
+                    array[i] = new int[(int) remaining];
+                    break;
+                }
+                array[i] = new int[BLOCK_SIZE];
+                remaining -= BLOCK_SIZE;
+            }
+        }
+
+        public long getSize() {
+            return size;
+        }
+
+        public int get(long index) {
+            int blockIndex = (int) (index / BLOCK_SIZE);
+            int withinBlockIndex = (int) (index % BLOCK_SIZE);
+            return array[blockIndex][withinBlockIndex];
+        }
+
+        public void set(long index, int value) {
+            int blockIndex = (int) (index / BLOCK_SIZE);
+            int withinBlockIndex = (int) (index % BLOCK_SIZE);
+            array[blockIndex][withinBlockIndex] = value;
         }
     }
 }
