@@ -260,15 +260,15 @@ public final class GraphGenerator {
                     continue;
                 }
 
-                int w1 = random.nextInt(graph.size());
-                if (w1 == v1 || w1 == v2) {
+                int w1 = random.nextInt(leftVerticesCount);
+                if (w1 == v1) {
                     // bad generation; conflict
                     conflictEdges.add(new Edge(v1, v2));
                     continue;
                 }
 
                 int w2 = graph.getRandomNeighbor(w1, random);
-                if (w2 == -1 || w2 == v1 || w2 == v2) {
+                if (w2 == -1 || w2 == v2) {
                     // bad generation; conflict
                     conflictEdges.add(new Edge(v1, v2));
                     continue;
