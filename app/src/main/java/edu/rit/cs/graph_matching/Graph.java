@@ -19,53 +19,54 @@ import java.util.random.RandomGenerator;
  * Vertices are numbered in the range [0, n).
  */
 public interface Graph {
-  /**
-   * Gets the total number of vertices present in this graph. This method must
-   * run in O(1) time.
-   *
-   * @return the number of vertices in this graph
-   */
-  int size();
+    /**
+     * Gets the total number of vertices present in this graph. This method must
+     * run in O(1) time.
+     *
+     * @return the number of vertices in this graph
+     */
+    int size();
 
-  /**
-   * Checks whether an edge exists between two vertices. Vertex order does not
-   * matter.
-   *
-   * @param vertex1
-   *   the first vertex
-   * @param vertex2
-   *   the second vertex
-   * @return true iff an undirected edge exists between these two vertices
-   */
-  boolean hasEdge(int vertex1, int vertex2);
+    /**
+     * Checks whether an edge exists between two vertices. Vertex order does not
+     * matter.
+     *
+     * @param vertex1
+     *     the first vertex
+     * @param vertex2
+     *     the second vertex
+     * @return true iff an undirected edge exists between these two vertices
+     */
+    boolean hasEdge(int vertex1, int vertex2);
 
-  /**
-   * Get the number of edges connected to a vertex that are present in this
-   * graph.
-   *
-   * @param vertex
-   *   the vertex
-   * @return the degree of {@code vertex}
-   */
-  int getDegree(int vertex);
+    /**
+     * Get the number of edges connected to a vertex that are present in this
+     * graph.
+     *
+     * @param vertex
+     *     the vertex
+     * @return the degree of {@code vertex}
+     */
+    int getDegree(int vertex);
 
-  /**
-   * Gets a random neighbor of a vertex, or indicates that no neighbors exist.
-   *
-   * @param vertex
-   *   the vertex
-   * @param random
-   *   the random number generator to use
-   * @return a random neighbor of the vertex, or -1 if no such neighbors exist.
-   */
-  int getRandomNeighbor(int vertex, RandomGenerator random);
+    /**
+     * Gets a random neighbor of a vertex, or indicates that no neighbors exist.
+     *
+     * @param vertex
+     *     the vertex
+     * @param random
+     *     the random number generator to use
+     * @return a random neighbor of the vertex, or -1 if no such neighbors
+     *     exist.
+     */
+    int getRandomNeighbor(int vertex, RandomGenerator random);
 
-  /**
-   * Get all vertices that share an edge with a vertex.
-   *
-   * @param vertex
-   *   the vertex
-   * @return all neighbors of the vertex
-   */
-  Set<Integer> getAllNeighbors(int vertex);
+    /**
+     * Get all vertices that share an edge with a vertex.
+     *
+     * @param vertex
+     *     the vertex
+     * @return all neighbors of the vertex
+     */
+    Set<Integer> getAllNeighbors(int vertex);
 }
