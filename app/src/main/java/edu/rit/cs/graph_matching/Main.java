@@ -29,8 +29,12 @@ public class Main {
              mixinStandardHelpOptions = true)
     static class GenerateGraph {
         static class GenerationParams {
-            @Parameters(description = "Output graph files", arity = "1..*")
-            private File[] outputFiles;
+            @Option(names = { "-f", "--file-prefix" }, required = true,
+                    description = "Prefix for the graph filenames")
+            private String filePrefix;
+
+            @Option(names = { "-o", "--output-dir" }, description = "Output data directory")
+            private File outputDir = new File(System.getProperty("user.dir"));
 
             @Option(names = { "--name" }, description = "Name of the graph")
             private String graphName = null;
@@ -42,6 +46,10 @@ public class Main {
             @Option(names = { "--verify" },
                     description = "Verify that a degree sequence is possible before generating.")
             private boolean verify = false;
+
+            @Option(names = { "-c", "--count" }, required = true,
+                    description = "The number of graphs to generate")
+            private int graphCount;
         }
 
         @Command(name = "random", mixinStandardHelpOptions = true,
@@ -58,9 +66,8 @@ public class Main {
                 return CommandLine.ExitCode.USAGE;
             }
 
-            for (int i = 0; i < params.outputFiles.length; i++) {
-                System.out.printf("Generating random graph %d of %d...%n", i + 1,
-                        params.outputFiles.length);
+            for (int i = 1; i <= params.graphCount; i++) {
+                System.out.printf("Generating random graph %d of %d...%n", i, params.graphCount);
                 Graph graph = GraphGenerator.generateRandomGraph(
                         new SparseGraphImpl(params.vertices), edgeProbability, new Random());
 
@@ -71,9 +78,10 @@ public class Main {
                     name = String.format("Random-%d-%08x", params.vertices, graph.hashCode());
                 }
 
-                File file = params.outputFiles[i];
-                System.out.printf("Saving random graph %d of %d to %s...%n", i + 1,
-                        params.outputFiles.length, file.getName());
+                String filename = String.format("%s%d.graph", params.filePrefix, i);
+                System.out.printf("Saving random graph %d of %d to %s...%n", i, params.graphCount,
+                        filename);
+                File file = new File(params.outputDir, filename);
                 GraphFileData data = new GraphFileData(name, description, graph);
                 data.writeToFile(file);
             }
@@ -94,9 +102,8 @@ public class Main {
                 throw new IllegalArgumentException("degree must be less than vertices");
             }
 
-            for (int i = 0; i < params.outputFiles.length; i++) {
-                System.out.printf("Generating regular graph %d of %d...%n", i + 1,
-                        params.outputFiles.length);
+            for (int i = 1; i <= params.graphCount; i++) {
+                System.out.printf("Generating regular graph %d of %d...%n", i, params.graphCount);
 
                 int[] degrees = GraphUtils.generateRegularDegreeSequence(params.vertices, degree);
                 if (params.verify && !GraphUtils.isGraphical(degrees)) {
@@ -111,9 +118,10 @@ public class Main {
                     name = String.format("Regular-%d-%08x", params.vertices, graph.hashCode());
                 }
 
-                File file = params.outputFiles[i];
-                System.out.printf("Saving regular graph %d of %d to %s...%n", i + 1,
-                        params.outputFiles.length, file.getName());
+                String filename = String.format("%s%d.graph", params.filePrefix, i);
+                System.out.printf("Saving regular graph %d of %d to %s...%n", i, params.graphCount,
+                        filename);
+                File file = new File(params.outputDir, filename);
                 GraphFileData data = new GraphFileData(name, description, graph);
                 data.writeToFile(file);
             }
@@ -135,9 +143,9 @@ public class Main {
                 throw new IllegalArgumentException("degree must be less than vertices");
             }
 
-            for (int i = 0; i < params.outputFiles.length; i++) {
-                System.out.printf("Generating bipartite-regular graph %d of %d...%n", i + 1,
-                        params.outputFiles.length);
+            for (int i = 1; i <= params.graphCount; i++) {
+                System.out.printf("Generating bipartite-regular graph %d of %d...%n", i,
+                        params.graphCount);
 
                 int[] halfDegrees =
                         GraphUtils.generateRegularDegreeSequence(params.vertices / 2, degree);
@@ -155,9 +163,10 @@ public class Main {
                     name = String.format("Bipartite-%d-%08x", params.vertices, graph.hashCode());
                 }
 
-                File file = params.outputFiles[i];
-                System.out.printf("Saving bipartite-regular graph %d of %d to %s...%n", i + 1,
-                        params.outputFiles.length, file.getName());
+                String filename = String.format("%s%d.graph", params.filePrefix, i);
+                System.out.printf("Saving bipartite-regular graph %d of %d to %s...%n", i,
+                        params.graphCount, filename);
+                File file = new File(params.outputDir, filename);
                 GraphFileData data = new GraphFileData(name, description, graph);
                 data.writeToFile(file);
             }
