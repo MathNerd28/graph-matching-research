@@ -3,7 +3,7 @@ package edu.rit.cs.graph_matching;
 import java.util.Set;
 
 /**
- * A common interface for running and testing matching algorithms. Algorithms
+ * A common interface for running and testing matching algorithms.
  */
 public interface MatchingAlgorithm {
   /**

@@ -129,10 +129,10 @@ public class Main {
             return CommandLine.ExitCode.OK;
         }
 
-        @Command(name = "bipartite", mixinStandardHelpOptions = true,
-                 description = "Random-Bipartite-Regular graph: every vertex is connected "
+        @Command(name = "biregular", mixinStandardHelpOptions = true,
+                 description = "Random-Biregular graph: every vertex is connected "
                          + "to d random vertices of the opposite color")
-        public int generateBipartiteGraph(
+        public int generateBiregularGraph(
         // @formatter:off
             @Mixin GenerationParams params,
             @Option(names = { "-d", "--degree" }, required = true, description = "Degree of each vertex")
