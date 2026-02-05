@@ -101,7 +101,6 @@ public class HopcroftKarpAlgorithm {
                     if (level[matchingNode] == -1) {
                         level[matchingNode] = level[u] + 1;
                         queue.offer(matchingNode);
-                        shortestAugmentingPathLength = level[matchingNode];
                     }
                 } else {
                     shortestAugmentingPathLength = level[u] + 1;
