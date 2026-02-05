@@ -216,6 +216,14 @@ public final class GraphGenerator {
             throw new IllegalArgumentException("The given degree sequences are not bigraphical");
         }
 
+        int[] combinedDegrees = new int[leftVerticesCount + rightVerticesCount];
+        System.arraycopy(leftDegrees, 0, combinedDegrees, 0, leftVerticesCount);
+        System.arraycopy(rightDegrees, 0, combinedDegrees, leftVerticesCount, rightVerticesCount);
+        if (!GraphUtils.isGraphical(combinedDegrees)) {
+            // Havel-Hakimi is necessary but not sufficient for bipartite graphs
+            throw new IllegalArgumentException("The given degree sequences are not bigraphical");
+        }
+
         LongIntArray leftStub = new LongIntArray(leftStubTotal);
         LongIntArray rightStub = new LongIntArray(rightStubTotal);
 
