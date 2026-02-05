@@ -230,7 +230,6 @@ public class GraphUtils {
         public static BipartiteColor[] colorBipartite(Graph graph) {
             int n = graph.size();
             BipartiteColor[] colors = new BipartiteColor[n];
-            Arrays.fill(colors, null); 
             
             // Transverse all connected components with a loop
             for (int i = 0; i < n; i++) {
