@@ -2,6 +2,7 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
@@ -115,5 +116,29 @@ public class SparseGraphImpl implements MutableGraph {
     if (vertex1 == vertex2) {
       throw new UnsupportedOperationException("Self-looping edges are not supported");
     }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof Graph g)) {
+      return false;
+    }
+
+    if (size() != g.size()) {
+      return false;
+    }
+
+    for (int v = 0; v < adjacencyList.size(); v++) {
+      if (!getAllNeighbors(v).equals(g.getAllNeighbors(v))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(adjacencyList);
   }
 }

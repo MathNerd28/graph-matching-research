@@ -5,14 +5,12 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.Collection;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
-public class GraphUtils {
+public final class GraphUtils {
     private GraphUtils() {}
 
     /**
@@ -25,16 +23,16 @@ public class GraphUtils {
      *     the set of edges
      * @return true iff the edges are considered matching
      */
-    public static boolean isValidMatching(Set<Edge> edges) {
-        Set<Integer> vertices = new HashSet<>();
+    public static boolean isValidMatching(Graph graph, Collection<Edge> edges) {
+        IntHashSet vertices = new IntHashSet(edges.size() * 2);
         for (Edge edge : edges) {
-            int v1 = edge.vertex1();
-            int v2 = edge.vertex2();
-            if (vertices.contains(v1) || vertices.contains(v2)) {
+            if (!graph.hasEdge(edge)) {
                 return false;
             }
-            vertices.add(v1);
-            vertices.add(v2);
+
+            if (!vertices.add(edge.vertex1()) || !vertices.add(edge.vertex2())) {
+                return false;
+            }
         }
         return true;
     }
@@ -80,16 +78,14 @@ public class GraphUtils {
      */
     public static int[] generateRegularDegreeSequence(int numVertices, int degree) {
         int[] degrees = new int[numVertices];
-        for (int i = 0; i < numVertices; i++) {
-            degrees[i] = degree;
-        }
+        Arrays.fill(degrees, degree);
         return degrees;
     }
 
     /**
-     * Produces a uniform distribution of degrees over the 
-     * range: [averageDegree - variation, averageDegree + variation]
-     * 
+     * Produces a uniform distribution of degrees over the range: [averageDegree
+     * - variation, averageDegree + variation]
+     *
      * @param numVertices
      *     the number of vertices
      * @param averageDegree
@@ -98,7 +94,8 @@ public class GraphUtils {
      *     the variation from the average degree
      * @return the degree sequence
      */
-    public static int[] generateUniformDegreeSequence(int numVertices, int averageDegree, int variation, Random random) {
+    public static int[] generateUniformDegreeSequence(int numVertices, int averageDegree,
+                                                      int variation, RandomGenerator random) {
         int[] degrees = new int[numVertices];
         int sum = 0;
         for (int i = 0; i < numVertices; i++) {
@@ -122,6 +119,26 @@ public class GraphUtils {
         }
 
         return degrees;
+    }
+
+    /**
+     * Determine whether degree sequences for a bipartite graph is graphical,
+     * meaning that there exists at least one graph whose vertex degrees exactly
+     * match the sequence, using the Havel–Hakimi algorithm.
+     *
+     * @param leftDegrees
+     *     the left degree sequence
+     * @param rightDegrees
+     *     the right degree sequence
+     * @return false iff the degree sequences are not graphical
+     * @implNote This is a necessary condition for being bigraphical, but it is
+     *     not sufficient.
+     */
+    public static boolean isGraphical(int[] leftDegrees, int[] rightDegrees) {
+        int[] degrees = new int[leftDegrees.length + rightDegrees.length];
+        System.arraycopy(leftDegrees, 0, degrees, 0, leftDegrees.length);
+        System.arraycopy(rightDegrees, 0, degrees, leftDegrees.length, rightDegrees.length);
+        return isGraphical(degrees);
     }
 
     /**
@@ -220,7 +237,7 @@ public class GraphUtils {
             RIGHT;
         }
         /**
-         * An algorithm to perform 2-coloring on a graph to identify its 
+         * An algorithm to perform 2-coloring on a graph to identify its
          * bipartite partitions.
          * Ported from the C++ code on this page: https://www.scipublications.com/journal/index.php/ijmebac/article/view/422
          * @param graph The input graph to color.
@@ -230,20 +247,20 @@ public class GraphUtils {
         public static BipartiteColor[] colorBipartite(Graph graph) {
             int n = graph.size();
             BipartiteColor[] colors = new BipartiteColor[n];
-            
+
             // Transverse all connected components with a loop
             for (int i = 0; i < n; i++) {
                 if (colors[i] == null) {
                     bfsColor(graph, i, colors);
                 }
             }
-            
+
             return colors;
         }
 
         private static void bfsColor(Graph graph, int startVertex, BipartiteColor[] colors) {
             Queue<Integer> queue = new ArrayDeque<>();
-            
+
             // Initialize the first node in this component with color LEFT
             colors[startVertex] = BipartiteColor.LEFT;
             queue.add(startVertex);
@@ -266,5 +283,5 @@ public class GraphUtils {
                 }
             }
         }
-        
+
 }

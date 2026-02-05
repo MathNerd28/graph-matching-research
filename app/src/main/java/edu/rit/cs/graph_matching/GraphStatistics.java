@@ -81,37 +81,32 @@ public class GraphStatistics implements Graph {
   }
 
   /**
-   * @return the number of times {@link #getDegree(int)} has been called
+   * Take a snapshot of the current statistics.
+   *
+   * @return a statistics snapshot
    */
-  public int getDegreeCheckCount() {
-    return degreeCheckCount;
+  public Stats getSnapshot() {
+    return new Stats(sizeCheckCount, edgeCheckCount, degreeCheckCount, randomNeighborCount,
+        allNeighborsCount);
   }
 
   /**
-   * @return the number of times {@link #size()} has been called
+   * Reset all statistics counters to 0.
    */
-  public int getSizeCheckCount() {
-    return sizeCheckCount;
+  public void clear() {
+    sizeCheckCount = 0;
+    edgeCheckCount = 0;
+    degreeCheckCount = 0;
+    randomNeighborCount = 0;
+    allNeighborsCount = 0;
   }
 
   /**
-   * @return the number of times {@link #hasEdge(int, int)} has been called
+   * A snapshot of the statistics collected by GraphStatistics.
    */
-  public int getEdgeCheckCount() {
-    return edgeCheckCount;
-  }
-
-  /**
-   * @return the number of times {@link #getRandomNeighbor(int)} has been called
-   */
-  public int getRandomNeighborCount() {
-    return randomNeighborCount;
-  }
-
-  /**
-   * @return the number of times {@link #getAllNeighbors(int)} has been called
-   */
-  public int getAllNeighborsCount() {
-    return allNeighborsCount;
-  }
+  public record Stats(int sizeCheckCount,
+                      int edgeCheckCount,
+                      int degreeCheckCount,
+                      int randomNeighborCount,
+                      int allNeighborsCount) {}
 }

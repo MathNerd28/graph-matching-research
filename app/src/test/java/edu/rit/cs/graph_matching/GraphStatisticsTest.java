@@ -42,7 +42,7 @@ class GraphStatisticsTest {
 
     MutableGraph g = new DenseGraphImpl(5);
     for (Edge e : edges) {
-      g.addEdge(e.vertex1(), e.vertex2());
+      g.addEdge(e);
     }
 
     GraphStatistics stats = new GraphStatistics(g);
@@ -56,8 +56,9 @@ class GraphStatisticsTest {
     assertEquals(Set.of(1, 2, 3), stats.getAllNeighbors(0));
     assertEquals(Set.of(), stats.getAllNeighbors(4));
 
-    assertEquals(5, stats.getEdgeCheckCount());
-    assertEquals(10, stats.getRandomNeighborCount());
-    assertEquals(2, stats.getAllNeighborsCount());
+    GraphStatistics.Stats snapshot = stats.getSnapshot();
+    assertEquals(5, snapshot.edgeCheckCount());
+    assertEquals(10, snapshot.randomNeighborCount());
+    assertEquals(2, snapshot.allNeighborsCount());
   }
 }

@@ -32,7 +32,7 @@ class HopcroftKarpAlgorithmTest {
         Set<Edge> matching = algorithm.getMaximumMatching();
         assertEquals(vertices / 2, matching.size(),
                 "Regular bipartite graphs should have perfect matchings");
-        assertEquals(GraphUtils.isValidMatching(matching), true,
+        assertEquals(GraphUtils.isValidMatching(g, matching), true,
                 "Matching should be valid");
     }
 
