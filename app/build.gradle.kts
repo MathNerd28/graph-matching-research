@@ -8,6 +8,9 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+
+    // Build a fat JAR with all dependencies included
+    id("com.gradleup.shadow") version "9.0.1"
 }
 
 repositories {
@@ -16,6 +19,10 @@ repositories {
 }
 
 dependencies {
+    // CLI arg-parsing library
+    implementation("info.picocli:picocli:4.7.7")
+    annotationProcessor("info.picocli:picocli-codegen:4.7.7")
+
     // Use JUnit Jupiter for testing.
     testImplementation("org.junit.jupiter:junit-jupiter:5.14.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

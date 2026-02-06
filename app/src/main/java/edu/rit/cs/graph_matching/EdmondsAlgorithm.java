@@ -12,7 +12,7 @@ import java.util.Set;
  * https://rosettacode.org/wiki/Blossom_algorithm#Java. Added documentation, and
  * slightly rewrote some parts for performance and readability.
  */
-public class EdmondsAlgorithm {
+public class EdmondsAlgorithm implements MatchingAlgorithm {
     /** The input graph */
     private final Graph graph;
 
@@ -31,6 +31,9 @@ public class EdmondsAlgorithm {
      */
     private final int[] bases;
 
+    /** The next root to search */
+    private int nextRoot = 0;
+
     /**
      * Create a blossom matching solver for the given graph.
      *
@@ -43,6 +46,8 @@ public class EdmondsAlgorithm {
         this.matches = new int[graph.size()];
         this.parents = new int[graph.size()];
         this.bases = new int[graph.size()];
+
+        Arrays.fill(matches, -1);
     }
 
     /**
@@ -131,9 +136,9 @@ public class EdmondsAlgorithm {
      *
      * @param root
      *     the unmatched root vertex
-     * @return true if an augmenting path was found
+     * @return the length of the augmenting path, or 0 if none was found
      */
-    private boolean findAugmentingPath(int root) {
+    private int findAugmentingPath(int root) {
         Arrays.fill(parents, -1);
 
         // Initially, each vertex is its own blossom base
@@ -147,7 +152,7 @@ public class EdmondsAlgorithm {
         bfsQueue.add(root);
         enqueued.add(root);
 
-        while (!bfsQueue.isEmpty()) {
+        while (!bfsQueue.isEmpty() && !Thread.interrupted()) {
             int vertex = bfsQueue.poll();
 
             for (int neighbor : graph.getAllNeighbors(vertex)) {
@@ -183,8 +188,7 @@ public class EdmondsAlgorithm {
 
                     // Found an augmenting path
                     if (matches[neighbor] < 0) {
-                        augmentMatching(neighbor);
-                        return true;
+                        return augmentMatching(neighbor);
                     }
 
                     // Continue BFS from the matched partner
@@ -196,7 +200,7 @@ public class EdmondsAlgorithm {
                 }
             }
         }
-        return false;
+        return -1;
     }
 
     /**
@@ -205,10 +209,12 @@ public class EdmondsAlgorithm {
      * @param freeVertex
      *     the initial vertex in the augmenting path
      */
-    private void augmentMatching(int freeVertex) {
+    private int augmentMatching(int freeVertex) {
+        int length = -1;
         int current = freeVertex;
 
         while (current >= 0) {
+            length += 2;
             int previous = parents[current];
             int next = (previous >= 0) ? matches[previous] : -1;
 
@@ -219,6 +225,8 @@ public class EdmondsAlgorithm {
 
             current = next;
         }
+
+        return length;
     }
 
     /**
@@ -227,17 +235,38 @@ public class EdmondsAlgorithm {
      * @return the edges in the maximum matching
      */
     public Set<Edge> computeMaximumMatching() {
-        // Initially, all vertices are unmatched
-        Arrays.fill(matches, -1);
-
         // Compute matching by repeatedly augmenting
-        for (int v = 0; v < graph.size(); v++) {
-            if (matches[v] < 0) {
-                findAugmentingPath(v);
+        for (; nextRoot < graph.size(); nextRoot++) {
+            if (matches[nextRoot] < 0) {
+                findAugmentingPath(nextRoot);
             }
         }
 
-        // Build results
+        return getCurrentMatching();
+    }
+
+    @Override
+    public int augment() {
+        for (; nextRoot < graph.size(); nextRoot++) {
+            if (matches[nextRoot] < 0) {
+                int result = findAugmentingPath(nextRoot);
+                if (result != -1) {
+                    nextRoot++;
+                    return result;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    @Override
+    public boolean isFinished() {
+        return nextRoot >= graph.size();
+    }
+
+    @Override
+    public Set<Edge> getCurrentMatching() {
         Set<Edge> matching = new LinkedHashSet<>();
         for (int v = 0; v < graph.size(); v++) {
             if (matches[v] >= 0) {

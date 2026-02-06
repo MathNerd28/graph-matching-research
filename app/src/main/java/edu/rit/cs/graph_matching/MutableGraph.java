@@ -16,6 +16,16 @@ public interface MutableGraph extends Graph {
     void addEdge(int vertex1, int vertex2);
 
     /**
+     * Adds an edge to this graph, if it doesn't already exist.
+     *
+     * @param edge
+     *     the edge to add
+     */
+    default void addEdge(Edge edge) {
+        addEdge(edge.vertex1(), edge.vertex2());
+    }
+
+    /**
      * Removes an edge from this graph, if it exists.
      *
      * @param vertex1
@@ -24,6 +34,16 @@ public interface MutableGraph extends Graph {
      *     the second vertex in the edge
      */
     void removeEdge(int vertex1, int vertex2);
+
+    /**
+     * Removes an edge from this graph, if it exists.
+     *
+     * @param edge
+     *     the edge to remove
+     */
+    default void removeEdge(Edge edge) {
+        removeEdge(edge.vertex1(), edge.vertex2());
+    }
 
     /**
      * Removes all existing edges from this graph, leaving it with zero edges

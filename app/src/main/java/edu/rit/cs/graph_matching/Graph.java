@@ -39,6 +39,16 @@ public interface Graph {
      */
     boolean hasEdge(int vertex1, int vertex2);
 
+    /*
+     * Checks whether an edge exists between two vertices. Vertex order does not
+     * matter.
+     * @param edge the edge to check
+     * @return true iff the undirected edge exists
+     */
+    default boolean hasEdge(Edge edge) {
+        return hasEdge(edge.vertex1(), edge.vertex2());
+    }
+
     /**
      * Get the number of edges connected to a vertex that are present in this
      * graph.

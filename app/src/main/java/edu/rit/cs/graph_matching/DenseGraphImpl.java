@@ -77,4 +77,16 @@ public class DenseGraphImpl extends SparseGraphImpl {
         // int multiplication could overflow here, so we cast to long
         return (int) ((long) max * (max - 1) / 2 + min);
     }
+
+    // Explicit overrides to indicate that inheriting these is intentional
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }

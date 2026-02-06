@@ -86,7 +86,7 @@ class DenseGraphImplTest {
 
         MutableGraph g = new DenseGraphImpl(5);
         for (Edge e : edges) {
-            g.addEdge(e.vertex1(), e.vertex2());
+            g.addEdge(e);
         }
 
         // getRandomNeighbor is tested 5 times for consistency
