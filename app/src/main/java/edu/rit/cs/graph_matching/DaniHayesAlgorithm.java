@@ -238,8 +238,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         }
 
         // v0 = random element of N(h) \ M(h), i.e. a random neighbor of head
-        // except
-        // its match
+        // except its match
         int headMatch = getMatch(head);
         int v0;
         do {

@@ -82,9 +82,14 @@ public class HopcroftKarpAlgorithm {
     /**
      * Performs a depth-first search for an augmenting path starting at the
      * given vertex, guided by the layering produced by the Hopcroft–Karp BFS
-     * (level[]). REQUIRES: - level[] must be initialized by the BFS layering
-     * step. - graph.getAllNeighbors(vertex) should iterate neighbors in the
-     * opposite partition.
+     * (level[]).
+     * <p>
+     * REQUIRES:
+     * <ul>
+     * <li>level[] must be initialized by the BFS layering step.</li>
+     * <li>graph.getAllNeighbors(vertex) should iterate neighbors in the
+     * opposite partition.</li>
+     * </ul>
      *
      * @param vertex
      *     the vertex to start DFS from (typically in the left partition)
