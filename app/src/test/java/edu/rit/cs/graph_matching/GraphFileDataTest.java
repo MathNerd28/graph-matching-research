@@ -13,7 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class GraphFileDataTest {
-  @ParameterizedTest
+    @ParameterizedTest
   // @formatter:off
   @CsvSource({
     "10, 0.0",
@@ -23,18 +23,18 @@ class GraphFileDataTest {
     "10000, 0.1",
   })
   // @formatter:on
-  void testReadWriteGraph(int size, double edgeProb, @TempDir Path tmpDir) throws IOException {
-    Random rd = new Random(Objects.hash(size, edgeProb));
-    Graph graph = GraphGenerator.generateRandomGraph(new SparseGraphImpl(size), edgeProb, rd);
+    void testReadWriteGraph(int size, double edgeProb, @TempDir Path tmpDir) throws IOException {
+        Random rd = new Random(Objects.hash(size, edgeProb));
+        Graph graph = GraphGenerator.generateRandomGraph(new SparseGraphImpl(size), edgeProb, rd);
 
-    GraphFileData writeData =
-        new GraphFileData("testRandom", String.format("random n=%d p=%.2f", size, edgeProb), graph);
+        GraphFileData writeData = new GraphFileData("testRandom",
+                String.format("random n=%d p=%.2f", size, edgeProb), graph);
 
-    File file = tmpDir.resolve("test.graph")
-                      .toFile();
-    writeData.writeToFile(file);
+        File file = tmpDir.resolve("test.graph")
+                          .toFile();
+        writeData.writeToFile(file);
 
-    GraphFileData readData = GraphFileData.readFile(file);
-    assertEquals(writeData, readData);
-  }
+        GraphFileData readData = GraphFileData.readFile(file);
+        assertEquals(writeData, readData);
+    }
 }

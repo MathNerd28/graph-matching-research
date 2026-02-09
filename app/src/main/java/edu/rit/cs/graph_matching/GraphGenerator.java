@@ -218,7 +218,7 @@ public final class GraphGenerator {
         long leftIndex = 0;
         for (int i = 0; i < leftVerticesCount; i++) {
             for (int d = 0; d < leftDegrees[i]; d++) {
-                leftStub.set(leftIndex , i);
+                leftStub.set(leftIndex, i);
                 leftIndex++;
             }
         }
@@ -305,8 +305,8 @@ public final class GraphGenerator {
 
     static class LongIntArray {
         private static final int BLOCK_SIZE = 1 << 30;
-        private final int[][] array;
-        private final long size;
+        private final int[][]    array;
+        private final long       size;
 
         LongIntArray(long size) {
             this.size = size;

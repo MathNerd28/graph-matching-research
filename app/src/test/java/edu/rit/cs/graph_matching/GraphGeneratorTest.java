@@ -110,14 +110,16 @@ class GraphGeneratorTest {
 
         int actualEdges = 0;
         for (int i = 0; i < graph.size(); i++) {
-            actualEdges += graph.getAllNeighbors(i).size();
+            actualEdges += graph.getAllNeighbors(i)
+                                .size();
         }
         actualEdges /= 2;
 
         assertEquals(expectedEdges, actualEdges);
 
         for (int i = 0; i < vertices; i++) {
-            assertEquals(degreeSequence[i], graph.getAllNeighbors(i).size());
+            assertEquals(degreeSequence[i], graph.getAllNeighbors(i)
+                                                 .size());
         }
     }
 
@@ -128,7 +130,8 @@ class GraphGeneratorTest {
         int[] leftDegreeSequence = GraphUtils.generateRegularDegreeSequence(3, 2);
         int[] rightDegreeSequence = GraphUtils.generateRegularDegreeSequence(3, 2);
 
-        bipartiteGraph = GraphGenerator.generateBipartiteGraph(bipartiteGraph, leftDegreeSequence, rightDegreeSequence, random);
+        bipartiteGraph = GraphGenerator.generateBipartiteGraph(bipartiteGraph, leftDegreeSequence,
+                rightDegreeSequence, random);
 
         int expectedEdges = 0;
         for (int d : leftDegreeSequence) {
@@ -137,18 +140,21 @@ class GraphGeneratorTest {
 
         int actualEdges = 0;
         for (int i = 0; i < bipartiteGraph.size(); i++) {
-            actualEdges += bipartiteGraph.getAllNeighbors(i).size();
+            actualEdges += bipartiteGraph.getAllNeighbors(i)
+                                         .size();
         }
         actualEdges /= 2;
 
         assertEquals(expectedEdges, actualEdges);
 
         for (int i = 0; i < 3; i++) {
-            assertEquals(leftDegreeSequence[i], bipartiteGraph.getAllNeighbors(i).size());
+            assertEquals(leftDegreeSequence[i], bipartiteGraph.getAllNeighbors(i)
+                                                              .size());
         }
 
         for (int i = 3; i < 6; i++) {
-            assertEquals(rightDegreeSequence[i - 3], bipartiteGraph.getAllNeighbors(i).size());
+            assertEquals(rightDegreeSequence[i - 3], bipartiteGraph.getAllNeighbors(i)
+                                                                   .size());
         }
     }
 }

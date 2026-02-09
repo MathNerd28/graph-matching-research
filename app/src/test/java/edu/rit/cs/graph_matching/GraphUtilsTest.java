@@ -88,31 +88,31 @@ class GraphUtilsTest {
 
     @Test
     void testAllZerosHavelHakimi() {
-        int[] degrees = {0, 0, 0, 0};
+        int[] degrees = { 0, 0, 0, 0 };
         assertTrue(GraphUtils.isGraphical(degrees), "All zeros is always graphical");
     }
 
     @Test
     void testSimpleGraphicalHavelHakimi() {
-        int[] degrees = {3, 3, 2, 2, 2};
+        int[] degrees = { 3, 3, 2, 2, 2 };
         assertTrue(GraphUtils.isGraphical(degrees), "Valid sequence should be graphical");
     }
 
     @Test
     void testNonGraphicalHavelHakimi() {
-        int[] degrees = {4, 3, 2, 1};
+        int[] degrees = { 4, 3, 2, 1 };
         assertFalse(GraphUtils.isGraphical(degrees), "Invalid sequence should not be graphical");
     }
 
     @Test
     void testNegativeDegreeHavelHakimi() {
-        int[] degrees = {3, -1, 2};
+        int[] degrees = { 3, -1, 2 };
         assertFalse(GraphUtils.isGraphical(degrees), "Negative degree sequence is invalid");
     }
 
     @Test
     void testTooLargeDegreeHavelHakimi() {
-        int[] degrees = {5, 1, 1, 1};
+        int[] degrees = { 5, 1, 1, 1 };
         assertFalse(GraphUtils.isGraphical(degrees), "Degree larger than n-1 is invalid");
     }
 }

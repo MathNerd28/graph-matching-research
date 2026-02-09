@@ -13,9 +13,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class DaniHayesAlgorithmTest {
-  /** Runs are seeded such that the generated graphs are always the same */
+    /** Runs are seeded such that the generated graphs are always the same */
 
-  @ParameterizedTest
+    @ParameterizedTest
   // @formatter:off
   @CsvSource({
     "10, 4",
@@ -29,28 +29,29 @@ class DaniHayesAlgorithmTest {
     "100000, 5",
   })
   // @formatter:on
-  void regularTest(int size, int degree) {
-    Random random = new Random(Objects.hash(size, degree));
-    int[] degrees = GraphUtils.generateRegularDegreeSequence(size, degree);
+    void regularTest(int size, int degree) {
+        Random random = new Random(Objects.hash(size, degree));
+        int[] degrees = GraphUtils.generateRegularDegreeSequence(size, degree);
 
-    for (int j = 0; j < 10; j++) {
-      Random rd = new Random(random.nextLong());
+        for (int j = 0; j < 10; j++) {
+            Random rd = new Random(random.nextLong());
 
-      MutableGraph g = GraphGenerator.generateGraph(new SparseGraphImpl(size), degrees, rd);
+            MutableGraph g = GraphGenerator.generateGraph(new SparseGraphImpl(size), degrees, rd);
 
-      DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
-      Set<Edge> matching = alg.generatePerfectMatching();
+            DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
+            Set<Edge> matching = alg.generatePerfectMatching();
 
-      Set<Integer> vertices = matching.stream()
-                                      .flatMapToInt(e -> IntStream.of(e.vertex1(), e.vertex2()))
-                                      .boxed()
-                                      .collect(Collectors.toCollection(TreeSet::new));
-      assertEquals(g.size() / 2, matching.size());
-      assertEquals(g.size() / 2 * 2, vertices.size());
+            Set<Integer> vertices = matching.stream()
+                                            .flatMapToInt(
+                                                    e -> IntStream.of(e.vertex1(), e.vertex2()))
+                                            .boxed()
+                                            .collect(Collectors.toCollection(TreeSet::new));
+            assertEquals(g.size() / 2, matching.size());
+            assertEquals(g.size() / 2 * 2, vertices.size());
+        }
     }
-  }
 
-  @ParameterizedTest
+    @ParameterizedTest
   // @formatter:off
   @CsvSource({
     "10, 4",
@@ -62,25 +63,27 @@ class DaniHayesAlgorithmTest {
     "100000, 5",
   })
   // @formatter:on
-  void regularBipartiteTest(int size, int degree) {
-    Random random = new Random(Objects.hash(size, degree));
-    int[] leftDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);
-    int[] rightDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);
+    void regularBipartiteTest(int size, int degree) {
+        Random random = new Random(Objects.hash(size, degree));
+        int[] leftDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);
+        int[] rightDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);
 
-    for (int j = 0; j < 10; j++) {
-      Random rd = new Random(random.nextLong());
+        for (int j = 0; j < 10; j++) {
+            Random rd = new Random(random.nextLong());
 
-      MutableGraph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(size), leftDegrees, rightDegrees, rd);
+            MutableGraph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(size),
+                    leftDegrees, rightDegrees, rd);
 
-      DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
-      Set<Edge> matching = alg.generatePerfectMatching();
+            DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
+            Set<Edge> matching = alg.generatePerfectMatching();
 
-      Set<Integer> vertices = matching.stream()
-                                      .flatMapToInt(e -> IntStream.of(e.vertex1(), e.vertex2()))
-                                      .boxed()
-                                      .collect(Collectors.toCollection(TreeSet::new));
-      assertEquals(g.size() / 2, matching.size());
-      assertEquals(g.size() / 2 * 2, vertices.size());
+            Set<Integer> vertices = matching.stream()
+                                            .flatMapToInt(
+                                                    e -> IntStream.of(e.vertex1(), e.vertex2()))
+                                            .boxed()
+                                            .collect(Collectors.toCollection(TreeSet::new));
+            assertEquals(g.size() / 2, matching.size());
+            assertEquals(g.size() / 2 * 2, vertices.size());
+        }
     }
-  }
 }
