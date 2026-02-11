@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.runner;
 
 import java.time.Duration;
 import java.util.Random;
@@ -12,7 +12,10 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 
-import edu.rit.cs.graph_matching.GraphStatistics.Stats;
+import edu.rit.cs.graph_matching.algorithm.MatchingAlgorithm;
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.GraphUtils;
+import edu.rit.cs.graph_matching.runner.GraphStatistics.Stats;
 
 public class MatchingAlgorithmTester implements AutoCloseable {
     private final MatchingAlgorithm     algorithm;

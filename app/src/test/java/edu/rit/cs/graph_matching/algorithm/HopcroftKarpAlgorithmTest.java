@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.algorithm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -8,6 +8,12 @@ import java.util.Set;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
+import edu.rit.cs.graph_matching.graph.GraphGenerator;
+import edu.rit.cs.graph_matching.graph.GraphUtils;
+import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class HopcroftKarpAlgorithmTest {
     @ParameterizedTest

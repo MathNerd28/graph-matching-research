@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.runner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -11,6 +11,10 @@ import java.util.Random;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.GraphGenerator;
+import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class GraphFileDataTest {
     @ParameterizedTest

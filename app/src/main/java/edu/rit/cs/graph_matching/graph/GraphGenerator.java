@@ -1,9 +1,11 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.graph;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.random.RandomGenerator;
+
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
 public final class GraphGenerator {
     private GraphGenerator() {}

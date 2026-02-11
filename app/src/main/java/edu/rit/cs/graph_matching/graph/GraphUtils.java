@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.graph;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.Queue;
 import java.util.Set;
 import java.util.random.RandomGenerator;
+
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
 public final class GraphUtils {
     private GraphUtils() {}

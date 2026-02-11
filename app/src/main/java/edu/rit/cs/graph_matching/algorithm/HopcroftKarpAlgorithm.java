@@ -1,13 +1,16 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.algorithm;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 
-import edu.rit.cs.graph_matching.GraphUtils.BipartiteColor;
-
-import java.util.HashSet;
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
+import edu.rit.cs.graph_matching.graph.GraphUtils;
+import edu.rit.cs.graph_matching.graph.GraphUtils.BipartiteColor;
+import edu.rit.cs.graph_matching.graph.IntHashSet;
 
 public class HopcroftKarpAlgorithm {
     private final Graph      graph;  // original graph

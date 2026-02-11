@@ -1,10 +1,13 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.algorithm;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Queue;
 import java.util.Set;
+
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
 /**
  * Edmonds' Blossom Algorithm for maximum matching in a general undirected

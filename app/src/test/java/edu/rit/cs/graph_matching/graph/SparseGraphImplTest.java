@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.graph;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,37 +12,39 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-class DenseGraphImplTest {
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
+
+class SparseGraphImplTest {
     /**
-     * Covers {@link DenseGraphImpl#DenseGraphImpl(int)},
-     * {@link DenseGraphImpl#size()}
+     * Covers {@link SparseGraphImpl#SparseGraphImpl(int)},
+     * {@link SparseGraphImpl#size()}
      */
     @Test
     void construct() {
-        Graph g = new DenseGraphImpl(1);
+        Graph g = new SparseGraphImpl(1);
         assertEquals(1, g.size());
-        g = new DenseGraphImpl(2);
+        g = new SparseGraphImpl(2);
         assertEquals(2, g.size());
-        g = new DenseGraphImpl(50);
+        g = new SparseGraphImpl(50);
         assertEquals(50, g.size());
-        g = new DenseGraphImpl(65536);
+        g = new SparseGraphImpl(65536);
         assertEquals(65536, g.size());
+        g = new SparseGraphImpl(10_000_000);
+        assertEquals(10_000_000, g.size());
 
-        assertThrows(IllegalArgumentException.class, () -> new DenseGraphImpl(0),
+        assertThrows(IllegalArgumentException.class, () -> new SparseGraphImpl(0),
                 "Graphs should not support 0 vertices");
-        assertThrows(IllegalArgumentException.class, () -> new DenseGraphImpl(65537),
-                "DenseGraphImpl doesn't support more than 65536 vertices");
     }
 
     /**
-     * Covers {@link DenseGraphImpl#hasEdge(int, int)},
-     * {@link DenseGraphImpl#addEdge(int, int)},
-     * {@link DenseGraphImpl#removeEdge(int, int)},
-     * {@link DenseGraphImpl#clear()}
+     * Covers {@link SparseGraphImpl#hasEdge(int, int)},
+     * {@link SparseGraphImpl#addEdge(int, int)},
+     * {@link SparseGraphImpl#removeEdge(int, int)},
+     * {@link SparseGraphImpl#clear()}
      */
     @Test
     void modify() {
-        MutableGraph g = new DenseGraphImpl(3);
+        MutableGraph g = new SparseGraphImpl(3);
 
         assertFalse(g.hasEdge(0, 1), "Edges should not exist before being added");
         g.addEdge(0, 1);
@@ -72,11 +74,11 @@ class DenseGraphImplTest {
     }
 
     /**
-     * Covers {@link DenseGraphImpl#hasEdge(int, int)},
-     * {@link DenseGraphImpl#getRandomNeighbor(int)},
-     * {@link DenseGraphImpl#getAllNeighbors(int)}
+     * Covers {@link SparseGraphImpl#hasEdge(int, int)},
+     * {@link SparseGraphImpl#getRandomNeighbor(int)},
+     * {@link SparseGraphImpl#getAllNeighbors(int)}
      * <p>
-     * {@link DenseGraphImpl#getRandomNeighbor(int)} has a RNG component; thus,
+     * {@link SparseGraphImpl#getRandomNeighbor(int)} has a RNG component; thus,
      * it will only be tested in a method that is guaranteed to work.
      */
     @Test
@@ -84,7 +86,7 @@ class DenseGraphImplTest {
         Set<Edge> edges = Set.of(new Edge(0, 1), new Edge(0, 2), new Edge(0, 3), new Edge(1, 2));
         Random rd = new Random(0);
 
-        MutableGraph g = new DenseGraphImpl(5);
+        MutableGraph g = new SparseGraphImpl(5);
         for (Edge e : edges) {
             g.addEdge(e);
         }
@@ -108,11 +110,12 @@ class DenseGraphImplTest {
     }
 
     /**
-     * Briefly checks that operations work properly on a very large dense graph.
+     * Briefly checks that operations work properly on a very large sparse
+     * graph.
      */
     @Test
     void veryLargeGraph() {
-        MutableGraph g = new DenseGraphImpl(10000);
+        MutableGraph g = new SparseGraphImpl(10000);
 
         // Ensure the graph is initially empty
         g.clear();

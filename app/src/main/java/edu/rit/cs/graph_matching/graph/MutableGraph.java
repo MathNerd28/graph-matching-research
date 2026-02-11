@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.graph;
 
 /**
  * An undirected graph that can have edges added or removed. The number of

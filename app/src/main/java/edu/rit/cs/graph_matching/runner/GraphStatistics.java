@@ -1,7 +1,9 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.runner;
 
 import java.util.Set;
 import java.util.random.RandomGenerator;
+
+import edu.rit.cs.graph_matching.graph.Graph;
 
 /**
  * A wrapper that tracks how many times graph methods are called.

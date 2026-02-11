@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.graph;
 
 import java.util.ArrayList;
 import java.util.List;

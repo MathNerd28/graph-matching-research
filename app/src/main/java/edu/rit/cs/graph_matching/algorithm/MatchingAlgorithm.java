@@ -1,6 +1,8 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.algorithm;
 
 import java.util.Set;
+
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
 /**
  * A common interface for running and testing matching algorithms.

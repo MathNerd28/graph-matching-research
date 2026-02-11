@@ -1,7 +1,11 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.graph;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
 class EdgeTest {
     @Test

@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.runner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -7,6 +7,12 @@ import java.util.Random;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+
+import edu.rit.cs.graph_matching.graph.DenseGraphImpl;
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
+import edu.rit.cs.graph_matching.graph.MutableGraph;
+import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class GraphStatisticsTest {
     /**

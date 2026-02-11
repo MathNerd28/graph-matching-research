@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.runner;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -16,6 +16,10 @@ import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.MutableGraph;
+import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 /**
  * Data that can be serialized to a binary graph file format. Byte order is

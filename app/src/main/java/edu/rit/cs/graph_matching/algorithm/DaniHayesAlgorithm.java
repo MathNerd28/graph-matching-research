@@ -1,10 +1,14 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.algorithm;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.random.RandomGenerator;
+
+import edu.rit.cs.graph_matching.graph.Graph;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
+import edu.rit.cs.graph_matching.graph.IntHashSet;
 
 /**
  * An implementation of the Dani-Hayes randomized algorithm for generating
