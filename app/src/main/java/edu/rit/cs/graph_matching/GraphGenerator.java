@@ -53,16 +53,14 @@ public final class GraphGenerator {
     }
 
     /**
-     * Generates a random graph.
-     * This function builds a random graph by
-     * considering every possible pair of vertices
-     * and adding an edge between them with a fixed
-     * probability.
+     * Generates a random graph. This function builds a random graph by
+     * considering every possible pair of vertices and adding an edge between
+     * them with a fixed probability.
      *
      * @param vertices
-     *      number of vertices
+     *     number of vertices
      * @param edgeProb
-     *      probability of adding an edge between any pair
+     *     probability of adding an edge between any pair
      * @return the same graph instance
      */
     public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb,
@@ -160,7 +158,6 @@ public final class GraphGenerator {
                     conflictEdges.add(new Edge(v1, v2));
                 }
             }
-        }
 
             // reshuffle conflicts
             edgeConnections = new LongIntArray(conflictEdges.size() * 2);
@@ -286,29 +283,6 @@ public final class GraphGenerator {
             }
         } while (!conflictEdges.isEmpty());
 
-        for (Edge e : conflictEdges) {
-            int v1 = e.vertex1();
-            int v2 = e.vertex2();
-            while (true) {
-                int w1 = random.nextInt(leftVerticesCount);
-                if (w1 == v1) {
-                    continue;
-                }
-
-                int w2 = graph.getRandomNeighbor(w1, random);
-                if (w2 == -1 || w2 == v2) {
-                    continue;
-                }
-
-                if (!graph.hasEdge(v1, w2) && !graph.hasEdge(v2, w1)) {
-                    graph.removeEdge(w1, w2);
-                    graph.addEdge(v1, w2);
-                    graph.addEdge(v2, w1);
-                    break;
-                }
-            }
-        }
-        
         return graph;
     }
 
