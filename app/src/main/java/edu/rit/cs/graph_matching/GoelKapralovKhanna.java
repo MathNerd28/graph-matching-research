@@ -9,11 +9,21 @@ import java.util.random.RandomGenerator;
 
 import edu.rit.cs.graph_matching.GraphUtils.BipartiteColor;
 
-/*
- * Goel-Kapralov-Khanna Algorithm for Perfect Matching in Regular Bipartite Graphs.
- *  Ashish Goel, Michael Kapralov, and Sanjeev Khanna. 
- * "Perfect Matchings in O(n log n) Time in Regular Bipartite Graphs." 
- * SIAM J. Comput., 42(3), 1392–1404.
+/**
+ * Implementation of the Goel–Kapralov–Khanna randomized algorithm for
+ * finding a perfect matching in a d-regular bipartite graph.
+ * <p>
+ * Given a bipartite d-regular graph with equal partition sizes n this class
+ * constructs a matching using truncated random walks and loop erasure
+ * c.f. https://epubs.siam.org/doi/10.1137/100812513
+ * </p>
+ * <p>
+ * Instances are stateful: internal matching arrays are updated by
+ * {@link #getMaximumMatching()}.
+ * </p>
+ *
+ * @see Graph
+ * @see GraphUtils
  */
 public class GoelKapralovKhanna {
 
@@ -21,7 +31,6 @@ public class GoelKapralovKhanna {
     private final int n; // Size of one partition (half the total vertices)
     private final int d; // Degree of the regular graph
     private final IntHashSet left;
-    private final IntHashSet right;
 
     // If u is unmatched, match[u] == -1.
     private final int[] match;
@@ -30,13 +39,23 @@ public class GoelKapralovKhanna {
 
     private final RandomGenerator random;
 
-    /*
-     * Constructs the solver and preprocesses the graph into an adjacency array
+    /**
+     * Constructs the solver and preprocesses the graph into adjacency-array
      * format.
-     * 
-     * @param graph The input bipartite graph.
-     * 
-     * @param random The random number generator to use.
+     * <p>
+     * The constructor colors the graph to identify left/right partitions and
+     * initializes internal bookkeeping arrays.
+     * </p>
+     * <p>
+     * Precondition: {@code graph} is bipartite and d-regular with equal
+     * partition sizes. Those invariants are assumed (not validated) by this
+     * implementation.
+     * </p>
+     *
+     * @param graph  input bipartite graph (assumed d-regular with equal
+     *               partitions)
+     * @param random random number generator used for sampling neighbors
+     * @throws NullPointerException if {@code graph} or {@code random} is null
      */
     public GoelKapralovKhanna(Graph graph, RandomGenerator random) {
         this.graph = graph;
@@ -51,25 +70,32 @@ public class GoelKapralovKhanna {
         Arrays.fill(this.posInPath, -1);
 
         this.left = new IntHashSet();
-        this.right = new IntHashSet();
 
         BipartiteColor[] coloring = GraphUtils.colorBipartite(graph);
         for (int i = 0; i < coloring.length; i++) {
             if (coloring[i] == BipartiteColor.LEFT) {
                 left.add(i);
-            } else {
-                right.add(i);
             }
         }
     }
 
-    /*
-     * SAMPLE-OUT-EDGE(u): Returns a random neighbor of u in P that is NOT matched
-     * to u.
-     * Runs in O(1) expected time.
-     * * @param u A left vertex.
-     * 
-     * @return A right vertex that is a neighbor of u but is not matched to u.
+    /**
+     * SAMPLE-OUT-EDGE(u): return a uniformly random neighbor {@code v} of the
+     * left vertex {@code u} such that {@code v != match[u]}.
+     * <p>
+     * The method repeatedly samples random neighbors until it finds one that
+     * is not the current partner of {@code u}. Expected O(1) time when the
+     * degree {@code d} is constant.
+     * </p>
+     * <p>
+     * Precondition: there exists at least one neighbor {@code v} of {@code u}
+     * with {@code v != match[u]}. If {@code d == 0} this method returns -1.
+     * Behavior is undefined (may loop) when the precondition is not met.
+     * </p>
+     *
+     * @param u a left vertex index
+     * @return a right-vertex neighbor of {@code u} different from {@code match[u]},
+     *         or -1 if the graph degree {@code d} is zero
      */
     private int sampleOutEdge(int u) {
         if (d == 0)
@@ -82,11 +108,18 @@ public class GoelKapralovKhanna {
         }
     }
 
-    /*
-     * Performs loop erasure on the random walk.
-     * * @param walkP The sequence of vertices visited in P.
-     * 
-     * @return The path with loops removed.
+    /**
+     * Performs loop-erasure on a walk over left-side vertices (P).
+     * <p>
+     * Converts the sequence {@code walkP} into a simple path by removing
+     * cycles (standard loop-erasure). Temporarily uses {@link #posInPath} for
+     * index bookkeeping and restores it before returning.
+     * </p>
+     *
+     * @param walkP sequence of left-side vertices produced by a (possibly
+     *              cyclic) random walk
+     * @return a loop-erased path (no repeated vertices), in the same vertex
+     *         index space as {@code walkP}
      */
     private List<Integer> removeLoops(List<Integer> walkP) {
         List<Integer> path = new ArrayList<>();
@@ -119,10 +152,22 @@ public class GoelKapralovKhanna {
         return path;
     }
 
-    /*
-     * Executes Algorithm 2: Perfect Matching with Truncated Random Walks.
-     * 
-     * @return The maximum matching.
+    /**
+     * Executes the truncated-random-walk matching procedure (Algorithm 2).
+     * <p>
+     * Repeatedly attempts to augment the current matching by performing
+     * truncated random walks from free left vertices, applying loop erasure
+     * and augmenting along discovered augmenting paths until a matching that
+     * covers the left partition is found or no free vertices remain.
+     * </p>
+     * <p>
+     * The algorithm is randomized; expected running time for a d-regular
+     * bipartite graph is O(n log n) as described in the reference paper.
+     * </p>
+     *
+     * @return a set of edges representing the matching found. If the input
+     *         graph admits a perfect matching, the returned set contains
+     *         exactly {@code n} edges (one per left vertex).
      */
     public Set<Edge> getMaximumMatching() {
         List<Integer> freeLeft = new ArrayList<>(n);
