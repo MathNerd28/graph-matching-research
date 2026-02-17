@@ -16,10 +16,19 @@ import java.util.random.RandomGenerator;
  */
 public class AdjacencySetGraph implements MutableGraph {
     /**
+     * The size at which a neighbor set will switch from the lightweight
+     * array-based implementation to the faster (but more memory intensive)
+     * hash-based implementation. Such switches are permanent; that is, if
+     * subsequently the size reduces below the threshold, the neighbor set will
+     * NOT switch back to the array-based implementation.
+     */
+    private static final int HASH_THRESHOLD = 7;
+
+    /**
      * The backing adjacency list. Uses IntHashSet for amortized O(1) lookup
      * with a small memory footprint.
      */
-    private final List<IntHashSet> adjacencyList;
+    private final List<AbstractIntSet> adjacencyList;
 
     /**
      * Construct a graph with no edges.
@@ -34,7 +43,7 @@ public class AdjacencySetGraph implements MutableGraph {
 
         this.adjacencyList = new ArrayList<>(vertices);
         for (int i = 0; i < vertices; i++) {
-            adjacencyList.add(new IntHashSet());
+            adjacencyList.add(new IntArraySet());
         }
     }
 
@@ -44,10 +53,18 @@ public class AdjacencySetGraph implements MutableGraph {
         checkVertexIndex(vertex2);
         checkVerticesNotEqual(vertex1, vertex2);
 
-        adjacencyList.get(vertex1)
-                     .add(vertex2);
-        adjacencyList.get(vertex2)
-                     .add(vertex1);
+        addNeighbor(vertex1, vertex2);
+        addNeighbor(vertex2, vertex1);
+    }
+
+    private void addNeighbor(int vertex, int neighbor) {
+        AbstractIntSet neighbors = adjacencyList.get(vertex);
+        if (neighbors.add(neighbor)
+                && neighbors.size() == HASH_THRESHOLD
+                && neighbors.getClass() == IntArraySet.class) {
+            // switch to hash implementation for performance
+            adjacencyList.set(vertex, new IntHashSet(neighbors));
+        }
     }
 
     @Override
@@ -88,7 +105,7 @@ public class AdjacencySetGraph implements MutableGraph {
     public int getRandomNeighbor(int vertex, RandomGenerator random) {
         checkVertexIndex(vertex);
 
-        IntHashSet neighbors = adjacencyList.get(vertex);
+        AbstractIntSet neighbors = adjacencyList.get(vertex);
         return neighbors.isEmpty() ? -1 : neighbors.getRandom(random);
     }
 
@@ -101,7 +118,7 @@ public class AdjacencySetGraph implements MutableGraph {
 
     @Override
     public void clear() {
-        for (IntHashSet adjacents : adjacencyList) {
+        for (AbstractIntSet adjacents : adjacencyList) {
             adjacents.clear();
         }
     }
@@ -112,7 +129,7 @@ public class AdjacencySetGraph implements MutableGraph {
         }
     }
 
-    protected final void checkVerticesNotEqual(int vertex1, int vertex2) {
+    protected static final void checkVerticesNotEqual(int vertex1, int vertex2) {
         if (vertex1 == vertex2) {
             throw new UnsupportedOperationException("Self-looping edges are not supported");
         }
