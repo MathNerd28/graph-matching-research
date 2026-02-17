@@ -152,9 +152,9 @@ public class Main {
                 if (params.verify && !GraphUtils.isGraphical(halfDegrees, halfDegrees)) {
                     throw new IllegalArgumentException("degree sequence cannot be generated");
                 }
-                Graph graph =
-                        GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(params.vertices),
-                                halfDegrees, halfDegrees, new Random());
+                Graph graph = GraphGenerator.generateBipartiteGraph(
+                        new AdjacencySetGraph(params.vertices), halfDegrees, halfDegrees,
+                        new Random());
 
                 String name = params.graphName;
                 String description =
