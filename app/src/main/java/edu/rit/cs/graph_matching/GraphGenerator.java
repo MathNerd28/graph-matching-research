@@ -6,14 +6,15 @@ import java.util.Random;
 import java.util.random.RandomGenerator;
 
 public final class GraphGenerator {
-    private GraphGenerator() {}
+    private GraphGenerator() {
+    }
 
     /**
      * Generates a star graph with the given number of edges. Matchings: leaves
      * + 1 - Empty Set - Single Edge Maximum Matchings: 1
      *
      * @param graph
-     *     the graph to edit in-place
+     *              the graph to edit in-place
      * @return the same graph instance
      */
     public static MutableGraph generateStarGraph(MutableGraph graph) {
@@ -28,9 +29,9 @@ public final class GraphGenerator {
      * Generates an edited star graph to have the specific maxMatching.
      *
      * @param graph
-     *     the graph to edit in-place
+     *                    the graph to edit in-place
      * @param maxMatching
-     *     the desired size of the maximum matching
+     *                    the desired size of the maximum matching
      * @return the same graph instance
      */
     public static MutableGraph generateStarGraphWithMatching(MutableGraph graph, int maxMatching) {
@@ -58,13 +59,13 @@ public final class GraphGenerator {
      * them with a fixed probability.
      *
      * @param vertices
-     *     number of vertices
+     *                 number of vertices
      * @param edgeProb
-     *     probability of adding an edge between any pair
+     *                 probability of adding an edge between any pair
      * @return the same graph instance
      */
     public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb,
-                                                   RandomGenerator random) {
+            RandomGenerator random) {
         if (edgeProb < 0.0 || edgeProb > 1.0) {
             throw new IllegalArgumentException("edgeProb must be between 0.0 and 1.0");
         }
@@ -91,11 +92,11 @@ public final class GraphGenerator {
      * average degree greater than 50% of total vertices).
      *
      * @param graph
-     *     the graph to edit in-place
+     *                the graph to edit in-place
      * @param degrees
-     *     the desired degree sequence
+     *                the desired degree sequence
      * @param random
-     *     random number generator
+     *                random number generator
      * @return the same graph instance
      */
     public static MutableGraph generateGraph(MutableGraph graph, int[] degrees, Random random) {
@@ -180,17 +181,17 @@ public final class GraphGenerator {
      * specified degree sequence.
      *
      * @param graph
-     *     the graph to edit in-place
+     *                        the graph to edit in-place
      * @param verticesPerSide
-     *     number of vertices on each side
+     *                        number of vertices on each side
      * @param degree
-     *     the desired degree sequence
+     *                        the desired degree sequence
      * @param random
-     *     random number generator
+     *                        random number generator
      * @return the same graph instance
      */
     public static MutableGraph generateBipartiteGraph(MutableGraph graph, int[] leftDegrees,
-                                                      int[] rightDegrees, RandomGenerator random) {
+            int[] rightDegrees, RandomGenerator random) {
         int leftVerticesCount = leftDegrees.length;
         int rightVerticesCount = rightDegrees.length;
         if (graph.size() != leftVerticesCount + rightVerticesCount) {
@@ -286,14 +287,14 @@ public final class GraphGenerator {
         return graph;
     }
 
-     /**
+    /**
      * Generates a simple cycle graph on n vertices of the pattern
      * 0-1-2-...-(n-1)-0
      *
-     * Returns the graph directly if vertice count <= 1
+     * Returns the graph directly if vertex count <= 1
      * 
      * @param graph
-     *     the graph to edit in-place
+     *              the graph to edit in-place
      * @return the same graph instance
      */
     public static MutableGraph generateLoopGraph(MutableGraph graph) {
@@ -303,9 +304,9 @@ public final class GraphGenerator {
         if (n <= 1) {
             return graph;
         }
-        
+
         for (int i = 0; i < n; i++) {
-            int j = (i + 1) % n;  // in case the conversion: << i=n-1 -> 0 >>
+            int j = (i + 1) % n; // in case the conversion: << i=n-1 -> 0 >>
             graph.addEdge(i, j);
         }
         return graph;
@@ -315,9 +316,9 @@ public final class GraphGenerator {
      * Randomly shuffle the given integer array.
      *
      * @param array
-     *     the array to shuffle
+     *               the array to shuffle
      * @param random
-     *     the random generator to use
+     *               the random generator to use
      */
     private static void shuffle(LongIntArray array, RandomGenerator random) {
         for (long i = array.getSize() - 1; i > 0; i--) {
@@ -330,8 +331,8 @@ public final class GraphGenerator {
 
     static class LongIntArray {
         private static final int BLOCK_SIZE = 1 << 30;
-        private final int[][]    array;
-        private final long       size;
+        private final int[][] array;
+        private final long size;
 
         LongIntArray(long size) {
             this.size = size;
