@@ -13,7 +13,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateStarGraph() {
-        MutableGraph starGraph = new SparseGraphImpl(10);
+        MutableGraph starGraph = new AdjacencySetGraph(10);
         GraphGenerator.generateStarGraph(starGraph);
 
         assertEquals(9, starGraph.getDegree(0));
@@ -26,7 +26,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateStarGraphWithMatching() {
-        MutableGraph starGraphWithMatching = new SparseGraphImpl(8);
+        MutableGraph starGraphWithMatching = new AdjacencySetGraph(8);
         GraphGenerator.generateStarGraphWithMatching(starGraphWithMatching, 3);
 
         int edgeCount = 0;
@@ -40,7 +40,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateStarGraphWithMatchingError() {
-        MutableGraph starGraphWithMatching = new SparseGraphImpl(8);
+        MutableGraph starGraphWithMatching = new AdjacencySetGraph(8);
         assertThrows(IllegalArgumentException.class, () -> {
             GraphGenerator.generateStarGraphWithMatching(starGraphWithMatching, 0);
         });
@@ -52,7 +52,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateRandomGraphZeroProb() {
-        MutableGraph randomGraph = new SparseGraphImpl(5);
+        MutableGraph randomGraph = new AdjacencySetGraph(5);
         GraphGenerator.generateRandomGraph(randomGraph, 0.0, new Random(SEED));
 
         int edgeCount = 0;
@@ -66,7 +66,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateRandomGraphFullProb() {
-        MutableGraph randomGraph = new SparseGraphImpl(5);
+        MutableGraph randomGraph = new AdjacencySetGraph(5);
         GraphGenerator.generateRandomGraph(randomGraph, 1.0, new Random(SEED));
 
         int edgeCount = 0;
@@ -80,7 +80,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateRandomGraphInvalidProb() {
-        MutableGraph randomGraph = new SparseGraphImpl(5);
+        MutableGraph randomGraph = new AdjacencySetGraph(5);
 
         assertThrows(IllegalArgumentException.class, () -> {
             GraphGenerator.generateRandomGraph(randomGraph, -0.1, new Random(SEED));
@@ -96,7 +96,7 @@ class GraphGeneratorTest {
         int vertices = 6;
         int degree = 3;
 
-        MutableGraph graph = new SparseGraphImpl(vertices);
+        MutableGraph graph = new AdjacencySetGraph(vertices);
         Random random = new Random();
         int[] degreeSequence = GraphUtils.generateRegularDegreeSequence(vertices, degree);
 
@@ -125,7 +125,7 @@ class GraphGeneratorTest {
 
     @Test
     void testGenerateBipartiteGraph() {
-        MutableGraph bipartiteGraph = new SparseGraphImpl(6);
+        MutableGraph bipartiteGraph = new AdjacencySetGraph(6);
         Random random = new Random();
         int[] leftDegreeSequence = GraphUtils.generateRegularDegreeSequence(3, 2);
         int[] rightDegreeSequence = GraphUtils.generateRegularDegreeSequence(3, 2);

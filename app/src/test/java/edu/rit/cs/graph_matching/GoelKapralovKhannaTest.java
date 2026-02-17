@@ -85,7 +85,7 @@ class GoelKapralovKhannaTest {
         for (int j = 0; j < 5; j++) {
             Random rd = new Random(random.nextLong());
 
-            MutableGraph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(size),
+            MutableGraph g = GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(size),
                     leftDegrees, rightDegrees, rd);
 
             GoelKapralovKhanna alg = new GoelKapralovKhanna(g, rd);

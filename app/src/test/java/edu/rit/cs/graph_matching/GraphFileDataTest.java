@@ -25,7 +25,7 @@ class GraphFileDataTest {
   // @formatter:on
     void testReadWriteGraph(int size, double edgeProb, @TempDir Path tmpDir) throws IOException {
         Random rd = new Random(Objects.hash(size, edgeProb));
-        Graph graph = GraphGenerator.generateRandomGraph(new SparseGraphImpl(size), edgeProb, rd);
+        Graph graph = GraphGenerator.generateRandomGraph(new AdjacencySetGraph(size), edgeProb, rd);
 
         GraphFileData writeData = new GraphFileData("testRandom",
                 String.format("random n=%d p=%.2f", size, edgeProb), graph);

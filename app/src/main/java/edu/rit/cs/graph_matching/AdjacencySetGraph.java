@@ -14,7 +14,7 @@ import java.util.random.RandomGenerator;
  * <li>{@link #hasEdge(int, int)} runs in O(1) time</li>
  * </ul>
  */
-public class SparseGraphImpl implements MutableGraph {
+public class AdjacencySetGraph implements MutableGraph {
     /**
      * The backing adjacency list. Uses IntHashSet for amortized O(1) lookup
      * with a small memory footprint.
@@ -22,12 +22,12 @@ public class SparseGraphImpl implements MutableGraph {
     private final List<IntHashSet> adjacencyList;
 
     /**
-     * Construct a sparse graph with no edges.
+     * Construct a graph with no edges.
      *
      * @param vertices
      *     the number of vertices in this graph
      */
-    public SparseGraphImpl(int vertices) {
+    public AdjacencySetGraph(int vertices) {
         if (vertices <= 0) {
             throw new IllegalArgumentException("Graphs require a positive number of vertices");
         }
