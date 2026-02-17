@@ -324,7 +324,7 @@ public class Main {
                    .append(',')
                    .append("getDegree(v)")
                    .append(',')
-                   .append("hasEdge(v1,v2)")
+                   .append("\"hasEdge(v1,v2)\"")
                    .append(',')
                    .append("getRandomNeighbor(v)")
                    .append(',')
