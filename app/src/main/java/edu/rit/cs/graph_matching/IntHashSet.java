@@ -1,6 +1,5 @@
 package edu.rit.cs.graph_matching;
 
-import java.util.AbstractSet;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.ConcurrentModificationException;
@@ -31,7 +30,7 @@ import java.util.random.RandomGenerator;
  * correctness: <i>the fail-fast behavior of iterators should be used only to
  * detect bugs.</i>
  */
-public class IntHashSet extends AbstractSet<Integer> {
+public class IntHashSet extends AbstractIntSet {
     /** The maximum size/capacity ratio before increasing capacity */
     private static final double MAX_LOAD_FACTOR = 0.75;
 
@@ -70,6 +69,9 @@ public class IntHashSet extends AbstractSet<Integer> {
     /** The minimum size of the hash table before shrinking. */
     private int minFill;
 
+    /** The number of modifications made to this hash set. */
+    private int modCount = 0;
+
     /**
      * The current number of deleted cells in the hash table. Equal to
      * {@link #deleted}.{@link BitSet#cardinality() cardinality()}.
@@ -104,14 +106,17 @@ public class IntHashSet extends AbstractSet<Integer> {
     }
 
     /**
-     * Get a random integer contained in this set with uniform probability.
+     * Construct an IntHashSet that contains all of the specified elements.
      *
-     * @param rd
-     *     the random number generator to use to choose an element
-     * @return a random integer from this set
-     * @throws NoSuchElementException
-     *     if this set contains no elements
+     * @param c
+     *     the elements to add
      */
+    public IntHashSet(Collection<Integer> c) {
+        this(c.size());
+        addAll(c);
+    }
+
+    @Override
     public int getRandom(RandomGenerator rd) {
         if (isEmpty()) {
             throw new NoSuchElementException();
@@ -125,39 +130,7 @@ public class IntHashSet extends AbstractSet<Integer> {
         return table[index];
     }
 
-    /**
-     * Adds the specified element to this set if it is not already present. More
-     * formally, adds the specified element {@code e} to this set if the set
-     * contains no element {@code e2} such that {@code Objects.equals(e, e2)}.
-     * If this set already contains the element, the call leaves the set
-     * unchanged and returns {@code false}. In combination with the restriction
-     * on constructors, this ensures that sets never contain duplicate elements.
-     *
-     * @param e
-     *     element to be added to this set
-     * @return {@code true} if this set did not already contain the specified
-     *     element
-     * @throws NullPointerException
-     *     if the specified element is null
-     * @implSpec As this set only supports primitive int values, this method
-     *     will reject {@code null} as a value.
-     */
     @Override
-    public boolean add(Integer e) {
-        return add(e.intValue());
-    }
-
-    /**
-     * Adds the specified integer to this set if it is not already present. If
-     * this set already contains the integer, the call leaves the set unchanged
-     * and returns {@code false}. In combination with the restriction on
-     * constructors, this ensures that sets never contain duplicate integers.
-     *
-     * @param e
-     *     integer to be added to this set
-     * @return {@code true} if this set did not already contain the specified
-     *     integer
-     */
     public boolean add(int e) {
         if (occupiedCount >= maxFill) {
             // increase size of table
@@ -194,6 +167,7 @@ public class IntHashSet extends AbstractSet<Integer> {
                 table[index] = e;
                 occupied.set(index);
                 occupiedCount++;
+                modCount++;
                 return true;
             }
 
@@ -201,27 +175,7 @@ public class IntHashSet extends AbstractSet<Integer> {
         }
     }
 
-    /**
-     * Returns {@code true} if this set contains the specified element. More
-     * formally, returns {@code true} if and only if this set contains an
-     * element {@code e} such that {@code Objects.equals(o, e)}.
-     *
-     * @param o
-     *     element whose presence in this set is to be tested
-     * @return {@code true} if this set contains the specified element
-     */
     @Override
-    public boolean contains(Object o) {
-        return o instanceof Integer i && contains(i.intValue());
-    }
-
-    /**
-     * Returns {@code true} if this set contains the specified integer.
-     *
-     * @param e
-     *     integer whose presence in this set is to be tested
-     * @return {@code true} if this set contains the specified integer
-     */
     public boolean contains(int e) {
         int mask = table.length - 1;
         int index = hash1(e) & mask;
@@ -248,33 +202,7 @@ public class IntHashSet extends AbstractSet<Integer> {
         return removed;
     }
 
-    /**
-     * Removes the specified element from this set if it is present. More
-     * formally, removes an element {@code e} such that
-     * {@code Objects.equals(o, e)}, if this set contains such an element.
-     * Returns {@code true} if this set contained the element (or equivalently,
-     * if this set changed as a result of the call). (This set will not contain
-     * the element once the call returns.)
-     *
-     * @param o
-     *     object to be removed from this set, if present
-     * @return {@code true} if this set contained the specified element
-     */
     @Override
-    public boolean remove(Object o) {
-        return o instanceof Integer i && remove(i.intValue());
-    }
-
-    /**
-     * Removes the specified integer from this set if it is present. Returns
-     * {@code true} if this set contained the integer (or equivalently, if this
-     * set changed as a result of the call). (This set will not contain the
-     * integer once the call returns.)
-     *
-     * @param e
-     *     integer to be removed from this set, if present
-     * @return {@code true} if this set contained the specified integer
-     */
     public boolean remove(int e) {
         int mask = table.length - 1;
         int index = hash1(e) & mask;
@@ -289,6 +217,7 @@ public class IntHashSet extends AbstractSet<Integer> {
                 deleted.set(index);
                 occupiedCount--;
                 deletedCount++;
+                modCount++;
 
                 if (occupiedCount < minFill) {
                     // decrease size of table
@@ -302,10 +231,6 @@ public class IntHashSet extends AbstractSet<Integer> {
         }
     }
 
-    /**
-     * Removes all of the elements from this set. The set will be empty after
-     * this call returns.
-     */
     @Override
     public void clear() {
         occupiedCount = 0;
@@ -314,12 +239,6 @@ public class IntHashSet extends AbstractSet<Integer> {
         deleted.clear();
     }
 
-    /**
-     * Returns an iterator over the elements in this set. The elements are
-     * returned in no particular order.
-     *
-     * @return an iterator over the elements in this set
-     */
     @Override
     public PrimitiveIterator.OfInt iterator() {
         return new IntHashSetIterator();
@@ -449,20 +368,20 @@ public class IntHashSet extends AbstractSet<Integer> {
      * removal.
      */
     private final class IntHashSetIterator implements PrimitiveIterator.OfInt {
-        private final int expectedSize = size();
+        private final int modCount = IntHashSet.this.modCount;
 
         private int remaining = size();
         private int pos       = -1;
 
         @Override
         public boolean hasNext() {
-            checkModification();
+            checkForComodification();
             return remaining > 0;
         }
 
         @Override
         public int nextInt() {
-            checkModification();
+            checkForComodification();
 
             if (!hasNext()) {
                 throw new NoSuchElementException();
@@ -492,8 +411,8 @@ public class IntHashSet extends AbstractSet<Integer> {
          * @throws ConcurrentModificationException
          *     if a concurrent modification was detected
          */
-        private void checkModification() {
-            if (expectedSize != size()) {
+        private void checkForComodification() {
+            if (modCount != IntHashSet.this.modCount) {
                 // someone else must have modified the set during iteration
                 throw new ConcurrentModificationException();
             }
