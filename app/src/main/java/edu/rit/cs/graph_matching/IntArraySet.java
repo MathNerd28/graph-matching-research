@@ -7,6 +7,10 @@ import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.random.RandomGenerator;
 
+/**
+ * An unsorted array-based primitive int set implementation. Adding, removing,
+ * and querying elements all require O(n) runtime.
+ */
 public class IntArraySet extends AbstractIntSet {
     private static final int DEFAULT_SIZE = 4;
 
@@ -100,6 +104,12 @@ public class IntArraySet extends AbstractIntSet {
     @Override
     public int size() {
         return size;
+    }
+
+    @Override
+    public void clear() {
+        size = 0;
+        modCount++;
     }
 
     @Override
