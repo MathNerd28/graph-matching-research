@@ -29,7 +29,7 @@ class HopcroftKarpAlgorithmTest {
     void regularBipartiteGraphs(int vertices, int degree) {
         Random random = new Random(Objects.hash(vertices, degree));
         int[] degrees = GraphUtils.generateRegularDegreeSequence(vertices / 2, degree);
-        Graph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(vertices), degrees,
+        Graph g = GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(vertices), degrees,
                 degrees, random);
         HopcroftKarpAlgorithm algorithm = new HopcroftKarpAlgorithm(g);
         Set<Edge> matching = algorithm.getMaximumMatching();

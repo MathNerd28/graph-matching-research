@@ -133,7 +133,7 @@ public record GraphFileData(String name,
             String details = in.readUTF();
 
             int vertices = in.readInt();
-            MutableGraph graph = new SparseGraphImpl(vertices);
+            MutableGraph graph = new AdjacencySetGraph(vertices);
 
             long edges = in.readLong();
             while (edges > 0) {
