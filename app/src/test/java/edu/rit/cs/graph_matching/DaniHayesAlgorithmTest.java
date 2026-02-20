@@ -36,7 +36,7 @@ class DaniHayesAlgorithmTest {
         for (int j = 0; j < 10; j++) {
             Random rd = new Random(random.nextLong());
 
-            MutableGraph g = GraphGenerator.generateGraph(new SparseGraphImpl(size), degrees, rd);
+            MutableGraph g = GraphGenerator.generateGraph(new AdjacencySetGraph(size), degrees, rd);
 
             DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
             Set<Edge> matching = alg.generatePerfectMatching();
@@ -71,7 +71,7 @@ class DaniHayesAlgorithmTest {
         for (int j = 0; j < 10; j++) {
             Random rd = new Random(random.nextLong());
 
-            MutableGraph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(size),
+            MutableGraph g = GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(size),
                     leftDegrees, rightDegrees, rd);
 
             DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);

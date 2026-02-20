@@ -69,7 +69,7 @@ public class Main {
             for (int i = 1; i <= params.graphCount; i++) {
                 System.out.printf("Generating random graph %d of %d...%n", i, params.graphCount);
                 Graph graph = GraphGenerator.generateRandomGraph(
-                        new SparseGraphImpl(params.vertices), edgeProbability, new Random());
+                        new AdjacencySetGraph(params.vertices), edgeProbability, new Random());
 
                 String name = params.graphName;
                 String description =
@@ -109,7 +109,7 @@ public class Main {
                 if (params.verify && !GraphUtils.isGraphical(degrees)) {
                     throw new IllegalArgumentException("degree sequence cannot be generated");
                 }
-                Graph graph = GraphGenerator.generateGraph(new SparseGraphImpl(params.vertices),
+                Graph graph = GraphGenerator.generateGraph(new AdjacencySetGraph(params.vertices),
                         degrees, new Random());
 
                 String name = params.graphName;
@@ -152,9 +152,9 @@ public class Main {
                 if (params.verify && !GraphUtils.isGraphical(halfDegrees, halfDegrees)) {
                     throw new IllegalArgumentException("degree sequence cannot be generated");
                 }
-                Graph graph =
-                        GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(params.vertices),
-                                halfDegrees, halfDegrees, new Random());
+                Graph graph = GraphGenerator.generateBipartiteGraph(
+                        new AdjacencySetGraph(params.vertices), halfDegrees, halfDegrees,
+                        new Random());
 
                 String name = params.graphName;
                 String description =
@@ -324,7 +324,7 @@ public class Main {
                    .append(',')
                    .append("getDegree(v)")
                    .append(',')
-                   .append("hasEdge(v1,v2)")
+                   .append("\"hasEdge(v1,v2)\"")
                    .append(',')
                    .append("getRandomNeighbor(v)")
                    .append(',')
