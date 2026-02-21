@@ -238,8 +238,9 @@ public class Main {
                 for (int i = 1; i <= rounds; i++) {
                     System.out.printf("Starting round %d of %d for %s on %s...%n", i, rounds,
                             algorithm, data.name());
+                    String safeStartTime = startTime.toString().replace(":", "-");
                     File csvOutFile = new File(outputDir, String.format("%s_%s_%s_%d.csv",
-                            startTime.toString(), algorithm.name(), fileBasename, i));
+                            safeStartTime, algorithm.name(), fileBasename, i));
 
                     int matchingSize;
                     try (PrintWriter csvWriter =
