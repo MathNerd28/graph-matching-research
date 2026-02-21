@@ -29,12 +29,7 @@ def plot_cumulative_operations(df, operation_columns, ax):
 
     for col in operation_columns:
         df[f"Cumulative {col}"] = df[col].cumsum()
-
-        legend = col
-        if col == "v2)":
-            legend = "hasEdge(v1, v2)"
-        
-        ax.plot(df["Matching Size"], df[f"Cumulative {col}"], label=legend)
+        ax.plot(df["Matching Size"], df[f"Cumulative {col}"], label=col)
 
     ax.set_xlabel("Matching Size")
     ax.set_ylabel("Cumulative Operation Count")
@@ -72,12 +67,7 @@ def plot_rolling_avg_operations(df, operation_columns, window, ax):
 
     for col in operation_columns:
         df[f"Rolling Avg {col}"] = (df[col].rolling(window=window).mean())
-
-        legend = col
-        if col == "v2)":
-            legend = "hasEdge(v1, v2)"
-
-        ax.plot(df["Matching Size"], df[f"Rolling Avg {col}"], label=legend)
+        ax.plot(df["Matching Size"], df[f"Rolling Avg {col}"], label=col)
 
     ax.set_xlabel("Matching Size")
     ax.set_ylabel("Average Operation Count")
@@ -119,7 +109,7 @@ def single_run_chart(csv_file_path, y_value, window=5):
     operation_columns = [
         "getAllNeighbors()",
         "getDegree(v)",
-        "v2)",
+        "hasEdge(v1,v2)",
         "getRandomNeighbor(v)"
     ]
 
