@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import argparse
 
 def plot_cumulative_runtime(df, ax):
     """
@@ -92,7 +93,7 @@ def plot_rolling_avg_path_length(df, window, ax):
     ax.set_ylabel("Path Length")
     ax.set_title(f"Rolling Average Path Length (window={window})")
 
-def single_run_chart(csv_file_path, y_value, window=5):
+def single_run_chart(csv_file_path, y_value, window, save_to):
     """
     Based on the user input, calculates the cumulative runtime, 
     cumulative operation counts, rolling average runtime, rolling 
@@ -102,6 +103,7 @@ def single_run_chart(csv_file_path, y_value, window=5):
     :param csv_file_path: csv file path containing the data to plot
     :param y_value: the type of plot the user wants to generate 
     :param window: window size for calculating the rolling average (default is 5)
+    :param save_to: file path to save the generated plot (if None, the plot will be displayed instead)
     """
 
     df = pd.read_csv(csv_file_path)
@@ -110,7 +112,8 @@ def single_run_chart(csv_file_path, y_value, window=5):
         "getAllNeighbors()",
         "getDegree(v)",
         "hasEdge(v1,v2)",
-        "getRandomNeighbor(v)"
+        "getRandomNeighbor(v)",
+        "size()"
     ]
 
     if y_value == "all":
@@ -129,34 +132,79 @@ def single_run_chart(csv_file_path, y_value, window=5):
             ax.grid(True)
 
         plt.tight_layout(pad=1.2)
-        plt.show()
-        return
-
-    plt.figure(figsize=(10, 6))
-
-    if y_value == "cumulative_runtime":
-        plot_cumulative_runtime(df, plt.gca())
-    elif y_value == "cumulative_operations":
-        plot_cumulative_operations(df, operation_columns, plt.gca())
-    elif y_value == "rolling_avg_runtime":
-        plot_rolling_avg_runtime(df, window, plt.gca())
-    elif y_value == "rolling_avg_operations": 
-        plot_rolling_avg_operations(df, operation_columns, window, plt.gca())
-    elif y_value == "rolling_avg_path_length":
-        plot_rolling_avg_path_length(df, window, plt.gca())
     else:
-        print(
-            f"Unknown y_value: '{y_value}'"
-            f"\nValid options: 'cumulative_runtime', 'cumulative_operations', "
-            f"'rolling_avg_runtime', 'rolling_avg_operations', 'rolling_avg_path_length'"
-        )
-        return
+        plt.figure(figsize=(10, 6))
+
+        if y_value == "cumulative_runtime":
+            plot_cumulative_runtime(df, plt.gca())
+        elif y_value == "cumulative_operations":
+            plot_cumulative_operations(df, operation_columns, plt.gca())
+        elif y_value == "rolling_avg_runtime":
+            plot_rolling_avg_runtime(df, window, plt.gca())
+        elif y_value == "rolling_avg_operations": 
+            plot_rolling_avg_operations(df, operation_columns, window, plt.gca())
+        elif y_value == "rolling_avg_path_length":
+            plot_rolling_avg_path_length(df, window, plt.gca())
+        
+        plt.grid(True)
     
-    plt.grid(True)
-    plt.show()
+    if save_to:
+        plt.savefig(save_to, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to '{save_to}'.")
+    else:
+        plt.show()
 
 def main():
-    single_run_chart(r"app\src\main\java\edu\rit\cs\graph_matching\test_large.csv", "all")
+    parser = argparse.ArgumentParser(
+        description="Generate charts using data from a CSV file.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  python plot_matching.py results.csv all\n"
+            "  python plot_matching.py results.csv rolling_avg_runtime -w 10\n"
+            "  python plot_matching.py results.csv cumulative_runtime -s plot.png"
+        )
+    )
+
+    parser.add_argument(
+        "csv",
+        metavar="CSV_FILE",
+        help="Path to the CSV file."
+    )
+
+    parser.add_argument(
+        "plot",
+        metavar="PLOT_TYPE",
+        choices=[
+                    "all",
+                    "cumulative_runtime",
+                    "cumulative_operations",
+                    "rolling_avg_runtime",
+                    "rolling_avg_operations",
+                    "rolling_avg_path_length"
+                ],
+        help=("Plot to generate: all, cumulative_runtime, cumulative_operations, rolling_avg_runtime, rolling_avg_operations, rolling_avg_path_length")
+    )
+
+    parser.add_argument(
+        "-w", "--window",
+        metavar="N",
+        type=int,
+        default=5,
+        help="Rolling average window size (default: 5).",
+    )
+
+    parser.add_argument(
+        "-s", "--save",
+        metavar="FILE",
+        default=None,
+        help="Save the figure to a file instead of displaying it (e.g. plot.png).",
+    )
+
+    args = parser.parse_args()
+    if args.window < 1:
+        parser.error("window must be a positive integer.")
+    single_run_chart(args.csv, args.plot, args.window, args.save)
 
 if __name__=="__main__":
     main()
