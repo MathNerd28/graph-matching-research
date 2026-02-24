@@ -149,8 +149,10 @@ def single_run_chart(csv_file_path, y_value, window, save_to):
         plt.grid(True)
     
     if save_to:
-        plt.savefig(save_to, dpi=300, bbox_inches='tight')
-        print(f"Plot saved to '{save_to}'.")
+        file_name = csv_file_path.rsplit(".", 1)[0]
+        file = f"{file_name}.png"
+        plt.savefig(file, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to '{file}'.")
     else:
         plt.show()
 
@@ -160,9 +162,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  python plot_matching.py results.csv all\n"
-            "  python plot_matching.py results.csv rolling_avg_runtime -w 10\n"
-            "  python plot_matching.py results.csv cumulative_runtime -s plot.png"
+            "  python app\src\scripts\ChartGenerator.py results.csv all\n"
+            "  python app\src\scripts\ChartGenerator.py results.csv rolling_avg_runtime -w 10\n"
+            "  python app\src\scripts\ChartGenerator.py results.csv cumulative_runtime -s plot.png"
         )
     )
 
@@ -191,14 +193,13 @@ def main():
         metavar="N",
         type=int,
         default=5,
-        help="Rolling average window size (default: 5).",
+        help="Rolling average window size (default: 5)."
     )
 
     parser.add_argument(
         "-s", "--save",
-        metavar="FILE",
-        default=None,
-        help="Save the figure to a file instead of displaying it (e.g. plot.png).",
+        action="store_true",
+        help="Save the figure as a png instead of displaying it."
     )
 
     args = parser.parse_args()
