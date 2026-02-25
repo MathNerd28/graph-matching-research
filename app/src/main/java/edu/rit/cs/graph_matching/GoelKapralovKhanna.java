@@ -10,26 +10,26 @@ import java.util.random.RandomGenerator;
 import edu.rit.cs.graph_matching.GraphUtils.BipartiteColor;
 
 /**
- * Implementation of the Goel–Kapralov–Khanna randomized algorithm for
- * finding a perfect matching in a d-regular bipartite graph.
+ * Implementation of the Goel–Kapralov–Khanna randomized algorithm for finding a
+ * perfect matching in a d-regular bipartite graph.
  * <p>
  * Given a bipartite d-regular graph with equal partition sizes n this class
- * constructs a matching using truncated random walks and loop erasure
- * c.f. https://epubs.siam.org/doi/10.1137/100812513
- * </p>
- * <p>
- * Instances are stateful: internal matching arrays are updated by
- * {@link #getMaximumMatching()}.
+ * constructs a matching using truncated random walks and loop erasure c.f.
+ * https://epubs.siam.org/doi/10.1137/100812513
  * </p>
  *
  * @see Graph
  * @see GraphUtils
  */
-public class GoelKapralovKhanna {
-
+public class GoelKapralovKhanna implements MatchingAlgorithm {
     private final Graph graph;
-    private final int n; // Size of one partition (half the total vertices)
-    private final int d; // Degree of the regular graph
+
+    /** Size of one partition (half the total vertices) */
+    private final int n;
+
+    /** Degree of the regular graph */
+    private final int d;
+
     private final IntHashSet left;
 
     // If u is unmatched, match[u] == -1.
@@ -38,6 +38,10 @@ public class GoelKapralovKhanna {
     private final int[] posInPath;
 
     private final RandomGenerator random;
+
+    private final IntHashSet freeLeft;
+
+    private int matchedCount = 0;
 
     /**
      * Constructs the solver and preprocesses the graph into adjacency-array
@@ -52,16 +56,19 @@ public class GoelKapralovKhanna {
      * implementation.
      * </p>
      *
-     * @param graph  input bipartite graph (assumed d-regular with equal
-     *               partitions)
-     * @param random random number generator used for sampling neighbors
-     * @throws NullPointerException if {@code graph} or {@code random} is null
+     * @param graph
+     *     input bipartite graph (assumed d-regular with equal partitions)
+     * @param random
+     *     random number generator used for sampling neighbors
+     * @throws NullPointerException
+     *     if {@code graph} or {@code random} is null
      */
     public GoelKapralovKhanna(Graph graph, RandomGenerator random) {
         this.graph = graph;
         this.d = graph.getDegree(0);
         this.random = random;
-        this.n = graph.size() / 2; // Assuming graph is properly bipartite with equal partitions
+        this.n = graph.size() / 2; // Assuming graph is properly bipartite with
+                                   // equal partitions
 
         this.match = new int[2 * n];
         Arrays.fill(this.match, -1);
@@ -69,12 +76,14 @@ public class GoelKapralovKhanna {
         this.posInPath = new int[2 * n];
         Arrays.fill(this.posInPath, -1);
 
-        this.left = new IntHashSet();
+        this.left = new IntHashSet(n);
+        this.freeLeft = new IntHashSet(n);
 
         BipartiteColor[] coloring = GraphUtils.colorBipartite(graph);
         for (int i = 0; i < coloring.length; i++) {
             if (coloring[i] == BipartiteColor.LEFT) {
                 left.add(i);
+                freeLeft.add(i);
             }
         }
     }
@@ -83,9 +92,9 @@ public class GoelKapralovKhanna {
      * SAMPLE-OUT-EDGE(u): return a uniformly random neighbor {@code v} of the
      * left vertex {@code u} such that {@code v != match[u]}.
      * <p>
-     * The method repeatedly samples random neighbors until it finds one that
-     * is not the current partner of {@code u}. Expected O(1) time when the
-     * degree {@code d} is constant.
+     * The method repeatedly samples random neighbors until it finds one that is
+     * not the current partner of {@code u}. Expected O(1) time when the degree
+     * {@code d} is constant.
      * </p>
      * <p>
      * Precondition: there exists at least one neighbor {@code v} of {@code u}
@@ -93,13 +102,15 @@ public class GoelKapralovKhanna {
      * Behavior is undefined (may loop) when the precondition is not met.
      * </p>
      *
-     * @param u a left vertex index
-     * @return a right-vertex neighbor of {@code u} different from {@code match[u]},
-     *         or -1 if the graph degree {@code d} is zero
+     * @param u
+     *     a left vertex index
+     * @return a right-vertex neighbor of {@code u} different from
+     *     {@code match[u]}, or -1 if the graph degree {@code d} is zero
      */
     private int sampleOutEdge(int u) {
-        if (d == 0)
+        if (d == 0) {
             return -1;
+        }
         while (true) {
             int v = graph.getRandomNeighbor(u, random);
             if (match[u] != v) {
@@ -111,15 +122,16 @@ public class GoelKapralovKhanna {
     /**
      * Performs loop-erasure on a walk over left-side vertices (P).
      * <p>
-     * Converts the sequence {@code walkP} into a simple path by removing
-     * cycles (standard loop-erasure). Temporarily uses {@link #posInPath} for
-     * index bookkeeping and restores it before returning.
+     * Converts the sequence {@code walkP} into a simple path by removing cycles
+     * (standard loop-erasure). Temporarily uses {@link #posInPath} for index
+     * bookkeeping and restores it before returning.
      * </p>
      *
-     * @param walkP sequence of left-side vertices produced by a (possibly
-     *              cyclic) random walk
+     * @param walkP
+     *     sequence of left-side vertices produced by a (possibly cyclic) random
+     *     walk
      * @return a loop-erased path (no repeated vertices), in the same vertex
-     *         index space as {@code walkP}
+     *     index space as {@code walkP}
      */
     private List<Integer> removeLoops(List<Integer> walkP) {
         List<Integer> path = new ArrayList<>();
@@ -135,7 +147,8 @@ public class GoelKapralovKhanna {
                     posInPath[path.get(k)] = -1;
                 }
 
-                path.subList(truncatePos + 1, path.size()).clear();
+                path.subList(truncatePos + 1, path.size())
+                    .clear();
             } else {
                 posInPath[u] = path.size();
                 path.add(u);
@@ -156,9 +169,9 @@ public class GoelKapralovKhanna {
      * Executes the truncated-random-walk matching procedure (Algorithm 2).
      * <p>
      * Repeatedly attempts to augment the current matching by performing
-     * truncated random walks from free left vertices, applying loop erasure
-     * and augmenting along discovered augmenting paths until a matching that
-     * covers the left partition is found or no free vertices remain.
+     * truncated random walks from free left vertices, applying loop erasure and
+     * augmenting along discovered augmenting paths until a matching that covers
+     * the left partition is found or no free vertices remain.
      * </p>
      * <p>
      * The algorithm is randomized; expected running time for a d-regular
@@ -166,84 +179,75 @@ public class GoelKapralovKhanna {
      * </p>
      *
      * @return a set of edges representing the matching found. If the input
-     *         graph admits a perfect matching, the returned set contains
-     *         exactly {@code n} edges (one per left vertex).
+     *     graph admits a perfect matching, the returned set contains exactly
+     *     {@code n} edges (one per left vertex).
      */
-    public Set<Edge> getMaximumMatching() {
-        List<Integer> freeLeft = new ArrayList<>(n);
-        int matchedCount = 0;
+    @Override
+    public int augment() {
+        int freeCount = n - matchedCount;
+        int bj = (int) (2.0 * (4.0 + (double) (2 * n) / freeCount));
 
-        for (int u : left) {
-            if (match[u] == -1) {
-                freeLeft.add(u);
-            } else {
-                matchedCount++;
+        while (true) {
+            if (freeLeft.isEmpty()) {
+                break;
             }
-        }
 
-        while (matchedCount < n && !freeLeft.isEmpty()) {
-            double freeCount = (double) (n - matchedCount);
+            // Pick a random free vertex from P
+            int uStart = freeLeft.getRandom(random);
 
-            int b_j = (int) (2.0 * (4.0 + (2.0 * n) / freeCount));
+            List<Integer> walkP = new ArrayList<>();
+            walkP.add(uStart);
+
+            int currU = uStart;
+            int steps = 0;
+            int endV = -1;
 
             boolean success = false;
+            while (steps < bj) {
+                int v = sampleOutEdge(currU);
 
-            while (!success) {
-                if (freeLeft.isEmpty())
+                if (match[v] != -1) {
+                    int nextU = match[v];
+                    currU = nextU;
+                    walkP.add(currU);
+                    steps++;
+                } else {
+                    // v is unmatched in. Augmenting path found.
+                    endV = v;
+                    success = true;
                     break;
+                }
+            }
 
-                // Pick a random free vertex from P
-                int randIdx = random.nextInt(freeLeft.size());
-                int uStart = freeLeft.get(randIdx);
+            if (success) {
+                List<Integer> pathP = removeLoops(walkP);
+                int pathLength = -1;
 
-                List<Integer> walkP = new ArrayList<>();
-                walkP.add(uStart);
+                int vNext = endV;
+                for (int i = pathP.size() - 1; i >= 0; i--) {
+                    int u = pathP.get(i);
+                    int vOldMatch = match[u];
 
-                int currU = uStart;
-                int steps = 0;
-                int endV = -1;
+                    match[u] = vNext;
+                    match[vNext] = u;
 
-                while (steps < b_j) {
-                    int v = sampleOutEdge(currU);
-
-                    if (match[v] != -1) {
-                        int nextU = match[v];
-                        currU = nextU;
-                        walkP.add(currU);
-                        steps++;
-                    } else {
-                        // v is unmatched in. Augmenting path found.
-                        endV = v;
-                        success = true;
-                        break;
-                    }
+                    vNext = vOldMatch;
+                    pathLength += 2;
                 }
 
-                if (success) {
-                    List<Integer> pathP = removeLoops(walkP);
+                // Remove the starting node from free set
+                freeLeft.remove(uStart);
+                matchedCount++;
 
-                    int vNext = endV;
-                    for (int i = pathP.size() - 1; i >= 0; i--) {
-                        int u = pathP.get(i);
-                        int vOldMatch = match[u];
-
-                        match[u] = vNext;
-                        match[vNext] = u;
-
-                        vNext = vOldMatch;
-                    }
-
-                    // Remove the starting node from free set
-                    // Efficient removal: swap with last element and pop
-                    int lastFree = freeLeft.get(freeLeft.size() - 1);
-                    freeLeft.set(randIdx, lastFree);
-                    freeLeft.remove(freeLeft.size() - 1);
-
-                    matchedCount++;
-                }
+                return pathLength;
             }
         }
 
+        return -1;
+    }
+
+    @Override
+    public Set<Edge> getCurrentMatching() {
         Set<Edge> edges = new HashSet<>();
         for (int u : left) {
             if (match[u] != -1) {
@@ -251,5 +255,10 @@ public class GoelKapralovKhanna {
             }
         }
         return edges;
+    }
+
+    @Override
+    public boolean isFinished() {
+        return matchedCount >= n || freeLeft.isEmpty();
     }
 }
