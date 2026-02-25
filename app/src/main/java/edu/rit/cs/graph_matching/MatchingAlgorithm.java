@@ -36,4 +36,11 @@ public interface MatchingAlgorithm {
      * @return true if the algorithm cannot improve the current matching
      */
     boolean isFinished();
+
+    default Set<Edge> getMaximumMatching() {
+        while (!isFinished() && !Thread.interrupted()) {
+            augment();
+        }
+        return getCurrentMatching();
+    }
 }

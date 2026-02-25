@@ -108,7 +108,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
      *
      * @return the generated matching
      */
-    public Set<Edge> generateMatching() {
+    public Set<Edge> getNearlyMaximumMatching() {
         double averageDegree = 0;
         for (int v = 0; v < graph.size(); v++) {
             averageDegree += graph.getDegree(v);
@@ -117,19 +117,6 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
 
         double edgeCount = graph.size() / 2.0 * (1.0 - 1.0 / (Math.floor(averageDegree) + 1.0));
         buildMatching((int) Math.ceil(edgeCount));
-        return getCurrentMatching();
-    }
-
-    /**
-     * Generates a perfect or near-perfect matching on the input graph. The
-     * algorithm will continue until it finds such a matching, even if none
-     * exists. This method is not guaranteed to ever return without being
-     * interrupted.
-     *
-     * @return a perfect or near-perfect matching, if one exists
-     */
-    public Set<Edge> generatePerfectMatching() {
-        buildMatching(graph.size() / 2);
         return getCurrentMatching();
     }
 
@@ -448,7 +435,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
     @Override
     public boolean isFinished() {
         // Dani-Hayes has no explicit termination condition
-        return false;
+        return unmatched.size() < 2;
     }
 
     @Override

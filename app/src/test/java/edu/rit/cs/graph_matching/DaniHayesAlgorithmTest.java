@@ -39,7 +39,7 @@ class DaniHayesAlgorithmTest {
             MutableGraph g = GraphGenerator.generateGraph(new AdjacencySetGraph(size), degrees, rd);
 
             DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
-            Set<Edge> matching = alg.generatePerfectMatching();
+            Set<Edge> matching = alg.getMaximumMatching();
 
             Set<Integer> vertices = matching.stream()
                                             .flatMapToInt(
@@ -75,7 +75,7 @@ class DaniHayesAlgorithmTest {
                     leftDegrees, rightDegrees, rd);
 
             DaniHayesAlgorithm alg = new DaniHayesAlgorithm(new GraphStatistics(g), rd);
-            Set<Edge> matching = alg.generatePerfectMatching();
+            Set<Edge> matching = alg.getMaximumMatching();
 
             Set<Integer> vertices = matching.stream()
                                             .flatMapToInt(

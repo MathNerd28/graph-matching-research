@@ -14,7 +14,7 @@ class EdmondsAlgorithmTest {
     void starGraphs(int vertices) {
         Graph g = GraphGenerator.generateStarGraph(new AdjacencySetGraph(vertices));
         EdmondsAlgorithm algorithm = new EdmondsAlgorithm(g);
-        Set<Edge> matching = algorithm.computeMaximumMatching();
+        Set<Edge> matching = algorithm.getMaximumMatching();
         assertEquals(1, matching.size(), "Star graphs always have a maximum matching of 1 edge");
     }
 
@@ -25,7 +25,7 @@ class EdmondsAlgorithmTest {
         Graph g = GraphGenerator.generateStarGraphWithMatching(new AdjacencySetGraph(vertices),
                 matchingSize);
         EdmondsAlgorithm algorithm = new EdmondsAlgorithm(g);
-        Set<Edge> matching = algorithm.computeMaximumMatching();
+        Set<Edge> matching = algorithm.getMaximumMatching();
         assertEquals(matchingSize, matching.size(),
                 "Star-wheel hybrid graphs have a fixed maximum matching size");
     }
