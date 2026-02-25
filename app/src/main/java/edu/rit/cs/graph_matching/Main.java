@@ -180,7 +180,9 @@ public class Main {
     static class RunTest implements Callable<Integer> {
         enum Algorithm {
             daniHayes,
-            edmonds;
+            edmonds,
+            hopcroftKarp,
+            goelKapralovKhanna,
         }
 
         @Parameters(description = "Algorithm to run", index = "0")
@@ -238,7 +240,8 @@ public class Main {
                 for (int i = 1; i <= rounds; i++) {
                     System.out.printf("Starting round %d of %d for %s on %s...%n", i, rounds,
                             algorithm, data.name());
-                    String safeStartTime = startTime.toString().replace(":", "-");
+                    String safeStartTime = startTime.toString()
+                                                    .replace(":", "-");
                     File csvOutFile = new File(outputDir, String.format("%s_%s_%s_%d.csv",
                             safeStartTime, algorithm.name(), fileBasename, i));
 
@@ -274,6 +277,8 @@ public class Main {
             return switch (algorithm) {
                 case Algorithm.daniHayes -> new DaniHayesAlgorithm(graph, random);
                 case Algorithm.edmonds -> new EdmondsAlgorithm(graph);
+                case Algorithm.hopcroftKarp -> new HopcroftKarpAlgorithm(graph);
+                case Algorithm.goelKapralovKhanna -> new GoelKapralovKhanna(graph, random);
             };
         }
 

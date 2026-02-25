@@ -189,7 +189,7 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
 
         while (true) {
             if (freeLeft.isEmpty()) {
-                break;
+                return -1;
             }
 
             // Pick a random free vertex from P
@@ -242,8 +242,6 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
                 return pathLength;
             }
         }
-
-        return -1;
     }
 
     @Override
