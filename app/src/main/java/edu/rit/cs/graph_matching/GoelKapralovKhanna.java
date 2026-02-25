@@ -24,12 +24,6 @@ import edu.rit.cs.graph_matching.GraphUtils.BipartiteColor;
 public class GoelKapralovKhanna implements MatchingAlgorithm {
     private final Graph graph;
 
-    /** Size of one partition (half the total vertices) */
-    private final int n;
-
-    /** Degree of the regular graph */
-    private final int d;
-
     private final IntHashSet left;
 
     // If u is unmatched, match[u] == -1.
@@ -40,8 +34,6 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
     private final RandomGenerator random;
 
     private final IntHashSet freeLeft;
-
-    private int matchedCount = 0;
 
     /**
      * Constructs the solver and preprocesses the graph into adjacency-array
@@ -65,19 +57,16 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
      */
     public GoelKapralovKhanna(Graph graph, RandomGenerator random) {
         this.graph = graph;
-        this.d = graph.getDegree(0);
         this.random = random;
-        this.n = graph.size() / 2; // Assuming graph is properly bipartite with
-                                   // equal partitions
 
-        this.match = new int[2 * n];
+        this.match = new int[graph.size()];
         Arrays.fill(this.match, -1);
 
-        this.posInPath = new int[2 * n];
+        this.posInPath = new int[graph.size()];
         Arrays.fill(this.posInPath, -1);
 
-        this.left = new IntHashSet(n);
-        this.freeLeft = new IntHashSet(n);
+        this.left = new IntHashSet(graph.size() / 2);
+        this.freeLeft = new IntHashSet(graph.size() / 2);
 
         BipartiteColor[] coloring = GraphUtils.colorBipartite(graph);
         for (int i = 0; i < coloring.length; i++) {
@@ -108,7 +97,7 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
      *     {@code match[u]}, or -1 if the graph degree {@code d} is zero
      */
     private int sampleOutEdge(int u) {
-        if (d == 0) {
+        if (graph.getDegree(u) == 0) {
             return -1;
         }
         while (true) {
@@ -184,8 +173,7 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
      */
     @Override
     public int augment() {
-        int freeCount = n - matchedCount;
-        int bj = (int) (2.0 * (4.0 + (double) (2 * n) / freeCount));
+        int bj = (int) (2.0 * (4.0 + (double) graph.size() / freeLeft.size()));
 
         while (true) {
             if (freeLeft.isEmpty()) {
@@ -237,7 +225,6 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
 
                 // Remove the starting node from free set
                 freeLeft.remove(uStart);
-                matchedCount++;
 
                 return pathLength;
             }
@@ -257,6 +244,6 @@ public class GoelKapralovKhanna implements MatchingAlgorithm {
 
     @Override
     public boolean isFinished() {
-        return matchedCount >= n || freeLeft.isEmpty();
+        return freeLeft.isEmpty();
     }
 }
