@@ -16,19 +16,19 @@ class DaniHayesAlgorithmTest {
     /** Runs are seeded such that the generated graphs are always the same */
 
     @ParameterizedTest
-  // @formatter:off
-  @CsvSource({
-    "10, 4",
-    "100, 5",
-    "100, 10",
-    "101, 6",
-    "1000, 5",
-    "1000, 101",
-    "1001, 6",
-    "10000, 5",
-    "100000, 5",
-  })
-  // @formatter:on
+    // @formatter:off
+    @CsvSource({
+        "10, 4",
+        "100, 5",
+        "100, 10",
+        "101, 6",
+        "1000, 5",
+        "1000, 101",
+        "1001, 6",
+        "10000, 5",
+        "100000, 5",
+    })
+    // @formatter:on
     void regularTest(int size, int degree) {
         Random random = new Random(Objects.hash(size, degree));
         int[] degrees = GraphUtils.generateRegularDegreeSequence(size, degree);
@@ -52,17 +52,17 @@ class DaniHayesAlgorithmTest {
     }
 
     @ParameterizedTest
-  // @formatter:off
-  @CsvSource({
-    "10, 4",
-    "100, 5",
-    "100, 10",
-    "1000, 5",
-    "1002, 101",
-    "10000, 5",
-    "100000, 5",
-  })
-  // @formatter:on
+    // @formatter:off
+    @CsvSource({
+        "10, 4",
+        "100, 5",
+        "100, 10",
+        "1000, 5",
+        "1002, 101",
+        "10000, 5",
+        "100000, 5",
+    })
+    // @formatter:on
     void regularBipartiteTest(int size, int degree) {
         Random random = new Random(Objects.hash(size, degree));
         int[] leftDegrees = GraphUtils.generateRegularDegreeSequence(size / 2, degree);

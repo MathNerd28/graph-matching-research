@@ -116,7 +116,7 @@ public class HopcroftKarpAlgorithm implements MatchingAlgorithm {
                     // Found an augmenting path
                     match[vertex] = neighbor;
                     match[neighbor] = vertex;
-                    return pathLength + 1;
+                    return pathLength + 2;
                 }
             }
         }
