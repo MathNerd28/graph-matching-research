@@ -9,10 +9,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import edu.rit.cs.graph_matching.GraphStatistics.Stats;
 import edu.rit.cs.graph_matching.MatchingAlgorithmTester.AugmentationDataPoint;
 import edu.rit.cs.graph_matching.MatchingAlgorithmTester.DataPoint;
 import edu.rit.cs.graph_matching.MatchingAlgorithmTester.InitializationDataPoint;
@@ -24,11 +26,13 @@ import picocli.CommandLine.Parameters;
 
 @Command(subcommands = { Main.GenerateGraph.class, Main.RunTest.class },
          mixinStandardHelpOptions = true)
-public class Main {
+public final class Main {
+    private Main() {}
+
     @Command(name = "generate", description = "Generate a graph using a particular method.",
              mixinStandardHelpOptions = true)
     static class GenerateGraph {
-        static class GenerationParams {
+        static class OutputParams {
             @Option(names = { "-f", "--file-prefix" }, required = true,
                     description = "Prefix for the graph filenames")
             private String filePrefix;
@@ -36,27 +40,21 @@ public class Main {
             @Option(names = { "-o", "--output-dir" }, description = "Output data directory")
             private File outputDir = new File(System.getProperty("user.dir"));
 
-            @Option(names = { "--name" }, description = "Name of the graph")
-            private String graphName = null;
-
-            @Option(names = { "-n", "--size" }, required = true,
-                    description = "Number of vertices in the graph")
-            private int vertices;
-
-            @Option(names = { "--verify" },
-                    description = "Verify that a degree sequence is possible before generating.")
-            private boolean verify = false;
-
             @Option(names = { "-c", "--count" }, required = true,
                     description = "The number of graphs to generate")
             private int graphCount;
+
+            OutputParams() {}
         }
 
         @Command(name = "random", mixinStandardHelpOptions = true,
                  description = "Random graph: every edge is created with the same probability")
         public int generateRandomGraph(
         // @formatter:off
-            @Mixin GenerationParams params,
+            @Mixin OutputParams params,
+            @Option(names = { "-n", "--size" }, required = true,
+                    description = "Number of vertices in the graph")
+            int vertices,
             @Option(names = { "-p", "--probability" }, required = true,
                     description = "The probability that each edge exists")
             double edgeProbability
@@ -66,67 +64,33 @@ public class Main {
                 return CommandLine.ExitCode.USAGE;
             }
 
-            for (int i = 1; i <= params.graphCount; i++) {
-                System.out.printf("Generating random graph %d of %d...%n", i, params.graphCount);
-                Graph graph = GraphGenerator.generateRandomGraph(
-                        new AdjacencySetGraph(params.vertices), edgeProbability, new Random());
-
-                String name = params.graphName;
-                String description =
-                        String.format("random -n=%d -p=%f", params.vertices, edgeProbability);
-                if (name == null) {
-                    name = String.format("Random-%d-%08x", params.vertices, graph.hashCode());
-                }
-
-                String filename = String.format("%s%d.graph", params.filePrefix, i);
-                System.out.printf("Saving random graph %d of %d to %s...%n", i, params.graphCount,
-                        filename);
-                File file = new File(params.outputDir, filename);
-                GraphFileData data = new GraphFileData(name, description, graph);
-                data.writeToFile(file);
-            }
-
-            return CommandLine.ExitCode.OK;
+            return generateGraphs(params, "Random",
+                    String.format("regular -n=%d -p=%f", vertices, edgeProbability),
+                    () -> GraphGenerator.generateRandomGraph(new AdjacencySetGraph(vertices),
+                            edgeProbability, new Random()));
         }
 
         @Command(name = "regular", mixinStandardHelpOptions = true,
                  description = "Random-Regular graph: every vertex is connected to d random vertices")
         public int generateRegularGraph(
         // @formatter:off
-            @Mixin GenerationParams params,
+            @Mixin OutputParams params,
+            @Option(names = { "-n", "--size" }, required = true,
+                    description = "Number of vertices in the graph")
+            int vertices,
             @Option(names = { "-d", "--degree" }, required = true, description = "Degree of each vertex")
             int degree
         // @formatter:on
         ) throws IOException {
-            if (degree >= params.vertices) {
+            if (degree >= vertices) {
                 throw new IllegalArgumentException("degree must be less than vertices");
             }
 
-            for (int i = 1; i <= params.graphCount; i++) {
-                System.out.printf("Generating regular graph %d of %d...%n", i, params.graphCount);
-
-                int[] degrees = GraphUtils.generateRegularDegreeSequence(params.vertices, degree);
-                if (params.verify && !GraphUtils.isGraphical(degrees)) {
-                    throw new IllegalArgumentException("degree sequence cannot be generated");
-                }
-                Graph graph = GraphGenerator.generateGraph(new AdjacencySetGraph(params.vertices),
-                        degrees, new Random());
-
-                String name = params.graphName;
-                String description = String.format("regular -n=%d -d=%d", params.vertices, degree);
-                if (name == null) {
-                    name = String.format("Regular-%d-%08x", params.vertices, graph.hashCode());
-                }
-
-                String filename = String.format("%s%d.graph", params.filePrefix, i);
-                System.out.printf("Saving regular graph %d of %d to %s...%n", i, params.graphCount,
-                        filename);
-                File file = new File(params.outputDir, filename);
-                GraphFileData data = new GraphFileData(name, description, graph);
-                data.writeToFile(file);
-            }
-
-            return CommandLine.ExitCode.OK;
+            int[] degrees = GraphUtils.generateRegularDegreeSequence(vertices, degree);
+            return generateGraphs(params, "Regular",
+                    String.format("regular -n=%d -d=%d", vertices, degree),
+                    () -> GraphGenerator.generateGraph(new AdjacencySetGraph(vertices), degrees,
+                            new Random()));
         }
 
         @Command(name = "biregular", mixinStandardHelpOptions = true,
@@ -134,43 +98,47 @@ public class Main {
                          + "to d random vertices of the opposite color")
         public int generateBiregularGraph(
         // @formatter:off
-            @Mixin GenerationParams params,
+            @Mixin OutputParams params,
+            @Option(names = { "-n", "--size" }, required = true,
+                    description = "Number of vertices in the graph")
+            int vertices,
             @Option(names = { "-d", "--degree" }, required = true, description = "Degree of each vertex")
             int degree
         // @formatter:on
         ) throws IOException {
-            if (degree >= params.vertices) {
-                throw new IllegalArgumentException("degree must be less than vertices");
+            if (vertices % 2 != 0) {
+                throw new IllegalArgumentException("vertices must be even");
             }
 
+            if (degree >= (vertices / 2)) {
+                throw new IllegalArgumentException("degree must be at most half of vertices");
+            }
+
+            int[] halfDegrees = GraphUtils.generateRegularDegreeSequence(vertices / 2, degree);
+            return generateGraphs(params, "Biregular",
+                    String.format("biregular -n=%d -d=%d", vertices, degree),
+                    () -> GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(vertices),
+                            halfDegrees, halfDegrees, new Random()));
+        }
+
+        private static int generateGraphs(OutputParams params, String graphNamePrefix,
+                                          String graphDescription,
+                                          Supplier<Graph> generator) throws IOException {
             for (int i = 1; i <= params.graphCount; i++) {
-                System.out.printf("Generating bipartite-regular graph %d of %d...%n", i,
+                System.out.printf("Generating \"%s\" graph %d of %d...%n", graphDescription, i,
                         params.graphCount);
 
-                int[] halfDegrees =
-                        GraphUtils.generateRegularDegreeSequence(params.vertices / 2, degree);
-                if (params.verify && !GraphUtils.isGraphical(halfDegrees, halfDegrees)) {
-                    throw new IllegalArgumentException("degree sequence cannot be generated");
-                }
-                Graph graph = GraphGenerator.generateBipartiteGraph(
-                        new AdjacencySetGraph(params.vertices), halfDegrees, halfDegrees,
-                        new Random());
+                Graph graph = generator.get();
 
-                String name = params.graphName;
-                String description =
-                        String.format("bipartite -n=%d -d=%d", params.vertices, degree);
-                if (name == null) {
-                    name = String.format("Bipartite-%d-%08x", params.vertices, graph.hashCode());
-                }
-
+                String name = String.format("%s-%08x", graphNamePrefix, graph.hashCode());
                 String filename = String.format("%s%d.graph", params.filePrefix, i);
-                System.out.printf("Saving bipartite-regular graph %d of %d to %s...%n", i,
+                System.out.printf("Saving \"%s\" graph %d of %d to %s...%n", graphDescription, i,
                         params.graphCount, filename);
+
                 File file = new File(params.outputDir, filename);
-                GraphFileData data = new GraphFileData(name, description, graph);
+                GraphFileData data = new GraphFileData(name, graphDescription, graph);
                 data.writeToFile(file);
             }
-
             return CommandLine.ExitCode.OK;
         }
     }
@@ -216,6 +184,8 @@ public class Main {
 
         private PrintWriter currentRunCsv;
 
+        RunTest() {}
+
         @Override
         public Integer call() throws IOException {
             Instant startTime = Instant.now();
@@ -238,7 +208,8 @@ public class Main {
                 for (int i = 1; i <= rounds; i++) {
                     System.out.printf("Starting round %d of %d for %s on %s...%n", i, rounds,
                             algorithm, data.name());
-                    String safeStartTime = startTime.toString().replace(":", "-");
+                    String safeStartTime = startTime.toString()
+                                                    .replace(":", "-");
                     File csvOutFile = new File(outputDir, String.format("%s_%s_%s_%d.csv",
                             safeStartTime, algorithm.name(), fileBasename, i));
 
@@ -286,29 +257,30 @@ public class Main {
         }
 
         private void csvCallback(DataPoint dataPoint) {
-            if (dataPoint instanceof AugmentationDataPoint aug) {
+            if (dataPoint instanceof AugmentationDataPoint(
+            // @formatter:off
+                int matchingSize,
+                int pathLength,
+                Duration time,
+                Stats statsSnapshot
+            // @formatter:on
+            )) {
                 StringBuilder builder = new StringBuilder();
-                builder.append(aug.matchingSize())
+                builder.append(matchingSize)
                        .append(',')
-                       .append(aug.pathLength())
+                       .append(pathLength)
                        .append(',')
-                       .append(String.format("%.9f", 1e-9 * aug.time()
-                                                               .toNanos()))
+                       .append(String.format("%.9f", 1e-9 * time.toNanos()))
                        .append(',')
-                       .append(aug.statsSnapshot()
-                                  .allNeighborsCount())
+                       .append(statsSnapshot.allNeighborsCount())
                        .append(',')
-                       .append(aug.statsSnapshot()
-                                  .degreeCheckCount())
+                       .append(statsSnapshot.degreeCheckCount())
                        .append(',')
-                       .append(aug.statsSnapshot()
-                                  .edgeCheckCount())
+                       .append(statsSnapshot.edgeCheckCount())
                        .append(',')
-                       .append(aug.statsSnapshot()
-                                  .randomNeighborCount())
+                       .append(statsSnapshot.randomNeighborCount())
                        .append(',')
-                       .append(aug.statsSnapshot()
-                                  .sizeCheckCount());
+                       .append(statsSnapshot.sizeCheckCount());
                 this.currentRunCsv.println(builder.toString());
             }
         }
