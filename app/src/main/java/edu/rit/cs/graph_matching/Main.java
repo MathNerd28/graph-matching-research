@@ -32,7 +32,7 @@ public final class Main {
     @Command(name = "generate", description = "Generate a graph using a particular method.",
              mixinStandardHelpOptions = true)
     static class GenerateGraph {
-        static class GenerationParams {
+        static class OutputParams {
             @Option(names = { "-f", "--file-prefix" }, required = true,
                     description = "Prefix for the graph filenames")
             private String filePrefix;
@@ -44,14 +44,14 @@ public final class Main {
                     description = "The number of graphs to generate")
             private int graphCount;
 
-            GenerationParams() {}
+            OutputParams() {}
         }
 
         @Command(name = "random", mixinStandardHelpOptions = true,
                  description = "Random graph: every edge is created with the same probability")
         public int generateRandomGraph(
         // @formatter:off
-            @Mixin GenerationParams params,
+            @Mixin OutputParams params,
             @Option(names = { "-n", "--size" }, required = true,
                     description = "Number of vertices in the graph")
             int vertices,
@@ -74,7 +74,7 @@ public final class Main {
                  description = "Random-Regular graph: every vertex is connected to d random vertices")
         public int generateRegularGraph(
         // @formatter:off
-            @Mixin GenerationParams params,
+            @Mixin OutputParams params,
             @Option(names = { "-n", "--size" }, required = true,
                     description = "Number of vertices in the graph")
             int vertices,
@@ -98,7 +98,7 @@ public final class Main {
                          + "to d random vertices of the opposite color")
         public int generateBiregularGraph(
         // @formatter:off
-            @Mixin GenerationParams params,
+            @Mixin OutputParams params,
             @Option(names = { "-n", "--size" }, required = true,
                     description = "Number of vertices in the graph")
             int vertices,
@@ -121,7 +121,7 @@ public final class Main {
                             halfDegrees, halfDegrees, new Random()));
         }
 
-        private static int generateGraphs(GenerationParams params, String graphNamePrefix,
+        private static int generateGraphs(OutputParams params, String graphNamePrefix,
                                           String graphDescription,
                                           Supplier<Graph> generator) throws IOException {
             for (int i = 1; i <= params.graphCount; i++) {
