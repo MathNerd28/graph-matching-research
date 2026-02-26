@@ -9,9 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -45,8 +43,7 @@ import edu.rit.cs.graph_matching.graph.MutableGraph;
  * <li>The vertex ID ({@code v}) as a 4-byte integer</li>
  * <li>The number of edges ({@code b}) in this block as a 4-byte integer</li>
  * <li>A listing of the {@code b} neighbors of {@code v} whose ID is greater
- * than {@code v}'s, in ascending order by ID, each as a signed 4-byte
- * integer</li>
+ * than {@code v}'s, in unspecified order, each as a signed 4-byte integer</li>
  * </ul>
  * <p>
  * After each block, if the number of edges seen so far is less than the total
@@ -70,8 +67,8 @@ public record GraphFileData(String name,
         try (ZipOutputStream zip =
                 new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
              DataOutputStream out = new DataOutputStream(zip)) {
-            zip.setLevel(Deflater.BEST_COMPRESSION);
-            zip.putNextEntry(new ZipEntry(name()));
+            zip.setLevel(Deflater.BEST_SPEED);
+            zip.putNextEntry(new ZipEntry(name));
 
             out.write(GraphFileData.HEADER);
 
@@ -80,31 +77,33 @@ public record GraphFileData(String name,
             out.writeInt(graph.size());
 
             long edges = 0;
+            int[] edgesRemaining = new int[graph.size()];
             for (int v = 0; v < graph.size(); v++) {
-                edges += graph.getDegree(v);
+                edgesRemaining[v] = graph.getDegree(v);
+                edges += edgesRemaining[v];
             }
             edges /= 2;
             out.writeLong(edges);
 
-            List<Integer> neighbors = new ArrayList<>();
             for (int v = 0; v < graph.size(); v++) {
-                neighbors.clear();
-                for (int w : graph.getAllNeighbors(v)) {
-                    if (w > v) {
-                        neighbors.add(w);
-                    }
-                }
-
-                if (neighbors.isEmpty()) {
+                if (edgesRemaining[v] == 0) {
                     continue;
                 }
 
                 out.writeInt(v);
-                out.writeInt(neighbors.size());
+                out.writeInt(edgesRemaining[v]);
 
-                neighbors.sort(null);
-                for (int w : neighbors) {
-                    out.writeInt(w);
+                for (int w : graph.getAllNeighbors(v)) {
+                    if (w > v) {
+                        out.writeInt(w);
+                        edgesRemaining[v]--;
+                        edgesRemaining[w]--;
+                    }
+                }
+
+                if (edgesRemaining[v] != 0) {
+                    // something went wrong
+                    throw new IllegalStateException("Serializing graph to file failed");
                 }
             }
 
