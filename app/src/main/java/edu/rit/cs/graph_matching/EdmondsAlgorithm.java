@@ -229,22 +229,6 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
         return length;
     }
 
-    /**
-     * Compute the maximum matching on the input graph.
-     *
-     * @return the edges in the maximum matching
-     */
-    public Set<Edge> computeMaximumMatching() {
-        // Compute matching by repeatedly augmenting
-        for (; nextRoot < graph.size(); nextRoot++) {
-            if (matches[nextRoot] < 0) {
-                findAugmentingPath(nextRoot);
-            }
-        }
-
-        return getCurrentMatching();
-    }
-
     @Override
     public int augment() {
         for (; nextRoot < graph.size(); nextRoot++) {

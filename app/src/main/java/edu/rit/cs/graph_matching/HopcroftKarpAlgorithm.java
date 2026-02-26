@@ -2,14 +2,14 @@ package edu.rit.cs.graph_matching;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.Set;
 
 import edu.rit.cs.graph_matching.GraphUtils.BipartiteColor;
 
-import java.util.HashSet;
-
-public class HopcroftKarpAlgorithm {
+public class HopcroftKarpAlgorithm implements MatchingAlgorithm {
     private final Graph      graph;  // original graph
     private final IntHashSet left;
     private final IntHashSet right;
@@ -17,9 +17,12 @@ public class HopcroftKarpAlgorithm {
     private final int[]      level;
     private final IntHashSet blocked;
 
+    private Iterator<Integer> leftItr;
+    private boolean           finished = false;
+
     public HopcroftKarpAlgorithm(Graph graph) {
         this.graph = graph;
-        this.level = new int[graph.size() + 1];
+        this.level = new int[graph.size()];
         this.blocked = new IntHashSet();
         BipartiteColor[] coloring = GraphUtils.colorBipartite(graph);
         left = new IntHashSet();
@@ -93,50 +96,83 @@ public class HopcroftKarpAlgorithm {
      *
      * @param vertex
      *     the vertex to start DFS from (typically in the left partition)
-     * @return true if an augmenting path was found (and matching updated),
-     *     false otherwise
+     * @return if an augmenting path was found (and matching updated), the
+     *     length of the augmenting path; otherwise, -1
      */
-    private boolean dfs(int vertex) {
+    private int dfs(int vertex) {
         for (int neighbor : graph.getAllNeighbors(vertex)) {
             if (blocked.contains(vertex)) {
                 continue;
             }
             int matchingNode = match[neighbor];
-            if (matchingNode == -1
-                    || (level[matchingNode] == level[vertex] + 1 && dfs(matchingNode))) {
+            if (matchingNode == -1) {
                 // Found an augmenting path
                 match[vertex] = neighbor;
                 match[neighbor] = vertex;
-                return true;
-            }
-        }
-        blocked.add(vertex);
-        return false;
-    }
-
-    /**
-     * Computes and returns the size of a maximum matching for the current
-     * bipartite graph using the Hopcroft–Karp algorithm. Complexity: worst case
-     * O((m + n)\sqrt(n)).
-     *
-     * @return the number of matched pairs in the maximum matching
-     */
-    public Set<Edge> getMaximumMatching() {
-        while (bfs()) {
-            blocked.clear();
-            for (int u : left) {
-                if (match[u] == -1 && !blocked.contains(u)) {
-                    dfs(u);
+                return 1;
+            } else if (level[matchingNode] == level[vertex] + 1) {
+                int pathLength = dfs(matchingNode);
+                if (pathLength > 0) {
+                    // Found an augmenting path
+                    match[vertex] = neighbor;
+                    match[neighbor] = vertex;
+                    return pathLength + 2;
                 }
             }
         }
-        Set<Edge> maximumMatching = new HashSet<>();
+        blocked.add(vertex);
+        return -1;
+    }
+
+    @Override
+    public int augment() {
+        if (finished) {
+            return -1;
+        }
+
+        if (leftItr == null) {
+            if (!bfs()) {
+                finished = true;
+                return -1;
+            }
+            blocked.clear();
+            leftItr = left.iterator();
+        }
+
+        while (true) {
+            while (leftItr.hasNext()) {
+                int u = leftItr.next();
+                if (match[u] == -1 && !blocked.contains(u)) {
+                    int pathLength = dfs(u);
+                    if (pathLength > 0) {
+                        return pathLength;
+                    }
+                }
+            }
+
+            if (!bfs()) {
+                finished = true;
+                return -1;
+            }
+            blocked.clear();
+            leftItr = left.iterator();
+        }
+    }
+
+    @Override
+    public Set<Edge> getCurrentMatching() {
+        Set<Edge> matching = new HashSet<>();
         for (int u : left) {
             int v = match[u];
             if (v != -1) {
-                maximumMatching.add(new Edge(u, v));
+                matching.add(new Edge(u, v));
             }
         }
-        return maximumMatching;
+        return matching;
+    }
+
+    @Override
+    public boolean isFinished() {
+        return finished;
     }
 }

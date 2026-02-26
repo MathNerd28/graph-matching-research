@@ -148,7 +148,9 @@ public final class Main {
     static class RunTest implements Callable<Integer> {
         enum Algorithm {
             daniHayes,
-            edmonds;
+            edmonds,
+            hopcroftKarp,
+            goelKapralovKhanna,
         }
 
         @Parameters(description = "Algorithm to run", index = "0")
@@ -245,6 +247,8 @@ public final class Main {
             return switch (algorithm) {
                 case Algorithm.daniHayes -> new DaniHayesAlgorithm(graph, random);
                 case Algorithm.edmonds -> new EdmondsAlgorithm(graph);
+                case Algorithm.hopcroftKarp -> new HopcroftKarpAlgorithm(graph);
+                case Algorithm.goelKapralovKhanna -> new GoelKapralovKhanna(graph, random);
             };
         }
 

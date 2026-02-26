@@ -36,4 +36,16 @@ public interface MatchingAlgorithm {
      * @return true if the algorithm cannot improve the current matching
      */
     boolean isFinished();
+
+    /**
+     * Compute the maximum matching on the input graph.
+     *
+     * @return the edges in the maximum matching
+     */
+    default Set<Edge> getMaximumMatching() {
+        while (!isFinished() && !Thread.interrupted()) {
+            augment();
+        }
+        return getCurrentMatching();
+    }
 }
