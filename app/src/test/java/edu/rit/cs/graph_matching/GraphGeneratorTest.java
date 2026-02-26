@@ -1,11 +1,10 @@
 package edu.rit.cs.graph_matching;
 
+import java.util.Random;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Random;
-
 import org.junit.jupiter.api.Test;
 
 class GraphGeneratorTest {
@@ -155,6 +154,69 @@ class GraphGeneratorTest {
         for (int i = 3; i < 6; i++) {
             assertEquals(rightDegreeSequence[i - 3], bipartiteGraph.getAllNeighbors(i)
                                                                    .size());
+        }
+    }
+
+    @Test
+    void testGenerateLoopGraph1() {
+        // Edge case: a graph with a single vertex cannot form a cycle.
+        MutableGraph graph = new SparseGraphImpl(1);
+        GraphGenerator.generateLoopGraph(graph);
+
+        int edgeCount = 0;
+        for (int i = 0; i < graph.size(); i++) {
+            edgeCount += graph.getDegree(i);
+        }
+        edgeCount /= 2;
+
+        assertEquals(0, edgeCount);
+        assertEquals(0, graph.getDegree(0));
+    }
+
+    @Test
+    void testGenerateLoopGraph2() {
+        // Special small case: two vertices should form a single undirected
+        // edge.
+        MutableGraph graph = new SparseGraphImpl(2);
+        GraphGenerator.generateLoopGraph(graph);
+
+        int edgeCount = 0;
+        for (int i = 0; i < graph.size(); i++) {
+            edgeCount += graph.getDegree(i);
+        }
+        edgeCount /= 2;
+
+        assertEquals(1, edgeCount);
+        assertTrue(graph.hasEdge(0, 1));
+        assertEquals(1, graph.getDegree(0));
+        assertEquals(1, graph.getDegree(1));
+    }
+
+    @Test
+    void testGenerateLoopGraphCycleProperties() {
+        // General case: a cycle graph on n >= 3 vertices
+        // should contain exactly n edges.
+        int n = 7;
+        MutableGraph graph = new SparseGraphImpl(n);
+        GraphGenerator.generateLoopGraph(graph);
+
+        int edgeCount = 0;
+        for (int i = 0; i < graph.size(); i++) {
+            edgeCount += graph.getDegree(i);
+        }
+        edgeCount /= 2;
+
+        assertEquals(n, edgeCount);
+
+        // Every vertex should have degree 2
+        for (int i = 0; i < n; i++) {
+            assertEquals(2, graph.getDegree(i));
+        }
+
+        // Consecutive vertices (including last to first) must be connected.
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            assertTrue(graph.hasEdge(i, j));
         }
     }
 }
