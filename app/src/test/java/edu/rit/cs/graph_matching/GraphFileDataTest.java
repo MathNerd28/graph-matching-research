@@ -14,15 +14,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class GraphFileDataTest {
     @ParameterizedTest
-  // @formatter:off
-  @CsvSource({
-    "10, 0.0",
-    "10, 1.0",
-    "10, 0.5",
-    "1000, 0.2",
-    "10000, 0.1",
-  })
-  // @formatter:on
+    // @formatter:off
+    @CsvSource({
+        "10, 0.0",
+        "10, 1.0",
+        "10, 0.5",
+        "1000, 0.2",
+        "10000, 0.1",
+    })
+    // @formatter:on
     void testReadWriteGraph(int size, double edgeProb, @TempDir Path tmpDir) throws IOException {
         Random rd = new Random(Objects.hash(size, edgeProb));
         Graph graph = GraphGenerator.generateRandomGraph(new AdjacencySetGraph(size), edgeProb, rd);
