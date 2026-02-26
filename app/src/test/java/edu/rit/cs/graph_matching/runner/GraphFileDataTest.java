@@ -12,9 +12,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
-import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class GraphFileDataTest {
     @ParameterizedTest
@@ -29,7 +29,7 @@ class GraphFileDataTest {
   // @formatter:on
     void testReadWriteGraph(int size, double edgeProb, @TempDir Path tmpDir) throws IOException {
         Random rd = new Random(Objects.hash(size, edgeProb));
-        Graph graph = GraphGenerator.generateRandomGraph(new SparseGraphImpl(size), edgeProb, rd);
+        Graph graph = GraphGenerator.generateRandomGraph(new AdjacencySetGraph(size), edgeProb, rd);
 
         GraphFileData writeData = new GraphFileData("testRandom",
                 String.format("random n=%d p=%.2f", size, edgeProb), graph);

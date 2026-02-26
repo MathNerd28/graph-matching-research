@@ -9,11 +9,11 @@ import java.util.Set;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
-import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class HopcroftKarpAlgorithmTest {
     @ParameterizedTest
@@ -35,7 +35,7 @@ class HopcroftKarpAlgorithmTest {
     void regularBipartiteGraphs(int vertices, int degree) {
         Random random = new Random(Objects.hash(vertices, degree));
         int[] degrees = GraphUtils.generateRegularDegreeSequence(vertices / 2, degree);
-        Graph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(vertices), degrees,
+        Graph g = GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(vertices), degrees,
                 degrees, random);
         HopcroftKarpAlgorithm algorithm = new HopcroftKarpAlgorithm(g);
         Set<Edge> matching = algorithm.getMaximumMatching();

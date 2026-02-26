@@ -14,37 +14,38 @@ import org.junit.jupiter.api.Test;
 
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
-class DenseGraphImplTest {
+
+class AdjacencySetGraphTest {
     /**
-     * Covers {@link DenseGraphImpl#DenseGraphImpl(int)},
-     * {@link DenseGraphImpl#size()}
+     * Covers {@link AdjacencySetGraph#AdjacencySetGraph(int)},
+     * {@link AdjacencySetGraph#size()}
      */
     @Test
     void construct() {
-        Graph g = new DenseGraphImpl(1);
+        Graph g = new AdjacencySetGraph(1);
         assertEquals(1, g.size());
-        g = new DenseGraphImpl(2);
+        g = new AdjacencySetGraph(2);
         assertEquals(2, g.size());
-        g = new DenseGraphImpl(50);
+        g = new AdjacencySetGraph(50);
         assertEquals(50, g.size());
-        g = new DenseGraphImpl(65536);
+        g = new AdjacencySetGraph(65536);
         assertEquals(65536, g.size());
+        g = new AdjacencySetGraph(10_000_000);
+        assertEquals(10_000_000, g.size());
 
-        assertThrows(IllegalArgumentException.class, () -> new DenseGraphImpl(0),
+        assertThrows(IllegalArgumentException.class, () -> new AdjacencySetGraph(0),
                 "Graphs should not support 0 vertices");
-        assertThrows(IllegalArgumentException.class, () -> new DenseGraphImpl(65537),
-                "DenseGraphImpl doesn't support more than 65536 vertices");
     }
 
     /**
-     * Covers {@link DenseGraphImpl#hasEdge(int, int)},
-     * {@link DenseGraphImpl#addEdge(int, int)},
-     * {@link DenseGraphImpl#removeEdge(int, int)},
-     * {@link DenseGraphImpl#clear()}
+     * Covers {@link AdjacencySetGraph#hasEdge(int, int)},
+     * {@link AdjacencySetGraph#addEdge(int, int)},
+     * {@link AdjacencySetGraph#removeEdge(int, int)},
+     * {@link AdjacencySetGraph#clear()}
      */
     @Test
     void modify() {
-        MutableGraph g = new DenseGraphImpl(3);
+        MutableGraph g = new AdjacencySetGraph(3);
 
         assertFalse(g.hasEdge(0, 1), "Edges should not exist before being added");
         g.addEdge(0, 1);
@@ -74,19 +75,19 @@ class DenseGraphImplTest {
     }
 
     /**
-     * Covers {@link DenseGraphImpl#hasEdge(int, int)},
-     * {@link DenseGraphImpl#getRandomNeighbor(int)},
-     * {@link DenseGraphImpl#getAllNeighbors(int)}
+     * Covers {@link AdjacencySetGraph#hasEdge(int, int)},
+     * {@link AdjacencySetGraph#getRandomNeighbor(int)},
+     * {@link AdjacencySetGraph#getAllNeighbors(int)}
      * <p>
-     * {@link DenseGraphImpl#getRandomNeighbor(int)} has a RNG component; thus,
-     * it will only be tested in a method that is guaranteed to work.
+     * {@link AdjacencySetGraph#getRandomNeighbor(int)} has a RNG component;
+     * thus, it will only be tested in a method that is guaranteed to work.
      */
     @Test
     void query() {
         Set<Edge> edges = Set.of(new Edge(0, 1), new Edge(0, 2), new Edge(0, 3), new Edge(1, 2));
         Random rd = new Random(0);
 
-        MutableGraph g = new DenseGraphImpl(5);
+        MutableGraph g = new AdjacencySetGraph(5);
         for (Edge e : edges) {
             g.addEdge(e);
         }
@@ -110,11 +111,11 @@ class DenseGraphImplTest {
     }
 
     /**
-     * Briefly checks that operations work properly on a very large dense graph.
+     * Briefly checks that operations work properly on a very large graph.
      */
     @Test
     void veryLargeGraph() {
-        MutableGraph g = new DenseGraphImpl(10000);
+        MutableGraph g = new AdjacencySetGraph(10000);
 
         // Ensure the graph is initially empty
         g.clear();

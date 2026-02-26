@@ -12,11 +12,11 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
 import edu.rit.cs.graph_matching.graph.MutableGraph;
-import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class DaniHayesAlgorithmTest {
     /** Runs are seeded such that the generated graphs are always the same */
@@ -42,7 +42,7 @@ class DaniHayesAlgorithmTest {
         for (int j = 0; j < 10; j++) {
             Random rd = new Random(random.nextLong());
 
-            MutableGraph g = GraphGenerator.generateGraph(new SparseGraphImpl(size), degrees, rd);
+            MutableGraph g = GraphGenerator.generateGraph(new AdjacencySetGraph(size), degrees, rd);
 
             DaniHayesAlgorithm alg = new DaniHayesAlgorithm(g, rd);
             Set<Edge> matching = alg.generatePerfectMatching();
@@ -77,7 +77,7 @@ class DaniHayesAlgorithmTest {
         for (int j = 0; j < 10; j++) {
             Random rd = new Random(random.nextLong());
 
-            MutableGraph g = GraphGenerator.generateBipartiteGraph(new SparseGraphImpl(size),
+            MutableGraph g = GraphGenerator.generateBipartiteGraph(new AdjacencySetGraph(size),
                     leftDegrees, rightDegrees, rd);
 
             DaniHayesAlgorithm alg = new DaniHayesAlgorithm(g, rd);

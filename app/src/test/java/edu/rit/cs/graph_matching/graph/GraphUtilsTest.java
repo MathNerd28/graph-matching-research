@@ -18,7 +18,7 @@ class GraphUtilsTest {
     @Test
     void testEmptySet() {
         Set<Edge> edges = new HashSet<>();
-        Graph g = new SparseGraphImpl(1);
+        Graph g = new AdjacencySetGraph(1);
         boolean result = GraphUtils.isValidMatching(g, edges);
         assertTrue(result, "An empty set of edges should be a valid matching");
     }
@@ -30,7 +30,7 @@ class GraphUtilsTest {
         edges.add(new Edge(2, 3));
         edges.add(new Edge(4, 5));
 
-        MutableGraph g = new SparseGraphImpl(6);
+        MutableGraph g = new AdjacencySetGraph(6);
         for (Edge e : edges) {
             g.addEdge(e);
         }
@@ -46,7 +46,7 @@ class GraphUtilsTest {
         edges.add(new Edge(1, 2));
         edges.add(new Edge(3, 4));
 
-        MutableGraph g = new SparseGraphImpl(5);
+        MutableGraph g = new AdjacencySetGraph(5);
         for (Edge e : edges) {
             g.addEdge(e);
         }
@@ -60,7 +60,7 @@ class GraphUtilsTest {
         Set<Edge> edges = new HashSet<>();
         edges.add(new Edge(0, 1));
 
-        MutableGraph g = new SparseGraphImpl(2);
+        MutableGraph g = new AdjacencySetGraph(2);
         for (Edge e : edges) {
             g.addEdge(e);
         }

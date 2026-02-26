@@ -8,11 +8,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import edu.rit.cs.graph_matching.graph.DenseGraphImpl;
+import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.graph.MutableGraph;
-import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 class GraphStatisticsTest {
     /**
@@ -21,15 +20,15 @@ class GraphStatisticsTest {
      */
     @Test
     void construct() {
-        Graph g = new GraphStatistics(new DenseGraphImpl(1));
+        Graph g = new GraphStatistics(new AdjacencySetGraph(1));
         assertEquals(1, g.size());
-        g = new GraphStatistics(new DenseGraphImpl(2));
+        g = new GraphStatistics(new AdjacencySetGraph(2));
         assertEquals(2, g.size());
-        g = new GraphStatistics(new DenseGraphImpl(50));
+        g = new GraphStatistics(new AdjacencySetGraph(50));
         assertEquals(50, g.size());
-        g = new GraphStatistics(new DenseGraphImpl(65536));
+        g = new GraphStatistics(new AdjacencySetGraph(65536));
         assertEquals(65536, g.size());
-        g = new GraphStatistics(new SparseGraphImpl(10_000_000));
+        g = new GraphStatistics(new AdjacencySetGraph(10_000_000));
         assertEquals(10_000_000, g.size());
     }
 
@@ -46,7 +45,7 @@ class GraphStatisticsTest {
         Set<Edge> edges = Set.of(new Edge(0, 1), new Edge(0, 2), new Edge(0, 3), new Edge(1, 2));
         Random rd = new Random(0);
 
-        MutableGraph g = new DenseGraphImpl(5);
+        MutableGraph g = new AdjacencySetGraph(5);
         for (Edge e : edges) {
             g.addEdge(e);
         }

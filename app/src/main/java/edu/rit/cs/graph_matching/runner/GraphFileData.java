@@ -17,9 +17,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.MutableGraph;
-import edu.rit.cs.graph_matching.graph.SparseGraphImpl;
 
 /**
  * Data that can be serialized to a binary graph file format. Byte order is
@@ -137,7 +137,7 @@ public record GraphFileData(String name,
             String details = in.readUTF();
 
             int vertices = in.readInt();
-            MutableGraph graph = new SparseGraphImpl(vertices);
+            MutableGraph graph = new AdjacencySetGraph(vertices);
 
             long edges = in.readLong();
             while (edges > 0) {
