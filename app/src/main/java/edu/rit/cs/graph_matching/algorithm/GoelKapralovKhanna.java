@@ -11,7 +11,7 @@ import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
 import edu.rit.cs.graph_matching.graph.GraphUtils.BipartiteColor;
-import edu.rit.cs.graph_matching.graph.IntHashSet;
+import edu.rit.cs.graph_matching.util.IntHashSet;
 
 /**
  * Implementation of the Goel–Kapralov–Khanna randomized algorithm for

@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.random.RandomGenerator;
 
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
+import edu.rit.cs.graph_matching.util.IntHashSet;
 
 public final class GraphUtils {
     private GraphUtils() {}

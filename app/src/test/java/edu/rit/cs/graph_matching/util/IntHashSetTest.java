@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching;
+package edu.rit.cs.graph_matching.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -11,13 +11,29 @@ import java.util.NoSuchElementException;
 import java.util.Random;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class IntArraySetTest {
+class IntHashSetTest {
+    /**
+     * Check that the load factor is based on the number of empty slots, not the
+     * number of occupied slots. (Some table entries are marked as deleted, but
+     * still need to be traversed when checking if a key is present.)
+     */
+    @Test
+    @Timeout(1) // detect infinite loops
+    void checkLoadFactorCondition() {
+        IntHashSet set = new IntHashSet();
+        for (int i = 0; i < 1024; i++) {
+            assertTrue(set.add(i));
+            assertTrue(set.remove(i));
+        }
+    }
+
     @Test
     void testTypeRejection() {
-        IntArraySet set = new IntArraySet();
+        IntHashSet set = new IntHashSet();
 
         assertTrue(set.add(0));
         assertTrue(set.contains(0));
@@ -37,9 +53,9 @@ class IntArraySetTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = { 10, 100, 1_000, 10_000 })
+    @ValueSource(ints = { 10, 100, 1_000, 10_000, 100_000, 1_000_000 })
     void testSequentialData(int size) {
-        IntArraySet set = new IntArraySet();
+        IntHashSet set = new IntHashSet();
         for (int i = 0; i < size; i++) {
             assertFalse(set.contains(i));
             assertTrue(set.add(i));
@@ -77,12 +93,12 @@ class IntArraySetTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = { 10, 100, 1_000, 10_000 })
+    @ValueSource(ints = { 10, 100, 1_000, 10_000, 100_000, 1_000_000 })
     void testRandomData(int size) {
         Random random = new Random(size);
 
         LinkedHashSet<Integer> values = new LinkedHashSet<>(size);
-        IntArraySet set = new IntArraySet(size);
+        IntHashSet set = new IntHashSet(size);
 
         while (values.size() < size) {
             int num = random.nextInt();

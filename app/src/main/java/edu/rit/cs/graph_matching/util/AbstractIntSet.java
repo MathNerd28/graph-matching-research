@@ -1,4 +1,4 @@
-package edu.rit.cs.graph_matching.graph;
+package edu.rit.cs.graph_matching.util;
 
 import java.util.AbstractSet;
 import java.util.NoSuchElementException;

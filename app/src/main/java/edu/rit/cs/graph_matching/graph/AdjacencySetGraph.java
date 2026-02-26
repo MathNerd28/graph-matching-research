@@ -6,6 +6,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
+import edu.rit.cs.graph_matching.util.AbstractIntSet;
+import edu.rit.cs.graph_matching.util.IntArraySet;
+import edu.rit.cs.graph_matching.util.IntHashSet;
+
 /**
  * A sparse undirected graph implementation with the following properties:
  * <ul>

@@ -8,7 +8,7 @@ import java.util.random.RandomGenerator;
 
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
-import edu.rit.cs.graph_matching.graph.IntHashSet;
+import edu.rit.cs.graph_matching.util.IntHashSet;
 
 /**
  * An implementation of the Dani-Hayes randomized algorithm for generating
