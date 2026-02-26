@@ -101,14 +101,14 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
     /**
      * Generates a matching on the input graph. The matching is guaranteed to
      * contain at least (n/2) * (1 - 1/(d+1)) - (1/log(n)) edges, but it will
-     * not necessarily be a maximum matching.
+     * not necessarily be a perfect matching.
      * <p>
      * This algorithm is proven to require O(n log n) runtime on d-regular
      * graphs.
      *
      * @return the generated matching
      */
-    public Set<Edge> getNearlyMaximumMatching() {
+    public Set<Edge> getNearlyPerfectMatching() {
         double averageDegree = 0;
         for (int v = 0; v < graph.size(); v++) {
             averageDegree += graph.getDegree(v);
