@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GraphGeneratorTest {
     private static final long SEED = 0x8294757462947573L;
@@ -160,7 +162,7 @@ class GraphGeneratorTest {
     @Test
     void testGenerateLoopGraph1() {
         // Edge case: a graph with a single vertex cannot form a cycle.
-        MutableGraph graph = new SparseGraphImpl(1);
+        MutableGraph graph = new AdjacencySetGraph(1);
         GraphGenerator.generateLoopGraph(graph);
 
         int edgeCount = 0;
@@ -177,7 +179,7 @@ class GraphGeneratorTest {
     void testGenerateLoopGraph2() {
         // Special small case: two vertices should form a single undirected
         // edge.
-        MutableGraph graph = new SparseGraphImpl(2);
+        MutableGraph graph = new AdjacencySetGraph(2);
         GraphGenerator.generateLoopGraph(graph);
 
         int edgeCount = 0;
@@ -192,12 +194,12 @@ class GraphGeneratorTest {
         assertEquals(1, graph.getDegree(1));
     }
 
-    @Test
-    void testGenerateLoopGraphCycleProperties() {
+    @ParameterizedTest
+    @ValueSource(ints = {3, 4, 5, 7, 10})
+    void testGenerateLoopGraphCycleProperties(int n) {
         // General case: a cycle graph on n >= 3 vertices
         // should contain exactly n edges.
-        int n = 7;
-        MutableGraph graph = new SparseGraphImpl(n);
+        MutableGraph graph = new AdjacencySetGraph(n);
         GraphGenerator.generateLoopGraph(graph);
 
         int edgeCount = 0;

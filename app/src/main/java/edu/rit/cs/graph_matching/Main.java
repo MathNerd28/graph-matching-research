@@ -145,29 +145,17 @@ public final class Main {
         @Command(name = "loop", mixinStandardHelpOptions = true,
                  description = "Loop graph: a single cycle graph where vertices are connected sequentially"
                          + " with 0 connecting to n-1")
-        public int generateLoopGraph(@Mixin GenerationParams params) throws IOException {
-            for (int i = 1; i <= params.graphCount; i++) {
-                System.out.printf("Generating loop graph %d of %d...%n", i, params.graphCount);
-
-                Graph graph =
-                        GraphGenerator.generateLoopGraph(new SparseGraphImpl(params.vertices));
-
-                String name = params.graphName;
-                String description = String.format("loop -n=%d", params.vertices);
-                if (name == null) {
-                    name = String.format("Loop-%d-%08x", params.vertices, graph.hashCode());
-                }
-
-                String filename = String.format("%s%d.graph", params.filePrefix, i);
-                System.out.printf("Saving loop graph %d of %d to %s...%n", i, params.graphCount,
-                        filename);
-                File file = new File(params.outputDir, filename);
-
-                GraphFileData data = new GraphFileData(name, description, graph);
-                data.writeToFile(file);
-            }
-
-            return CommandLine.ExitCode.OK;
+        public int generateLoopGraph(
+        // @formatter:off
+            @Mixin OutputParams params,
+            @Option(names = { "-n", "--size" }, required = true,
+                    description = "Number of vertices in the graph")
+            int vertices
+        // @formatter:on
+        ) throws IOException {
+            return generateGraphs(params, "Loop",
+                    String.format("loop -n=%d", vertices),
+                    () -> GraphGenerator.generateLoopGraph(new AdjacencySetGraph(vertices)));
         }
     }
 
