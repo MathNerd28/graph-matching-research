@@ -150,7 +150,7 @@ public final class Main {
                 System.out.printf("Generating loop graph %d of %d...%n", i, params.graphCount);
 
                 Graph graph =
-                        GraphGenerator.generateLoopGraph(new AdjacencySetGraph(params.vertices));
+                        GraphGenerator.generateLoopGraph(new SparseGraphImpl(params.vertices));
 
                 String name = params.graphName;
                 String description = String.format("loop -n=%d", params.vertices);
@@ -241,7 +241,7 @@ public final class Main {
                     String safeStartTime = startTime.toString()
                                                     .replace(":", "-");
                     File csvOutFile = new File(outputDir, String.format("%s_%s_%s_%d.csv",
-                            startTime.toString(), algorithm.name(), fileBasename, i));
+                            safeStartTime, algorithm.name(), fileBasename, i));
 
                     int matchingSize;
                     try (PrintWriter csvWriter =
@@ -329,7 +329,7 @@ public final class Main {
                    .append(',')
                    .append("getDegree(v)")
                    .append(',')
-                   .append("hasEdge(v1,v2)")
+                   .append("\"hasEdge(v1,v2)\"")
                    .append(',')
                    .append("getRandomNeighbor(v)")
                    .append(',')
