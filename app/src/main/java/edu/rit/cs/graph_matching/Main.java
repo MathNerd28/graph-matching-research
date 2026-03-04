@@ -152,6 +152,22 @@ public final class Main {
             }
             return CommandLine.ExitCode.OK;
         }
+
+        @Command(name = "loop", mixinStandardHelpOptions = true,
+                 description = "Loop graph: a single cycle graph where vertices are connected sequentially"
+                         + " with 0 connecting to n-1")
+        public int generateLoopGraph(
+        // @formatter:off
+            @Mixin OutputParams params,
+            @Option(names = { "-n", "--size" }, required = true,
+                    description = "Number of vertices in the graph")
+            int vertices
+        // @formatter:on
+        ) throws IOException {
+            return generateGraphs(params, "Loop",
+                    String.format("loop -n=%d", vertices),
+                    () -> GraphGenerator.generateLoopGraph(new AdjacencySetGraph(vertices)));
+        }
     }
 
     @Command(name = "run", mixinStandardHelpOptions = true,

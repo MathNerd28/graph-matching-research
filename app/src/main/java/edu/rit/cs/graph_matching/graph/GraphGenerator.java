@@ -289,6 +289,29 @@ public final class GraphGenerator {
     }
 
     /**
+     * Generates a simple cycle graph on n vertices of the pattern
+     * 0-1-2-...-(n-1)-0 Returns the graph directly if vertex count <= 1
+     * 
+     * @param graph
+     *     the graph to edit in-place
+     * @return the same graph instance
+     */
+    public static MutableGraph generateLoopGraph(MutableGraph graph) {
+        graph.clear();
+        int n = graph.size();
+
+        if (n <= 1) {
+            return graph;
+        }
+
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n; // in case the conversion: << i=n-1 -> 0 >>
+            graph.addEdge(i, j);
+        }
+        return graph;
+    }
+
+    /**
      * Randomly shuffle the given integer array.
      *
      * @param array
