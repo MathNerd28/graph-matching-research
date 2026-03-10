@@ -3,10 +3,12 @@ package edu.rit.cs.graph_matching.graph;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class GraphGeneratorTest {
@@ -195,7 +197,7 @@ class GraphGeneratorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {3, 4, 5, 7, 10})
+    @ValueSource(ints = { 3, 4, 5, 7, 10 })
     void testGenerateLoopGraphCycleProperties(int n) {
         // General case: a cycle graph on n >= 3 vertices
         // should contain exactly n edges.
@@ -219,6 +221,66 @@ class GraphGeneratorTest {
         for (int i = 0; i < n; i++) {
             int j = (i + 1) % n;
             assertTrue(graph.hasEdge(i, j));
+        }
+    }
+
+    // Test invalid inputs to the generateCliqueLoopGraph() function
+    // For input n
+    @Test
+    void testGenerateLoopOfCliquesInvalidN() {
+        MutableGraph graph = new AdjacencySetGraph(3);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateCliqueLoopGraph(graph, 1, 3);
+        });
+    }
+
+    // For input k
+    @Test
+    void testGenerateLoopOfCliquesInvalidK() {
+        MutableGraph graph = new AdjacencySetGraph(4);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateCliqueLoopGraph(graph, 2, 2);
+        });
+    }
+
+    // Test if incorrect graph size throws error
+    @Test
+    void testGenerateLoopOfCliquesWrongGraphSize() {
+        MutableGraph graph = new AdjacencySetGraph(10);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateCliqueLoopGraph(graph, 3, 4);
+        });
+    }
+
+    // Test cases
+    @ParameterizedTest
+    @CsvSource({ "2, 3", "3, 3", "4, 4", "5, 4", "5, 10" })
+    void testGenerateCliqueLoopProperties(int n, int k) {
+        MutableGraph graph = new AdjacencySetGraph(n * k);
+        GraphGenerator.generateCliqueLoopGraph(graph, n, k);
+
+        int edgeCount = 0;
+        for (int v = 0; v < graph.size(); v++) {
+            edgeCount += graph.getDegree(v);
+            assertEquals(k - 1, graph.getDegree(v));
+        }
+        edgeCount /= 2;
+
+        int expectedEdges = n * (k * (k - 1) / 2);
+        assertEquals(expectedEdges, edgeCount);
+
+        for (int c = 0; c < n; c++) {
+            int base = c * k;
+            int nextBase = ((c + 1) % n) * k;
+
+            // Test the correct removal of a single edge in each initial clique
+            assertFalse(graph.hasEdge(base, base + 1));
+
+            // Test the correct connection between cliques
+            assertTrue(graph.hasEdge(base + 1, nextBase));
         }
     }
 }
