@@ -86,7 +86,9 @@ public class GabowAlgorithm {
     private final int[] outerTime;
     private int currentTime;
     private boolean pathFound;
-    private final int[] pathNext;
+
+    private final int[] dfsSourceBridge;
+    private final int[] dfsTargetBridge;;
 
     /**
      * Initializes the Phase 1 search over the given graph.
@@ -122,7 +124,8 @@ public class GabowAlgorithm {
         this.b = new int[n];
         this.dfsParents = new int[n];
         this.outerTime = new int[n];
-        this.pathNext = new int[n];
+        this.dfsSourceBridge = new int[n];
+        this.dfsTargetBridge = new int[n];
     }
 
     /**
@@ -182,6 +185,7 @@ public class GabowAlgorithm {
         }
 
         while (2 * delta <= n) {
+            // System.out.println("[Phase 1] Processing at Delta: " + delta);
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
                 int u = edge.vertex1();
@@ -289,6 +293,8 @@ public class GabowAlgorithm {
      * @param target the target boundary node
      */
     private void shrinkBlossom(int blossomBase, int start, int target) {
+        // System.out.println("[Phase 1] Shrinking blossom at base: " + blossomBase + "
+        // from " + start + " to " + target);
         int v = base.find(start);
         while (v != blossomBase) {
             base.union(v, blossomBase, blossomBase);
@@ -320,6 +326,8 @@ public class GabowAlgorithm {
      * OUTER nodes, returning -1 if they belong to different alternating trees.
      */
     private int findLeastCommonAncestor(int baseU, int baseV) {
+        // System.out.println("[Phase 1] Searching LCA for baseU: " + baseU + ", baseV:
+        // " + baseV);
         path1[baseU] = lcaSearchTime;
         path2[baseV] = lcaSearchTime;
 
@@ -364,7 +372,8 @@ public class GabowAlgorithm {
         Arrays.fill(inP, false);
         Arrays.fill(dfsParents, -1);
         Arrays.fill(outerTime, 0);
-        Arrays.fill(pathNext, -1);
+        Arrays.fill(dfsSourceBridge, -1);
+        Arrays.fill(dfsTargetBridge, -1);
         currentTime = 0;
 
         int pathsFoundCount = 0;
@@ -412,18 +421,17 @@ public class GabowAlgorithm {
 
                     inS[y] = true;
                     inS[yPrime] = true;
+
+                    // The standard tree growth is recorded purely in the DFS parents
                     dfsParents[y] = x;
                     dfsParents[yPrime] = y;
-
-                    // Track sequential routing for standard tree growth
-                    pathNext[y] = x;
-                    pathNext[yPrime] = y;
 
                     outerTime[yPrime] = ++currentTime;
 
                     find_ap(yPrime);
                 }
             } else if (outerTime[dfsBase(y)] > outerTime[dfsBase(x)]) {
+                // When a cross-edge is found, form a blossom
                 shrinkDFSBlossom(x, y);
             }
         }
@@ -454,31 +462,38 @@ public class GabowAlgorithm {
             b[curr] = root;
             curr = nxt;
         }
+        // System.out.println("[Phase 2] dfsBase tracing node: " + v);
         return root;
     }
 
     private void shrinkDFSBlossom(int x, int y) {
         int baseNode = dfsBase(x);
-        int curr = y;
-        int prev = x;
+        int v = dfsBase(y);
 
         List<Integer> cycleNodes = new ArrayList<>();
 
-        while (curr != -1 && dfsBase(curr) != baseNode) {
-            cycleNodes.add(curr);
-            int nextCurr = dfsParents[curr];
+        // Walk up the tree from descendant (y) to ancestor (x)
+        while (v != baseNode && v != -1) {
+            cycleNodes.add(v);
 
-            // Safely rewire the augmenting path pointer for the cycle.
-            pathNext[curr] = prev;
+            // The node above an OUTER node in the DFS tree is an INNER node
+            int inner = dfsBase(dfsParents[v]);
+            cycleNodes.add(inner);
 
-            prev = curr;
-            curr = nextCurr;
+            // Record the structural bridge for the inner node
+            dfsSourceBridge[inner] = x;
+            dfsTargetBridge[inner] = y;
+
+            v = dfsBase(dfsParents[inner]);
         }
 
-        // Pass 2: Contract the blossom and expand the search
+        // Pass 2: Contract the ENTIRE blossom to maintain valid structural state
         for (int node : cycleNodes) {
             b[dfsBase(node)] = baseNode;
+        }
 
+        // Pass 3: Expand the search from the newly added inner nodes
+        for (int node : cycleNodes) {
             if (outerTime[node] == 0) {
                 outerTime[node] = ++currentTime;
                 if (!pathFound) {
@@ -489,29 +504,46 @@ public class GabowAlgorithm {
     }
 
     private void augmentDFSPath(int x, int y) {
-        int curr = y;
-        int next = x;
+        // Build the full path from the free node (y) up to the tree root
+        List<Integer> path = new ArrayList<>();
+        path.add(y);
+        path.add(x);
+        getDFSPath(path, x, -1);
 
-        while (curr != -1 && next != -1) {
-            inP[curr] = true;
-            inP[next] = true;
+        // Safely toggle all edges in the fully constructed path
+        for (int i = 0; i < path.size() - 1; i += 2) {
+            int u = path.get(i);
+            int v = path.get(i + 1);
+            matches[u] = v;
+            matches[v] = u;
+        }
+    }
 
-            int nextNext = matches[next];
+    private void getDFSPath(List<Integer> p, int v, int target) {
+        if (v == target)
+            return;
 
-            int nextStep = -1;
-            if (nextNext != -1) {
-                boolean isOriginalOuter = (dfsParents[nextNext] == matches[nextNext]);
+        // Original OUTER nodes have their mate as their DFS parent.
+        boolean isOriginalOuter = (dfsParents[v] == matches[v]);
 
-                // Outer nodes follow the rewired cross-edges (pathNext).
-                // Inner nodes safely climb the pristine upward tree (dfsParents).
-                nextStep = isOriginalOuter ? pathNext[nextNext] : dfsParents[nextNext];
-            }
+        if (isOriginalOuter) {
+            int inner = matches[v];
+            if (inner == -1)
+                return; // Reached the free node root, terminate.
 
-            matches[curr] = next;
-            matches[next] = curr;
+            p.add(inner);
+            int nextOuter = dfsParents[inner];
+            p.add(nextOuter);
+            getDFSPath(p, nextOuter, target);
+        } else {
+            // v was an INNER node absorbed into a blossom. Unwind via its bridge.
+            int src = dfsSourceBridge[v];
+            int tgt = dfsTargetBridge[v];
 
-            curr = nextNext;
-            next = nextStep;
+            getDFSPath(p, src, matches[v]);
+            p.add(src);
+            p.add(tgt);
+            getDFSPath(p, tgt, target);
         }
     }
 
