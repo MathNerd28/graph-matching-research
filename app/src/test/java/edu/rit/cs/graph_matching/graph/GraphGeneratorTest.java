@@ -293,8 +293,7 @@ class GraphGeneratorTest {
     }
 
     /**
-     * Helper function
-     * Checks the connectivity of a (compressed) graph
+     * Helper function Checks the connectivity of a (compressed) graph
      * 
      * @param adjacency
      *     the adjacency list
@@ -416,6 +415,7 @@ class GraphGeneratorTest {
         // Test connectivity
         assertTrue(DFSConnectivityCheck(cliqueAdjacency, 0));
 
-        // confirmed: 2 regular + connectivity -> 2-regular connected graph is a cycle
+        // confirmed: 2 regular + connectivity -> 2-regular connected graph is a
+        // cycle
     }
 }
