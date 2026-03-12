@@ -1,15 +1,21 @@
 package edu.rit.cs.graph_matching.graph;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import edu.rit.cs.graph_matching.util.IntHashSet;
 
 class GraphGeneratorTest {
     private static final long SEED = 0x8294757462947573L;
@@ -257,11 +263,13 @@ class GraphGeneratorTest {
 
     // Test cases
     @ParameterizedTest
-    @CsvSource({ "2, 3", "3, 3", "4, 4", "5, 4", "5, 10" })
+    @CsvSource({ "10, 5", "20, 6", "30, 8", "100, 33", "150, 58" })
     void testGenerateCliqueLoopProperties(int n, int k) {
         MutableGraph graph = new AdjacencySetGraph(n * k);
         GraphGenerator.generateCliqueLoopGraph(graph, n, k);
 
+        // Each vertex should have degree of k-1
+        // The total number of edges should be n*k*(k-1)/2
         int edgeCount = 0;
         for (int v = 0; v < graph.size(); v++) {
             edgeCount += graph.getDegree(v);
@@ -282,5 +290,132 @@ class GraphGeneratorTest {
             // Test the correct connection between cliques
             assertTrue(graph.hasEdge(base + 1, nextBase));
         }
+    }
+
+    /**
+     * Helper function
+     * Checks the connectivity of a (compressed) graph
+     * 
+     * @param adjacency
+     *     the adjacency list
+     * @param start
+     *     the starting index
+     * @return {@code true} if all vertices are reachable from {@code start}
+     */
+
+    private static boolean DFSConnectivityCheck(List<IntHashSet> adjacency, int start) {
+        int order = adjacency.size();
+        boolean[] visited = new boolean[order];
+        ArrayDeque<Integer> stack = new ArrayDeque<>();
+        stack.push(start);
+        visited[start] = true;
+
+        int count = 0;
+        while (!stack.isEmpty()) {
+            int current = stack.pop();
+            count++;
+
+            for (int next : adjacency.get(current)) {
+                if (!visited[next]) {
+                    visited[next] = true;
+                    stack.push(next);
+                }
+            }
+        }
+
+        return count == order;
+    }
+
+    // Test cases
+    @ParameterizedTest
+    @CsvSource({ "10, 5", "20, 6", "30, 8", "100, 33", "300, 100" })
+    void testGenerateCliqueLoopGraphCliqueStructure(int n, int k) {
+        MutableGraph graph = new AdjacencySetGraph(n * k);
+        GraphGenerator.generateCliqueLoopGraph(graph, n, k);
+
+        // Part 1: correctness within each clique
+        // Loop through each clique
+        // c: clique index
+        for (int c = 0; c < n; c++) {
+            int internalEdgeCount = 0;
+            int modifiedVertexCount = 0;
+            int untouchedVertexCount = 0;
+
+            // Loop thorugh each vertex v within a clique c.
+            // There must be k-2 untouched vertices (degree == k-1)
+            // and 2 modified vertices (internal degree == k-2).
+            // This is tracked by counting the number of
+            // same-clique vertices connected to v.
+
+            for (int v = c * k; v < (c + 1) * k; v++) {
+                int internalDegree = 0;
+
+                for (int u : graph.getAllNeighbors(v)) {
+                    if (u / k == c) {
+                        internalDegree++;
+                    }
+                }
+
+                if (internalDegree == k - 2) {
+                    modifiedVertexCount++;
+                } else if (internalDegree == k - 1) {
+                    untouchedVertexCount++;
+                } else {
+                    fail("Unexpected internal degree in clique " + c);
+                }
+
+                internalEdgeCount += internalDegree;
+            }
+
+            internalEdgeCount /= 2;
+
+            assertEquals(k * (k - 1) / 2 - 1, internalEdgeCount);
+            assertEquals(2, modifiedVertexCount);
+            assertEquals(k - 2, untouchedVertexCount);
+        }
+
+        // Part 2: correct loop-connection between cliques
+        List<IntHashSet> cliqueAdjacency = new ArrayList<>(n);
+        for (int c = 0; c < n; c++) {
+            cliqueAdjacency.add(new IntHashSet());
+        }
+
+        // Build a compressed graph whose vertices are cliques.
+        // If there is any edge between clique i and clique j in the original
+        // graph,
+        // then the compressed graph contains the edge (i, j).
+        for (int v = 0; v < graph.size(); v++) {
+            int cliqueOfV = v / k;
+
+            for (int u : graph.getAllNeighbors(v)) {
+                int cliqueOfU = u / k;
+
+                if (cliqueOfU != cliqueOfV) {
+                    cliqueAdjacency.get(cliqueOfV)
+                                   .add(cliqueOfU);
+                }
+            }
+        }
+
+        // The compressed graph should be 2-regular
+        int compressedEdgeCount = 0;
+        for (int c = 0; c < n; c++) {
+            // In a loop of cliques, each clique should connect to exactly two
+            // other cliques.
+            assertEquals(2, cliqueAdjacency.get(c)
+                                           .size());
+            compressedEdgeCount += cliqueAdjacency.get(c)
+                                                  .size();
+        }
+        compressedEdgeCount /= 2;
+
+        // The compressed graph should be a cycle on n vertices, so it has
+        // exactly n edges.
+        assertEquals(n, compressedEdgeCount);
+
+        // Test connectivity
+        assertTrue(DFSConnectivityCheck(cliqueAdjacency, 0));
+
+        // confirmed: 2 regular + connectivity -> 2-regular connected graph is a cycle
     }
 }
