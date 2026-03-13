@@ -224,6 +224,7 @@ public class GabowAlgorithm {
         }
 
         while (2 * delta <= n) {
+            // System.out.println("[Phase 1] Processing at Delta: " + delta);
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
                 int u = edge.vertex1();
@@ -312,6 +313,8 @@ public class GabowAlgorithm {
     }
 
     private void shrinkBlossom(int blossomBase, int start, int target) {
+        // System.out.println("[Phase 1] Shrinking blossom at base: " + blossomBase + "
+        // from " + start + " to " + target);
         int v = base.find(start);
         while (v != blossomBase) {
             base.union(v, blossomBase, blossomBase);
@@ -504,6 +507,7 @@ public class GabowAlgorithm {
             b[curr] = root;
             curr = nxt;
         }
+        // System.out.println("[Phase 2] dfsBase tracing node: " + v);
         return root;
     }
 
