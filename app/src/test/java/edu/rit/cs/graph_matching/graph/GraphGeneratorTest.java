@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -11,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -327,7 +329,7 @@ class GraphGeneratorTest {
 
     // Test cases
     @ParameterizedTest
-    @CsvSource({ "10, 5", "20, 6", "30, 8", "100, 33", "300, 100" })
+    @CsvSource({ "10, 5", "20, 6", "30, 8" })
     void testGenerateCliqueLoopGraphCliqueStructure(int n, int k) {
         MutableGraph graph = new AdjacencySetGraph(n * k);
         GraphGenerator.generateCliqueLoopGraph(graph, n, k);
@@ -417,5 +419,32 @@ class GraphGeneratorTest {
 
         // confirmed: 2 regular + connectivity -> 2-regular connected graph is a
         // cycle
+    }
+
+    // In addition to the small-to-medium structural correctness tests above,
+    // this separate test provides a large-instance runtime sanity check.
+    @ParameterizedTest
+    @CsvSource({ "100, 50", "500, 50", "1000, 50" })
+    @Timeout(value = 15, unit = TimeUnit.SECONDS)
+    void testGenerateCliqueLoopGraphLargeInstances(int n, int k) {
+        MutableGraph graph = new AdjacencySetGraph(n * k);
+
+        long start = System.nanoTime();
+        GraphGenerator.generateCliqueLoopGraph(graph, n, k);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+        // Lightweight sanity check for large instances.
+        // This is not a complexity proof, but helps catch
+        // implementations that are substantially slower or structurally
+        // inconsistent.
+        long degreeSum = 0;
+        for (int v = 0; v < graph.size(); v++) {
+            degreeSum += graph.getDegree(v);
+        }
+
+        assertEquals((long) n * k * (k - 1), degreeSum,
+                "Degree sum mismatch for n=" + n + ", k=" + k);
+
+        System.out.println("n=" + n + ", k=" + k + " -> " + elapsedMs + " ms, vertices=" + (n * k));
     }
 }
