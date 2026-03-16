@@ -1,5 +1,6 @@
 package edu.rit.cs.graph_matching.algorithm;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -7,9 +8,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Map;
 
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
+import edu.rit.cs.graph_matching.util.IntHashSet;
 
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
@@ -38,97 +41,67 @@ public class GabowAlgorithm {
     /** Current matching status; matches[v] = w, or -1 if free */
     private final int[] matches;
 
-    /** Alternating BFS tree parent pointers */
-    private final int[] parents;
-
-    /** Node labels in the alternating forest (UNLABELED, OUTER, INNER) */
-    private final int[] labels;
-
-    // ----- Dual Variable Tracking ----- //
-
-    /**
-     * The implicit dual variable y(u) is computed on the fly.
-     * yBase[v] records the dual value at the time the vertex was labeled.
-     */
-    private final int[] yBase;
-
-    /** Records the global 'delta' at the time yBase was set. */
-    private final int[] yDelta;
-
-    /** The global dual adjustment counter (number of adjustments applied) */
-    private int delta;
-
     // ----- Blossom Contraction Structures ----- //
 
     /** Disjoint-set tracking the base of a blossom during Phase 1 */
     private final NodePartition base;
 
-    /** Disjoint-set tracking the maximal positive blossoms for Phase 2 H-graph */
+    /** Maximal positive blossoms in G */
     private final NodePartition dBase;
+    // rep[v] is equivalent to dBase.find(v) and is used for clarity
+
+    /** Alternating BFS tree parent pointers */
+    private final int[] parents;
+    private final int[] parentHG; // For Phase 2 DFS on H-graph
 
     /** Bridges linking the contracted blossoms (source and target) */
     private final int[] sourceBridge;
     private final int[] targetBridge;
+    // a blossom consists of two paths x--z and
+    // y--z plus the edge xy; z is the base of the blossom.
+    // the nodes on the path from x to z store x as source_bridge and y as
+    // target_bridge.
 
-    // ----- Priority Queue & Auxiliary Path Tracking ----- //
+    private final Edge[] bridgeHG;
+    private final int[] dirHG;
+
+    private final int[] path1;
+    private final int[] path2;
+
+    /** Node labels in the alternating forest (UNLABELED, OUTER, INNER) */
+    private final int[] labels;
 
     /** Array-based priority queue for O(1) tight-edge discovery */
     private final PriorityQueueArray queue;
 
+    private int phase2Counter;
+
+    private final ArrayList<Integer> phase1Tree = new ArrayList<>();
+
+    int lcaSearchTime = 0; // Global counter to mark nodes during least common ancestor search
+
+    /**
+     * base dual and the time when the node is labelled; the node is represented by
+     * its base if contracted
+     */
+    private int[] yBase;
+    private int[] yDelta;
+
+    // ----- H-Graph Structures for Phase 2 ----- //
+    private final Graph H;
+    private final int[] matchHG; // mateHG[h] = h' if h is matched to h' in H, else -1
+    private final Map<Edge, Boolean> isEdgeofH; // isEdgeofH[e] = 1 iff the edge e in G corresponds to an edge in H
+    private final List<Integer>[] contractedInto; // contractedInto[h] = list of G-nodes contracted into H-node h
+    private final int[] labelHG; // Labels for H-graph DFS (UNLABELED, OUTER, INNER)
+
+    /** The global dual adjustment counter (number of adjustments applied) */
+    private int delta;
+    private final int[] evenTime;
+
+    // ----- Priority Queue & Auxiliary Path Tracking ----- //
+
     /** Delayed union commitments for dual adjustments */
-    private final Queue<Integer> delayedUnions;
-
-    private final int[] path1;
-    private final int[] path2;
-    private int lcaSearchTime = 0;
-
-    // ----- Phase 2 DFS Structures ----- //
-
-    /**
-     * Indicates whether a node is currently part of the active DFS search
-     * structure.
-     */
-    private final boolean[] inS;
-
-    /** Tracks if a node is already part of a successfully found augmenting path. */
-    private final boolean[] inP;
-
-    /**
-     * Disjoint-set array for tracking the bases of blossoms formed during the Phase
-     * 2 DFS.
-     */
-    private final int[] b;
-
-    /** Nodes are numbered by the time at which they become even (OUTER). */
-    private final int[] outerTime;
-
-    /** Global counter used to assign chronological timestamps to outerTime. */
-    private int currentTime;
-
-    /**
-     * A flag used to immediately halt further recursive DFS exploration once a path
-     * is found.
-     */
-    private boolean pathFound;
-
-    // ----- H-Graph Mapping Structures ----- //
-
-    /** Groups internal G-nodes inside a contracted Phase 1 H-node. */
-    private final List<Integer>[] contractedInto;
-
-    /** The single valid matching edge linking two contracted H-nodes. */
-    private final int[] mateHG;
-
-    /**
-     * The physical G-node Edge representing the tree growth step between H-nodes.
-     */
-    private final Edge[] parentHG;
-
-    /**
-     * The physical G-node Edge representing the cross-bridge closing an H-node
-     * blossom.
-     */
-    private final Edge[] bridgeHG;
+    // private final Queue<Integer> delayedUnions;
 
     /**
      * Initializes the algorithm over the given graph.
@@ -143,11 +116,15 @@ public class GabowAlgorithm {
         this.matches = matches;
 
         this.parents = new int[n];
+        this.parentHG = new int[n];
         this.labels = new int[n];
         this.sourceBridge = new int[n];
         this.targetBridge = new int[n];
 
+        this.phase2Counter = 0;
+
         this.yBase = new int[n];
+        java.util.Arrays.fill(this.yBase, 1); // Initial y(u) = 1 for all vertices
         this.yDelta = new int[n];
 
         this.base = new NodePartition(n);
@@ -155,23 +132,10 @@ public class GabowAlgorithm {
 
         // Max augmenting path length is n, meaning delta <= n/2
         this.queue = new PriorityQueueArray(n / 2 + 1);
-        this.delayedUnions = new LinkedList<>();
 
         this.path1 = new int[n];
         this.path2 = new int[n];
 
-        this.inS = new boolean[n];
-        this.inP = new boolean[n];
-        this.b = new int[n];
-        this.outerTime = new int[n];
-
-        this.contractedInto = new List[n];
-        for (int i = 0; i < n; i++) {
-            this.contractedInto[i] = new ArrayList<>();
-        }
-        this.mateHG = new int[n];
-        this.parentHG = new Edge[n];
-        this.bridgeHG = new Edge[n];
     }
 
     /**
@@ -207,19 +171,17 @@ public class GabowAlgorithm {
         queue.clear();
         delta = 0;
         boolean foundSap = false;
+        List<Integer> delayedUnions = new ArrayList<>();
 
-        Arrays.fill(parents, -1);
-        Arrays.fill(labels, UNLABELED);
-        base.reset();
-        dBase.reset();
-
-        // Initialize all free vertices as OUTER roots
-        for (int v = 0; v < n; v++) {
+        // TODO: fininish initalization
+        base.split(phase1Tree);
+        dBase.split(phase1Tree);
+        for (int v : phase1Tree) {
+            labels[v] = ((matches[v] == -1) ? OUTER : UNLABELED);
             if (matches[v] == -1) {
-                labels[v] = OUTER;
-                yBase[v] = 1; // Initial y(u) for free vertices
-                yDelta[v] = delta;
                 scanEdges(v);
+            } else {
+                phase1Tree.set(v, -1);
             }
         }
 
@@ -264,8 +226,8 @@ public class GabowAlgorithm {
 
                     if (ancestor != -1) {
                         // Collision in the SAME tree -> Shrink Blossom
-                        shrinkBlossom(ancestor, u, v);
-                        shrinkBlossom(ancestor, v, u);
+                        shrinkPath(ancestor, u, v, delayedUnions);
+                        shrinkPath(ancestor, v, u, delayedUnions);
                     } else {
                         // Collision across DIFFERENT trees -> Augmenting Path Found
                         foundSap = true;
@@ -275,13 +237,50 @@ public class GabowAlgorithm {
             }
 
             if (foundSap) {
+                // 1. Initialize H-graph mapping structures
+                // Arrays.fill(mateHG, -1);
+                // for (int i = 0; i < n; i++) {
+                // contractedInto[i].clear();
+                // }
+
+                // 2. Group G-nodes into their contracted H-nodes (dbase)
+                for (int v : phase1Tree) {
+                    contractedInto[dBase.find(v)].add(v);
+                    matchHG[v] = -1;
+                    for (int u : graph.getAllNeighbors(v)) {
+                        isEdgeofH.put(new Edge(u, v), false); // Initialize all edges as not in H
+
+                    }
+                }
+
+                // 3. Evaluate edges to establish tight connections and H-graph matchings
+                for (int u : phase1Tree) {
+                    int uH = dBase.find(u);
+
+                    for (int v : graph.getAllNeighbors(u)) {
+                        int vH = dBase.find(v);
+
+                        // Check if the edge crosses H-node boundaries and is tight ( d(u) + d(v) ==
+                        // w[e] )
+                        if (uH != vH && isEdgeTight(u, v)) {
+
+                            // In the paper, w[e] == 2 implies 'e' is a matching edge.
+                            if (matches[u] == v) {
+                                matchHG[uH] = vH;
+                                matchHG[vH] = uH;
+                            }
+
+                        }
+                    }
+                }
+
                 // Halt Edmonds' tree growth; auxiliary graph is ready for DFS
-                commitDelayedUnions();
+                commitDelayedUnions(delayedUnions);
                 return true;
             }
 
             // Dual Adjustment Step: Commit delayed blossom unions
-            commitDelayedUnions();
+            commitDelayedUnions(delayedUnions);
             delta++;
         }
 
@@ -293,7 +292,7 @@ public class GabowAlgorithm {
         if (labels[baseV] == UNLABELED)
             return 1;
         if (labels[baseV] == OUTER)
-            return yBase[v] - (delta - yDelta[v]);
+            return yBase[v] - (delta - yDelta[v]); // OUTER vertices decrease
         return yBase[v] + (delta - yDelta[v]); // INNER vertices increase
     }
 
@@ -312,19 +311,21 @@ public class GabowAlgorithm {
         }
     }
 
-    private void shrinkBlossom(int blossomBase, int start, int target) {
+    private void shrinkPath(int blossomBase, int start, int target, List<Integer> delayedUnions) {
         // System.out.println("[Phase 1] Shrinking blossom at base: " + blossomBase + "
         // from " + start + " to " + target);
         int v = base.find(start);
         while (v != blossomBase) {
-            base.union(v, blossomBase, blossomBase);
+            base.union(v, blossomBase);
             delayedUnions.add(v);
             delayedUnions.add(blossomBase);
 
             v = matches[v];
-            base.union(v, blossomBase, blossomBase);
+            base.union(v, blossomBase);
             delayedUnions.add(v);
             delayedUnions.add(blossomBase);
+
+            base.makeRep(blossomBase);
 
             sourceBridge[v] = start;
             targetBridge[v] = target;
@@ -367,14 +368,14 @@ public class GabowAlgorithm {
         return -1;
     }
 
-    private void commitDelayedUnions() {
+    private void commitDelayedUnions(List<Integer> delayedUnions) {
         while (!delayedUnions.isEmpty()) {
-            int u = delayedUnions.poll();
-            int v = delayedUnions.poll();
-            if (u == v) {
-                dBase.makeRepresentative(u);
+            int u = delayedUnions.remove(delayedUnions.size() - 1);
+            int v = delayedUnions.remove(delayedUnions.size() - 1);
+            if (u == v && u != -1) {
+                dBase.makeRep(u);
             } else {
-                dBase.union(u, v, v);
+                dBase.union(u, v);
             }
         }
     }
@@ -383,102 +384,219 @@ public class GabowAlgorithm {
     // Phase 2: DFS on the Contracted H-Graph
     // -------------------------------------------------------------------
 
-    private int executePhase2() {
-        Arrays.fill(inS, false);
-        Arrays.fill(inP, false);
-        Arrays.fill(outerTime, 0);
-        Arrays.fill(mateHG, -1);
-        Arrays.fill(parentHG, null);
-        Arrays.fill(bridgeHG, null);
-        for (int i = 0; i < n; i++)
-            contractedInto[i].clear();
-        currentTime = 0;
+    private void executePhase2() {
+        // TODO: Implement DFS to find augmenting paths in the H-graph and update the
+        // matching
+        java.util.Arrays.fill(labelHG, UNLABELED);
+        ArrayList<ArrayList<Integer>> augPaths = new ArrayList<>(n); // find a maximal set of augmenting paths in H
 
-        // 1. Inherit Phase 1 H-graph
-        for (int v = 0; v < n; v++) {
-            int hNode = dBase.find(v);
-            b[v] = hNode; // Apply the Union-Find fix
-            contractedInto[hNode].add(v); // Group the internal G-nodes
-
-            // Map the matching edge to the H-graph level
-            if (matches[v] != -1) {
-                int hMate = dBase.find(matches[v]);
-                if (hNode != hMate) {
-                    mateHG[hNode] = hMate;
+        for (int vH : phase1Tree) {
+            if (vH != dBase.find(vH))
+                continue; // In this case vH is not node in H.
+            if (matchHG[vH] == -1 && labelHG[vH] == UNLABELED) {
+                labelHG[vH] = OUTER;
+                evenTime[vH] = phase2Counter++;
+                int freeNode = augPathDFS(vH);
+                if (freeNode != -1) {
+                    ArrayList<Integer> augPath = findAugPathInH(freeNode);
+                    augPaths.add(augPath);
                 }
             }
+
         }
 
-        int pathsFoundCount = 0;
-
-        // 2. Start the DFS strictly from FREE H-nodes
-        for (int f = 0; f < n; f++) {
-            int hNode = dBase.find(f);
-
-            // Ensure f is a representative H-node, is free, and not already
-            // processed/visited
-            if (hNode == f && mateHG[f] == -1 && !inP[f] && !inS[f]) {
-                inS[f] = true;
-                outerTime[f] = ++currentTime;
-                pathFound = false;
-
-                find_ap(f);
-
-                if (pathFound) {
-                    pathsFoundCount++;
-                }
-            }
+        // clear H
+        for (int v : phase1Tree) {
+            contractedInto[dBase.find(v)].clear();
         }
-
-        return pathsFoundCount;
     }
 
-    private void find_ap(int xH) {
-        if (pathFound)
-            return;
-
-        // 1. Iterate over all internal G-nodes inside the current H-node blossom
-        for (int u : contractedInto[xH]) {
-            for (int v : graph.getAllNeighbors(u)) {
-                if (pathFound)
-                    return;
-
-                int yH = dBase.find(v);
-
-                // Ignore internal edges, H-graph matching edges, and ALREADY augmented nodes
-                // (inP)
-                if (xH == yH || mateHG[xH] == yH || inP[yH])
+    private int augPathDFS(int vH) {
+        for (int v : contractedInto[vH]) {
+            for (int u : graph.getAllNeighbors(v)) {
+                if (!isEdgeofH.get(new Edge(u, v)))
+                    continue; // Only consider edges in H
+                int uH = dBase.find(u);
+                if (matchHG[vH] == uH)
                     continue;
-
-                // The edge must be tight to exist in the H-graph
-                if (!isEdgeTight(u, v))
-                    continue;
-
-                if (!inS[yH]) {
-                    if (mateHG[yH] == -1) {
-                        // yH is free -> Augmenting path found!
-                        // Pass the exact G-node bridge (u, v) to unroll the path
-                        augmentDFSPath(u, v);
-                        pathFound = true;
-                        return;
-                    } else {
-                        // Grow step
-                        int yPrimeH = mateHG[yH];
-                        inS[yH] = true;
-                        inS[yPrimeH] = true;
-
-                        // Track the specific G-node Edge representing the tree growth on the OUTER node
-                        parentHG[yPrimeH] = new Edge(u, v);
-
-                        // Inner nodes don't get outer times, Outer nodes do
-                        outerTime[yPrimeH] = ++currentTime;
-                        find_ap(yPrimeH);
+                if (labelHG[uH] == UNLABELED) { // grow step
+                    int uHmatch = matchHG[uH];
+                    if (uHmatch == -1) {
+                        // Found an augmenting path to a free node in H
+                        labelHG[uH] = INNER;
+                        parentHG[uH] = vH;
+                        return uH;
+                    } else { // extend by 2 edges
+                        labelHG[uH] = INNER;
+                        labelHG[uHmatch] = OUTER;
+                        parentHG[uH] = vH;
+                        evenTime[uHmatch] = phase2Counter++;
+                        int s = augPathDFS(uHmatch);
+                        if (s != -1) {
+                            return s;
+                        }
                     }
-                } else if (outerTime[dfsBase(yH)] > outerTime[dfsBase(xH)]) {
-                    // Blossom step: yH is a proper descendant of xH (forward edge)
-                    shrinkDFSBlossom(xH, yH, u, v);
+                } else { // Blossom step
+                    int bH = dBase.find(vH);
+                    int zH = dBase.find(uH);
+
+                    if (evenTime[bH] < evenTime[zH]) { // Blossom step along forward edge
+                        // Using LinkedList allows O(1) additions to the front (push_front equivalent)
+                        List<Integer> tmp = new LinkedList<>();
+                        List<Integer> endpointsOfM = new ArrayList<>();
+
+                        // Trace back from the target node to the base of the blossom
+                        while (zH != bH) {
+                            endpointsOfM.add(zH);
+                            zH = matchHG[zH]; // Jump across the matching H-edge
+                            endpointsOfM.add(zH);
+
+                            tmp.addFirst(zH); // zH is INNER, add to the front of tmp
+
+                            // Move up the alternating tree. Because Java's parentHG stores H-nodes,
+                            // this directly replaces the C++ G-edge source/target resolution.
+                            zH = dBase.find(parentHG[zH]);
+                        }
+
+                        // Contract the blossom in the H-graph
+                        for (int z : endpointsOfM) {
+                            dBase.union(z, bH);
+                        }
+                        dBase.makeRep(bH); // Ensure bH is the canonical representative
+
+                        // Record the bridge edge and direction for path reconstruction
+                        for (int z : tmp) {
+                            bridgeHG[z] = new Edge(v, u);
+                            dirHG[z] = v; // Java adaptation: directly store the 'v' side of the bridge
+                        }
+
+                        // Recursively search from the newly-promoted OUTER nodes
+                        for (int z : tmp) { // The new OUTER node closest to bH comes first
+                            int s = augPathDFS(z);
+                            if (s != -1) {
+                                return s;
+                            }
+                        }
+                    }
                 }
             }
+        }
+        return -1;
+    }
+
+    /**
+     * Corresponds exactly to find_path_in_HG in the paper.
+     * Constructs the even-length alternating path connecting vH and uH in the
+     * H-graph.
+     * Returns a flat list of nodes representing the non-matching edges.
+     */
+    private ArrayList<Integer> findAugPathInH(int vH, int uH) {
+        ArrayList<Integer> p = new ArrayList<>();
+
+        // If the start and target are the same, the path is empty.
+        if (vH == uH) {
+            return p;
+        }
+
+        if (labelHG[vH] == OUTER) {
+            int mvH = matchHG[vH];
+            int parentNode = parentHG[mvH];
+
+            // Reconstruct the tight edge between mvH and parentNode
+            // since parentHG stores H-nodes rather than explicit edges.
+            int eSource = -1, eTarget = -1;
+            searchEdge: for (int u : contractedInto[mvH]) {
+                for (int v : graph.getAllNeighbors(u)) {
+                    if (dBase.find(v) == parentNode && Boolean.TRUE.equals(isEdgeofH.get(new Edge(u, v)))) {
+                        eSource = u;
+                        eTarget = v;
+                        break searchEdge;
+                    }
+                }
+            }
+
+            p.add(eSource);
+            p.add(eTarget);
+
+            // Determine which endpoint maps to the parent H-node to continue the recursion
+            int nextNode = (dBase.find(eSource) == mvH) ? eTarget : eSource;
+            p.addAll(findAugPathInH(dBase.find(nextNode), uH));
+
+            return p;
+        } else {
+            // vH is an INNER node (blossom step).
+            Edge bridge = bridgeHG[vH];
+
+            // From our augPathDFS adaptation, dirHG stores the G-node on the vH side.
+            int vSide = dirHG[vH];
+            int uSide = (bridge.vertex1() == vSide) ? bridge.vertex2() : bridge.vertex1();
+
+            // Recursively construct the path through the bridge.
+            p.addAll(findAugPathInH(dBase.find(vSide), dBase.find(matchHG[vH])));
+            p.add(vSide);
+            p.add(uSide);
+            p.addAll(findAugPathInH(dBase.find(uSide), uH));
+
+            return p;
+        }
+    }
+
+    /**
+     * Corresponds exactly to find_path_in_G in the paper.
+     * Finds the even path from v to u in the original graph using blossom bridges.
+     * Returns a flat list of nodes representing the non-matching edges.
+     */
+    private ArrayList<Integer> findAugPathInG(int v, int u) {
+        ArrayList<Integer> p = new ArrayList<>();
+
+        // Base case: if we have reached the target base, return the empty path.
+        if (v == u) {
+            return p;
+        }
+
+        if (labels[v] == OUTER) {
+            // For OUTER nodes, append the mate and its parent, then recurse.
+            p.add(matches[v]);
+            p.add(parents[matches[v]]);
+
+            p.addAll(findAugPathInG(parents[matches[v]], u));
+            return p;
+        } else {
+            // v is INNER; route through the blossom bridge.
+            p.addAll(findAugPathInG(sourceBridge[v], matches[v]));
+            p.add(sourceBridge[v]);
+            p.add(targetBridge[v]);
+
+            p.addAll(findAugPathInG(targetBridge[v], u));
+            return p;
+        }
+    }
+
+    /**
+     * Fills in the parts inside the dbase-blossoms and then augments the path.
+     */
+    private void augmentG(ArrayList<Integer> aphG) {
+        // Augmenting path in G as a list of nodes, two nodes for each non-matching edge
+        ArrayList<Integer> ap = new ArrayList<>();
+
+        for (int i = 0; i < aphG.size(); i += 2) {
+            int u = aphG.get(i);
+            int v = aphG.get(i + 1);
+
+            ap.add(u);
+            ap.add(v);
+
+            ap.addAll(findAugPathInG(u, dBase.find(u)));
+            ap.addAll(findAugPathInG(v, dBase.find(v)));
+        }
+
+        // Mate each pair of nodes in ap
+        for (int i = 0; i < ap.size(); i += 2) {
+            int u = ap.get(i);
+            int v = ap.get(i + 1);
+
+            matches[u] = v;
+            matches[v] = u;
         }
     }
 
@@ -494,166 +612,6 @@ public class GabowAlgorithm {
         }
 
         return false;
-    }
-
-    private int dfsBase(int v) {
-        int root = v;
-        while (root != b[root])
-            root = b[root];
-
-        int curr = v;
-        while (curr != root) {
-            int nxt = b[curr];
-            b[curr] = root;
-            curr = nxt;
-        }
-        // System.out.println("[Phase 2] dfsBase tracing node: " + v);
-        return root;
-    }
-
-    private void shrinkDFSBlossom(int xH, int yH, int bridgeU, int bridgeV) {
-        int baseNode = dfsBase(xH);
-        int currH = yH;
-
-        List<Integer> cycleNodes = new ArrayList<>();
-        List<Integer> newOuterNodes = new ArrayList<>();
-
-        // Walk up the H-graph tree from yH back to the base of xH
-        while (currH != baseNode) {
-            cycleNodes.add(currH);
-            int mateH = mateHG[currH];
-            cycleNodes.add(mateH);
-
-            // Odd nodes become even. Add to the front so we explore
-            // the nodes closest to the base first (preserving DFS order)
-            newOuterNodes.add(0, mateH);
-
-            // Step up to the parent H-node using the parent edge of the OUTER node
-            Edge pEdge = parentHG[currH];
-            int parentGNode = pEdge.vertex1();
-            if (dBase.find(parentGNode) == currH || dBase.find(parentGNode) == mateH) {
-                parentGNode = pEdge.vertex2();
-            }
-            currH = dfsBase(dBase.find(parentGNode));
-        }
-
-        // Pass 1: Contract the blossom in the Phase 2 'b' array
-        for (int nodeH : cycleNodes) {
-            b[dfsBase(nodeH)] = baseNode;
-        }
-
-        // Pass 2: Expand the search from the newly minted OUTER nodes
-        for (int nodeH : newOuterNodes) {
-            // Safely capture the specific bridge closing the cycle
-            // Ensure vertex1 explicitly holds the descendant side (yH side)
-            bridgeHG[nodeH] = new Edge(bridgeV, bridgeU);
-
-            if (outerTime[nodeH] == 0) {
-                outerTime[nodeH] = ++currentTime;
-                if (!pathFound) {
-                    find_ap(nodeH);
-                }
-            }
-        }
-    }
-
-    private void augmentDFSPath(int breakU, int breakV) {
-        // 1. Collect all non-matching edges that make up the augmenting path
-        List<Edge> nonMatchingEdges = new ArrayList<>();
-        nonMatchingEdges.add(new Edge(breakU, breakV));
-
-        int xH = dBase.find(breakU);
-        int yH = dBase.find(breakV);
-
-        // Trace the path backwards through the H-graph from both ends of the bridge
-        extractPathInHGraph(nonMatchingEdges, xH, -1);
-        extractPathInHGraph(nonMatchingEdges, yH, -1);
-
-        // 2. Expand the H-graph edges into the physical G-graph
-        List<Integer> physicalPathNodes = new ArrayList<>();
-        for (Edge e : nonMatchingEdges) {
-            physicalPathNodes.add(e.vertex1());
-            physicalPathNodes.add(e.vertex2());
-
-            // Unwind any Phase 1 blossoms hidden inside the H-nodes
-            extractPathInGGraph(physicalPathNodes, e.vertex1(), dBase.find(e.vertex1()));
-            extractPathInGGraph(physicalPathNodes, e.vertex2(), dBase.find(e.vertex2()));
-        }
-
-        // 3. Finally, flip the matches along the resolved physical path
-        while (!physicalPathNodes.isEmpty()) {
-            int u = physicalPathNodes.remove(physicalPathNodes.size() - 1);
-            int v = physicalPathNodes.remove(physicalPathNodes.size() - 1);
-
-            inP[dBase.find(u)] = true;
-            inP[dBase.find(v)] = true;
-
-            matches[u] = v;
-            matches[v] = u;
-        }
-    }
-
-    /**
-     * Helper: Traces the path backward through the Phase 2 H-Graph to a specified
-     * target.
-     * Corresponds to `find_path_in_HG` in Gabow's paper.
-     */
-    private void extractPathInHGraph(List<Edge> path, int vH, int uH) {
-        if (vH == uH)
-            return;
-        if (vH == -1 || mateHG[vH] == -1)
-            return; // Reached the root free node
-
-        // If the node was natively OUTER (no Phase 2 bridge)
-        if (bridgeHG[vH] == null) {
-            Edge treeEdge = parentHG[vH];
-
-            path.add(treeEdge);
-            int nextH = dBase.find(treeEdge.vertex1());
-            if (nextH == vH || nextH == mateHG[vH]) {
-                nextH = dBase.find(treeEdge.vertex2());
-            }
-
-            extractPathInHGraph(path, nextH, uH);
-        }
-        // If the node was INNER but became OUTER via a Phase 2 blossom bridge
-        else {
-            Edge bridge = bridgeHG[vH];
-
-            // To unwind a blossom cycle:
-            // 1. Trace from the descendant side of the bridge UP to the mate
-            extractPathInHGraph(path, dBase.find(bridge.vertex1()), dBase.find(mateHG[vH]));
-            path.add(bridge);
-            // 2. Trace from the ancestor side of the bridge UP to the target
-            extractPathInHGraph(path, dBase.find(bridge.vertex2()), uH);
-        }
-    }
-
-    /**
-     * Helper: Unwinds internal Phase 1 blossoms hidden inside an H-node.
-     * Corresponds to `find_path_in_G` in Gabow's paper.
-     */
-    private void extractPathInGGraph(List<Integer> pathNodes, int v, int targetH) {
-        if (v == targetH)
-            return; // FIX: Must strictly match the physical vertex
-
-        if (labels[v] == OUTER) {
-            int mateV = matches[v];
-            int parentMateV = parents[mateV];
-
-            pathNodes.add(mateV);
-            pathNodes.add(parentMateV);
-            extractPathInGGraph(pathNodes, parentMateV, targetH);
-        } else {
-            // It's an INNER node in Phase 1
-            int sBridge = sourceBridge[v];
-            int tBridge = targetBridge[v];
-
-            extractPathInGGraph(pathNodes, sBridge, matches[v]);
-            pathNodes.add(sBridge);
-            pathNodes.add(tBridge);
-            extractPathInGGraph(pathNodes, tBridge, targetH);
-        }
     }
 
     // -------------------------------------------------------------------
@@ -699,62 +657,111 @@ public class GabowAlgorithm {
         }
     }
 
-    /**
-     * Modified Union-Find offering path compression while strictly
-     * preserving the structural "base" representative of the blossom.
-     */
-    private static class NodePartition {
-        private final int[] parent; // structural parent for union-find
-        private final int[] trueBase; // true base for each node
+    public class NodePartition {
+        private int[] parent; // parent[i] gives the parent of node i in the union-find structure
+        private int[] rank;
+        private int[] blossomBase; // blossomBase[i] gives the base of the blossom that node i belongs to
 
-        public NodePartition(int size) {
-            parent = new int[size];
-            trueBase = new int[size];
-            reset();
-        }
+        // Optional: Maintain the explicit tree edges E(T) as defined in the ADT
+        private List<int[]> treeEdges;
 
-        public void reset() {
-            for (int i = 0; i < parent.length; i++) {
+        /**
+         * Initializes the data structure for a maximum of n vertices.
+         * 
+         * @param n The maximum number of vertices in the graph.
+         */
+        public NodePartition(int n) {
+            parent = new int[n];
+            rank = new int[n];
+            blossomBase = new int[n];
+            treeEdges = new ArrayList<>();
+
+            // Initially, the tree is empty.
+            // We initialize the arrays such that when a node is added, it represents
+            // itself.
+            for (int i = 0; i < n; i++) {
                 parent[i] = i;
-                trueBase[i] = i;
+                rank[i] = 0;
+                blossomBase[i] = i;
             }
         }
 
-        public int find(int i) {
-            int root = i;
-            while (root != parent[root])
-                root = parent[root];
+        /**
+         * AddEdge(u, v): Adds a new vertex u to the tree T connected to an existing
+         * vertex v.
+         * Initializes u as a new singleton set in the partition S.
+         */
+        public void addEdge(int u, int v) {
+            treeEdges.add(new int[] { u, v });
+            // In a static array allocation, the singleton set {u} is already conceptually
+            // established by the constructor. If dynamically sizing, we would allocate
+            // space here.
+            parent[u] = u;
+            blossomBase[u] = u;
+        }
 
-            // Path compression
-            int curr = i;
-            while (curr != root) {
-                int nxt = parent[curr];
-                parent[curr] = root;
-                curr = nxt;
+        /**
+         * Internal helper to find the structural root of the DSU tree with path
+         * compression.
+         */
+        private int getRoot(int u) {
+            if (parent[u] == u) {
+                return u;
             }
-            return trueBase[root];
+            // Path compression: flatten the tree to guarantee O(alpha(n)) amortized time
+            parent[u] = getRoot(parent[u]);
+            return parent[u];
         }
 
-        public void union(int i, int j, int newBase) {
-            int rootI = getRawRoot(i);
-            int rootJ = getRawRoot(j);
-            if (rootI != rootJ) {
-                parent[rootI] = rootJ;
-                trueBase[rootJ] = newBase;
-            } else {
-                trueBase[rootI] = newBase;
+        /**
+         * Find(u): Returns the canonical representative (the base of the blossom)
+         * for the set containing u.
+         */
+        public int find(int u) {
+            int root = getRoot(u);
+            return blossomBase[root];
+        }
+
+        /**
+         * union(u, v): Merges the sets containing u and v.
+         * Precondition: {u, v} must be an edge in E(T).
+         */
+        public void union(int u, int v) {
+            int rootU = getRoot(u);
+            int rootV = getRoot(v);
+
+            if (rootU != rootV) {
+                // Standard Union by Rank to keep trees shallow
+                if (rank[rootU] < rank[rootV]) {
+                    parent[rootU] = rootV;
+                } else if (rank[rootU] > rank[rootV]) {
+                    parent[rootV] = rootU;
+                } else {
+                    parent[rootV] = rootU;
+                    rank[rootU]++;
+                }
             }
         }
 
-        public void makeRepresentative(int i) {
-            trueBase[getRawRoot(i)] = i;
+        /**
+         * makeRep(base): A critical requirement for Gabow's Algorithm.
+         * After unioning a cycle into a blossom, this forces a specific node
+         * (the lowest common ancestor) to act as the canonical base of the new set.
+         */
+        public void makeRep(int base) {
+            int root = getRoot(base);
+            blossomBase[root] = base;
         }
 
-        private int getRawRoot(int i) {
-            int root = i;
-            while (root != parent[root])
-                root = parent[root];
-            return root;
+        public void split(List<Integer> vertices) {
+            // Reset the partition to have each vertex in its own set
+            for (int v : vertices) {
+                parent[v] = v;
+                rank[v] = 0;
+                blossomBase[v] = v;
+            }
+            treeEdges.clear();
         }
+
     }
 }
