@@ -1,18 +1,18 @@
 package edu.rit.cs.graph_matching.algorithm;
 
-import java.lang.reflect.Array;
+// import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
+// import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
+// import java.util.Queue;
 import java.util.Set;
 import java.util.Map;
 
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
-import edu.rit.cs.graph_matching.util.IntHashSet;
+// import edu.rit.cs.graph_matching.util.IntHashSet;
 
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
@@ -76,7 +76,7 @@ public class GabowAlgorithm {
 
     private int phase2Counter;
 
-    private final ArrayList<Integer> phase1Tree = new ArrayList<>();
+    private final ArrayList<Integer> phase1Tree;
 
     int lcaSearchTime = 0; // Global counter to mark nodes during least common ancestor search
 
@@ -88,7 +88,6 @@ public class GabowAlgorithm {
     private int[] yDelta;
 
     // ----- H-Graph Structures for Phase 2 ----- //
-    private final Graph H;
     private final int[] matchHG; // mateHG[h] = h' if h is matched to h' in H, else -1
     private final Map<Edge, Boolean> isEdgeofH; // isEdgeofH[e] = 1 iff the edge e in G corresponds to an edge in H
     private final List<Integer>[] contractedInto; // contractedInto[h] = list of G-nodes contracted into H-node h
@@ -115,6 +114,11 @@ public class GabowAlgorithm {
         this.n = graph.size();
         this.matches = matches;
 
+        this.phase1Tree = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            this.phase1Tree.add(i);
+        }
+
         this.parents = new int[n];
         this.parentHG = new int[n];
         this.labels = new int[n];
@@ -136,6 +140,21 @@ public class GabowAlgorithm {
         this.path1 = new int[n];
         this.path2 = new int[n];
 
+        // Phase 2 H-graph arrays
+        this.matchHG = new int[n];
+        this.labelHG = new int[n];
+        this.evenTime = new int[n];
+        this.bridgeHG = new Edge[n];
+        this.dirHG = new int[n];
+
+        // Hash map for tight edge lookups
+        this.isEdgeofH = new java.util.HashMap<>();
+
+        // Array of Lists: Requires a loop to instantiate the inner lists
+        this.contractedInto = new ArrayList[n];
+        for (int i = 0; i < n; i++) {
+            this.contractedInto[i] = new ArrayList<>();
+        }
     }
 
     /**
@@ -173,7 +192,6 @@ public class GabowAlgorithm {
         boolean foundSap = false;
         List<Integer> delayedUnions = new ArrayList<>();
 
-        // TODO: fininish initalization
         base.split(phase1Tree);
         dBase.split(phase1Tree);
         for (int v : phase1Tree) {
@@ -219,6 +237,9 @@ public class GabowAlgorithm {
                     labels[v] = INNER;
                     labels[matchedNode] = OUTER;
 
+                    phase1Tree.add(v);
+                    phase1Tree.add(matchedNode);
+
                     scanEdges(matchedNode);
                 } else if (labels[baseV] == OUTER) {
                     // Collision between OUTER nodes
@@ -237,13 +258,8 @@ public class GabowAlgorithm {
             }
 
             if (foundSap) {
-                // 1. Initialize H-graph mapping structures
-                // Arrays.fill(mateHG, -1);
-                // for (int i = 0; i < n; i++) {
-                // contractedInto[i].clear();
-                // }
 
-                // 2. Group G-nodes into their contracted H-nodes (dbase)
+                // Group G-nodes into their contracted H-nodes (dbase)
                 for (int v : phase1Tree) {
                     contractedInto[dBase.find(v)].add(v);
                     matchHG[v] = -1;
@@ -253,7 +269,7 @@ public class GabowAlgorithm {
                     }
                 }
 
-                // 3. Evaluate edges to establish tight connections and H-graph matchings
+                // Evaluate edges to establish tight connections and H-graph matchings
                 for (int u : phase1Tree) {
                     int uH = dBase.find(u);
 
@@ -263,7 +279,7 @@ public class GabowAlgorithm {
                         // Check if the edge crosses H-node boundaries and is tight ( d(u) + d(v) ==
                         // w[e] )
                         if (uH != vH && isEdgeTight(u, v)) {
-
+                            isEdgeofH.put(new Edge(u, v), true);
                             // In the paper, w[e] == 2 implies 'e' is a matching edge.
                             if (matches[u] == v) {
                                 matchHG[uH] = vH;
@@ -385,36 +401,64 @@ public class GabowAlgorithm {
     // -------------------------------------------------------------------
 
     private void executePhase2() {
-        // TODO: Implement DFS to find augmenting paths in the H-graph and update the
-        // matching
         java.util.Arrays.fill(labelHG, UNLABELED);
         ArrayList<ArrayList<Integer>> augPaths = new ArrayList<>(n); // find a maximal set of augmenting paths in H
 
         for (int vH : phase1Tree) {
-            if (vH != dBase.find(vH))
+            if (vH != dBase.find(vH)) {
                 continue; // In this case vH is not node in H.
+            }
             if (matchHG[vH] == -1 && labelHG[vH] == UNLABELED) {
                 labelHG[vH] = OUTER;
                 evenTime[vH] = phase2Counter++;
                 int freeNode = augPathDFS(vH);
+
                 if (freeNode != -1) {
-                    ArrayList<Integer> augPath = findAugPathInH(freeNode);
+                    ArrayList<Integer> augPath = new ArrayList<>();
+
+                    // Recover the G-graph edge corresponding to parentHG[freeNode]
+                    int p = parentHG[freeNode];
+                    int eSource = -1, eTarget = -1;
+
+                    searchEdge: for (int u : contractedInto[freeNode]) {
+                        for (int v : graph.getAllNeighbors(u)) {
+                            if (dBase.find(v) == p && Boolean.TRUE.equals(isEdgeofH.get(new Edge(u, v)))) {
+                                eSource = u;
+                                eTarget = v;
+                                break searchEdge;
+                            }
+                        }
+                    }
+
+                    if (eSource != -1 && eTarget != -1) {
+                        augPath.add(eSource);
+                        augPath.add(eTarget);
+
+                        // Determine which endpoint maps to the parent H-node to continue the recursion
+                        int nextHNode = (dBase.find(eSource) == freeNode) ? eTarget : eSource;
+                        augPath.addAll(findAugPathInH(dBase.find(nextHNode), vH));
+                    }
+
                     augPaths.add(augPath);
                 }
             }
+        }
 
+        // Augment all paths found
+        for (ArrayList<Integer> aphG : augPaths) {
+            augmentG(aphG);
         }
 
         // clear H
         for (int v : phase1Tree) {
-            contractedInto[dBase.find(v)].clear();
+            contractedInto[v].clear();
         }
     }
 
     private int augPathDFS(int vH) {
         for (int v : contractedInto[vH]) {
             for (int u : graph.getAllNeighbors(v)) {
-                if (!isEdgeofH.get(new Edge(u, v)))
+                if (!isEdgeofH.getOrDefault(new Edge(u, v), false))
                     continue; // Only consider edges in H
                 int uH = dBase.find(u);
                 if (matchHG[vH] == uH)
@@ -601,17 +645,9 @@ public class GabowAlgorithm {
     }
 
     private boolean isEdgeTight(int u, int v) {
-        int dualSum = computeDualY(u) + computeDualY(v);
-
-        if (dualSum == 0) {
-            return true;
-        }
-
-        if (dualSum == 1) {
-            return labels[base.find(u)] == OUTER && labels[base.find(v)] == OUTER;
-        }
-
-        return false;
+        // w(e) = 2 if e is in M, 0 otherwise
+        int w = (matches[u] == v) ? 2 : 0;
+        return computeDualY(u) + computeDualY(v) == w;
     }
 
     // -------------------------------------------------------------------
