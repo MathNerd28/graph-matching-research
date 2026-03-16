@@ -3,6 +3,16 @@ import pandas as pd
 import argparse
 
 def plot_runtime(df, ax, ax_color, window_size, line_style):
+    """
+    Plot the runtime against the matching size on the given axis (left or right).
+
+    :param df: data frame containing the data to plot
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param window_size: window size for calculating the rolling average
+    :param line_style: the style of the line based on if its the left or right axis
+    """
+
     if (window_size == -1):
         df["Runtime"] = df["Iteration Time"].cumsum()
     else:
@@ -12,27 +22,56 @@ def plot_runtime(df, ax, ax_color, window_size, line_style):
     ax.tick_params(axis='y', colors=ax_color)
 
 def plot_operation(df, operation, ax, ax_color, window_size, line_style):
+    """
+    Plot the specific operation against the matching size on the given axis (left or right).
+
+    :param df: data frame containing the data to plot
+    :param operation: the specific operation
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param window_size: window size for calculating the rolling average
+    :param line_style: the style of the line based on if its the left or right axis
+    """
+
     if (window_size == -1):
         df[f"{operation} Count"] = df[operation].cumsum()
     else:
         df[f"{operation} Count"] = df[operation].rolling(window_size).mean()
 
-    if ax_color == "blue":
-        ax.plot(df["Matching Size"], df[f"{operation} Count"], color=ax_color, label=operation, linestyle=line_style)
-    else:
-        ax.plot(df["Matching Size"], df[f"{operation} Count"], color=ax_color, label=operation, linestyle=line_style)
+    ax.plot(df["Matching Size"], df[f"{operation} Count"], color=ax_color, label=operation, linestyle=line_style)
     ax.tick_params(axis='y', colors=ax_color)
 
 def plot_pathlength(df, ax, ax_color, window_size, line_style):
+    """
+    Plot the path length against the matching size on the given axis (left or right).
+
+    :param df: data frame containing the data to plot
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param window_size: window size for calculating the rolling average
+    :param line_style: the style of the line based on if its the left or right axis
+    """
+
     if (window_size == -1):
         df["Path Length"] = df["Path Length"].cumsum()
     else:
-        df["Rolling Avg Path Length"] = (df["Path Length"].rolling(window_size).mean())
+        df["Path Length"] = (df["Path Length"].rolling(window_size).mean())
     
     ax.plot(df["Matching Size"], df["Path Length"], color=ax_color, label="pathLength", linestyle=line_style)
     ax.tick_params(axis='y', colors=ax_color)
 
 def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to):
+    """
+    Based on the user input, generate a chart from the data in the specified CSV file
+
+    :param csv_file_path: csv file path containing the data to plot
+    :param left_y_value: the values to plot on the left axis
+    :param right_y_value: the values to plot on the right axis
+    :param window: the window size
+    :param left_unit: the unit for the left axis
+    :param right_unit: the unit for the right axis
+    :param save_to: file name to save the generated plot (if None, the plot will be displayed instead)
+    """
     df = pd.read_csv(csv_file_path)
 
     fig, ax1 = plt.subplots()
@@ -73,12 +112,12 @@ def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_un
         elif value == "pathLength":
             plot_pathlength(df, ax2, COLOR_MAP[value], window, "--")
         elif value in OPERATION_MAP:
-            value = OPERATION_MAP[value]
-            plot_operation(df, value, ax2, COLOR_MAP[value], window, "--")
+            column = OPERATION_MAP[value]
+            plot_operation(df, column, ax2, COLOR_MAP[value], window, "--")
 
     if left_unit:
         ax1.set_ylabel(f"({left_unit})")
-    if right_unit:
+    if right_y_value and right_unit:
         ax2.set_ylabel(f"({right_unit})")
     
     lines_left, labels_left = ax1.get_legend_handles_labels()
@@ -101,9 +140,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  python app\src\scripts\ChartGenerator.py results.csv all\n"
-            "  python app\src\scripts\ChartGenerator.py results.csv rolling_avg_runtime -w 10\n"
-            "  python app\src\scripts\ChartGenerator.py results.csv cumulative_runtime -s plot.png"
+            "  python app\src\scripts\ChartGenerator.py results.csv -l pathLength -r runtime -c\n"
+            "  python app\src\scripts\ChartGenerator.py results.csv -l getRandomNeighbor -r hasEdge size -ra 10\n"
+            "  python app\src\scripts\ChartGenerator.py results.csv -l runtime -r hasEdge -c -lu ms -ru count -s plot"
         )
     )
 
@@ -184,9 +223,6 @@ def main():
 
     args = parser.parse_args()
 
-
-    if args.cumulative and args.rolling_avg:
-        parser.error("Cannot specify both cumulative and rolling average options.")
     if args.rolling_avg is not None and args.rolling_avg < 1:
         parser.error("Rolling average window size must be at least 1.")
 
