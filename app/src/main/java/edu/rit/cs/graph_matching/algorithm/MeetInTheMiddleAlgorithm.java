@@ -11,8 +11,7 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.util.IntSetQueue;
 
 public class MeetInTheMiddleAlgorithm implements MatchingAlgorithm {
-    private static final int     RETRY_THRESHOLD         = 1;
-    private static final boolean INCORPORATE_EVEN_CYCLES = false;
+    private static final int RETRY_THRESHOLD = 1;
 
     private final Graph           graph;
     private final RandomGenerator random;
@@ -195,11 +194,6 @@ public class MeetInTheMiddleAlgorithm implements MatchingAlgorithm {
                 int v = adjacents[w];
                 w = matches[v];
 
-                if (v == v0) {
-                    // even cycle
-                    return PathStatus.PARITY;
-                }
-
                 if (unmatched.contains(v)) {
                     // correct parity
                     addEdge(head, v0);
@@ -207,6 +201,13 @@ public class MeetInTheMiddleAlgorithm implements MatchingAlgorithm {
                     addVertex(w0, start);
                     heads[start] = v;
                     return PathStatus.DONE;
+                } else if (v == v0) {
+                    // Intersected an even cycle of a different path before the
+                    // other path was invalidated
+
+                    // This is so incredibly unlikely that it doesn't really
+                    // matter what we do here, so just do the simplest thing
+                    return PathStatus.PARITY;
                 }
             }
         }

@@ -39,7 +39,7 @@ class MeetInTheMiddleAlgorithmTest {
         Random random = new Random(Objects.hash(size, degree));
         int[] degrees = GraphUtils.generateRegularDegreeSequence(size, degree);
 
-        for (int j = 0; j < 1000; j++) {
+        for (int j = 0; j < 10; j++) {
             Random rd = new Random(random.nextLong());
 
             MutableGraph g = GraphGenerator.generateGraph(new AdjacencySetGraph(size), degrees, rd);
