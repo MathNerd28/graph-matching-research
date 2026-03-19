@@ -88,16 +88,25 @@ public interface Graph {
     public record Edge(int vertex1,
                        int vertex2) {
         @Override
-        public final boolean equals(Object arg0) {
-            return arg0 instanceof Edge e
-                    && ((vertex1 == e.vertex1 && vertex2 == e.vertex2)
-                            || (vertex1 == e.vertex2 && vertex2 == e.vertex1));
+        public boolean equals(Object o) {
+            return o instanceof Edge(int v1, int v2)
+                    && ((vertex1 == v1 && vertex2 == v2) || (vertex1 == v2 && vertex2 == v1));
         }
 
         @Override
-        public final int hashCode() {
+        public int hashCode() {
             // Ensure that swapping the vertices doesn't affect the hash
             return Objects.hash(Math.min(vertex1, vertex2), Math.max(vertex1, vertex2));
+        }
+
+        @Override
+        public String toString() {
+            return new StringBuilder().append('(')
+                                      .append(vertex1)
+                                      .append(" = ")
+                                      .append(vertex2)
+                                      .append(')')
+                                      .toString();
         }
     }
 }
