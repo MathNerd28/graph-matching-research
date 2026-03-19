@@ -88,7 +88,9 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         for (int v = 0; v < graph.size(); v++) {
             unmatched.add(v);
         }
-        clearPath();
+        this.start = -1;
+        this.head = -1;
+        this.pathId++;
     }
 
     /**
@@ -172,15 +174,17 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         int length = 1;
         int vertex = start;
         while (true) {
-            int next = getAdjacent(vertex);
+            int next = adjacents[vertex];
 
             if (next == head) {
-                setMatch(vertex, head);
+                matches[vertex] = head;
+                matches[head] = vertex;
                 break;
             }
 
-            int nextNext = getMatch(next);
-            setMatch(vertex, next);
+            int nextNext = matches[next];
+            matches[vertex] = next;
+            matches[next] = vertex;
             vertex = nextNext;
             length += 2;
         }
@@ -199,7 +203,9 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
     private boolean findAugmentingPath() {
         // Loop could run indefinitely; allow interruption for e.g. timeouts
         while (!Thread.interrupted()) {
-            clearPath();
+            this.start = -1;
+            this.head = -1;
+            this.pathId++;
 
             start = unmatched.getRandom(random);
             head = start;
@@ -230,7 +236,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
 
         // v0 = random element of N(h) \ M(h), i.e. a random neighbor of head
         // except its match
-        int headMatch = getMatch(head);
+        int headMatch = matches[head];
         int v0;
         do {
             v0 = graph.getRandomNeighbor(head, random);
@@ -241,7 +247,7 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         }
 
         // w0 = M(v0), i.e. the match of v0
-        int w0 = getMatch(v0);
+        int w0 = matches[v0];
         if (w0 == -1) {
             // Case 1: v0 is unmatched, path is augmenting
 
@@ -270,8 +276,8 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         // Attempt local repair
         int w = w0;
         while (true) {
-            int vP = getAdjacent(w);
-            int wP = getMatch(vP);
+            int vP = adjacents[w];
+            int wP = matches[vP];
 
             // Delete {w, vP} (unmatched) from path
             removeEdge(w);
@@ -317,38 +323,6 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         DONE,
         /** The ALP cannot be recovered; need to start over */
         FAIL;
-    }
-
-    /**
-     * Resets the ALP to an empty state, without affecting the matching.
-     */
-    private void clearPath() {
-        this.start = -1;
-        this.head = -1;
-        this.pathId++;
-    }
-
-    /**
-     * Get the vertex that shares its matched edge with a vertex.
-     *
-     * @param vertex
-     *     the vertex
-     * @return the matched vertex, or -1 if nonexistent
-     */
-    private int getMatch(int vertex) {
-        return matches[vertex];
-    }
-
-    /**
-     * If the vertex shares a non-matched edge with the current ALP, returns the
-     * other vertex in the edge. Otherwise, behavior is unspecified.
-     *
-     * @param vertex
-     *     the vertex
-     * @return the unmatched connected vertex in the ALP
-     */
-    private int getAdjacent(int vertex) {
-        return adjacents[vertex];
     }
 
     /**
@@ -409,20 +383,6 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
      */
     private void removeVertex(int vertex) {
         inPath[vertex] = -1;
-    }
-
-    /**
-     * Adds an edge to the matching. If either vertex was previously matched,
-     * its dangling reference is left behind.
-     *
-     * @param vertex1
-     *     the first vertex
-     * @param vertex2
-     *     the second vertex
-     */
-    private void setMatch(int vertex1, int vertex2) {
-        matches[vertex1] = vertex2;
-        matches[vertex2] = vertex1;
     }
 
     // MatchingAlgorithm interface
