@@ -140,9 +140,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  python app\src\scripts\ChartGenerator.py results.csv -l pathLength -r runtime -c\n"
-            "  python app\src\scripts\ChartGenerator.py results.csv -l getRandomNeighbor -r hasEdge size -ra 10\n"
-            "  python app\src\scripts\ChartGenerator.py results.csv -l runtime -r hasEdge -c -lu ms -ru count -s plot"
+            "  python scripts\ChartGenerator.py results.csv -l pathLength -r runtime -c\n"
+            "  python scripts\ChartGenerator.py results.csv -l getRandomNeighbor -r hasEdge size -ra 10\n"
+            "  python scripts\ChartGenerator.py results.csv -l runtime -r hasEdge -c -lu ms -ru count -s plot"
         )
     )
 
