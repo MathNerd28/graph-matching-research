@@ -20,7 +20,7 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
  * c.f.https://arxiv.org/abs/1703.03998
- * the implementation is also based on this paper:
+ * the implementation is also based on this paper:fs
  * https://arxiv.org/abs/2409.14849
  * <p>
  * This class implements a dual-driven adaptation of Edmonds' algorithm. It
@@ -97,7 +97,9 @@ public class GabowAlgorithm {
     // ----- H-Graph Structures for Phase 2 ----- //
     private final IntHashSet nodeH;
     private final int[] matchH; // matchH[h] = h' if h is matched to h' in H, else -1
-    private final Map<Edge, Boolean> isEdgeofH; // isEdgeofH[e] = 1 iff the edge e in G corresponds to an edge in H
+    private final Map<Integer, Set<Integer>> adjH = new java.util.HashMap<>();
+    // private final Map<Edge, Boolean> isEdgeofH; // isEdgeofH[e] = 1 iff the edge
+    // e in G corresponds to an edge in H
     private final int[] labelH; // Labels for H-graph DFS (UNLABELED, OUTER, INNER)
     private final NodePartition maxBlossomsH;
 
@@ -159,7 +161,7 @@ public class GabowAlgorithm {
         // this.dirHG = new int[n];
 
         // Hash map for tight edge lookups
-        this.isEdgeofH = new java.util.HashMap<>();
+        // this.isEdgeofH = new java.util.HashMap<>();
 
         this.dfStack = new Stack<>();
         this.visited = new boolean[n];
@@ -292,26 +294,32 @@ public class GabowAlgorithm {
             }
 
             if (foundSap) {
+                adjH.clear(); // Clear from previous iterations
 
                 // Construct H explicitly
-
                 for (int v : phase1Tree) {
-                    // contractedInto[dBase.find(v)].add(v);
-                    // matchHG[v] = -1;
-                    v = maxPositiveBlossoms.find(v);
-                    nodeH.add(v);
+                    int baseV = maxPositiveBlossoms.find(v); // Store base without overwriting v
+                    nodeH.add(baseV);
+                    adjH.putIfAbsent(baseV, new java.util.HashSet<>());
 
                     for (int u : graph.getAllNeighbors(v)) {
-                        isEdgeofH.put(new Edge(u, v), isEdgeTight(u, v)); // Initialize all edges as not in H
-                        if (isEdgeTight(u, v) && matchG[u] == v) {
-                            matchH[v] = u;
-                            matchH[u] = v;
+                        if (isEdgeTight(u, v)) {
+                            int baseU = maxPositiveBlossoms.find(u);
+
+                            // Only keep tight edges between distinct blossoms
+                            if (baseU != baseV) {
+                                adjH.get(baseV).add(baseU);
+                                adjH.putIfAbsent(baseU, new java.util.HashSet<>());
+                                adjH.get(baseU).add(baseV);
+
+                                if (matchG[u] == v) {
+                                    matchH[baseV] = baseU;
+                                    matchH[baseU] = baseV;
+                                }
+                            }
                         }
                     }
                 }
-
-                // Halt Edmonds' tree growth; auxiliary graph is ready for DFS
-                // commitDelayedUnions(delayedUnions);
                 return true;
             }
 
@@ -435,9 +443,7 @@ public class GabowAlgorithm {
         labelH[vH] = OUTER;
         outerTime[vH] = phase2Counter++;
 
-        for (int uH : graph.getAllNeighbors(vH)) {
-            if (!isEdgeofH.getOrDefault(new Edge(uH, vH), false))
-                continue;
+        for (int uH : adjH.getOrDefault(vH, new java.util.HashSet<>())) {
             parentH[uH] = vH;
             if (visited[uH] && labelH[maxBlossomsH.find(uH)] == OUTER
                     && outerTime[maxBlossomsH.find(uH)] < outerTime[maxBlossomsH.find(vH)]) {
