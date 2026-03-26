@@ -365,4 +365,58 @@ public final class GraphGenerator {
             array[blockIndex][withinBlockIndex] = value;
         }
     }
+
+    /**
+     * Generates a graph composed of n cliques of size k arranged in a loop.
+     * From each clique, one internal edge is removed (opens up 2 vertices), and the cliques are
+     * connected in a cycle using those exposed vertices. The resulting graph is a (k - 1)-regular graph.
+     *
+     * @param graph
+     *     the graph to edit in-place; vertices count must be exactly n * k
+     * @param n
+     *     the number of cliques (mus be at least 2)
+     * @param k
+     *     the size of each clique (must be at least 3 for this algorithm)
+     * @return the same graph instance
+     */
+
+    public static MutableGraph generateCliqueLoopGraph(MutableGraph graph, int n, int k) {
+        graph.clear();
+
+        if (n < 2) {
+            throw new IllegalArgumentException("The number of cliques n must be at least 2");
+        }
+        if (k < 3) {
+            throw new IllegalArgumentException("K value error: must be at least a 3-clique");
+        }
+        if (graph.size() != n * k) {
+            throw new IllegalArgumentException("Graph size must be exactly n * k");
+        }
+
+        // Build each clique
+        for (int c = 0; c < n; c++) {
+            int base = c * k;
+            for (int i = 0; i < k; i++) {
+                for (int j = i + 1; j < k; j++) {
+                    graph.addEdge(base + i, base + j);
+                }
+            }
+        }
+
+        // Remove one edge from each clique
+        for (int c = 0; c < n; c++) {
+            int base = c * k;
+            graph.removeEdge(base, base + 1);
+        }
+
+        // Connect cliques in a loop
+        // Method: 0 indexed vertex of this clique -> 1 indexed vertex of the next clique
+        for (int c = 0; c < n; c++) {
+            int base = c * k;
+            int nextBase = ((c + 1) % n) * k;
+            graph.addEdge(base + 1, nextBase);
+        }
+
+        return graph;
+    }
 }
