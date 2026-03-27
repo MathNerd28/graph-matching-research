@@ -2,6 +2,7 @@ package edu.rit.cs.graph_matching.algorithm;
 
 // import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 // import java.util.Arrays;
 import java.util.HashSet;
 // import java.util.LinkedList;
@@ -166,12 +167,6 @@ public class GabowAlgorithm {
         this.dfStack = new Stack<>();
         this.visited = new boolean[n];
         this.maxBlossomsH = new NodePartition(n);
-
-        // Array of Lists: Requires a loop to instantiate the inner lists
-        // this.contractedInto = new ArrayList[n];
-        // for (int i = 0; i < n; i++) {
-        // this.contractedInto[i] = new ArrayList<>();
-        // }
     }
 
     /**
@@ -233,8 +228,25 @@ public class GabowAlgorithm {
             }
         }
 
+        if (debug) {
+            int freeCount = 0;
+            StringBuilder freeNodes = new StringBuilder("[Phase 1] Free nodes: ");
+            for (int i = 0; i < n; i++) {
+                if (matchG[i] == -1) {
+                    if (freeCount > 0)
+                        freeNodes.append(", ");
+                    freeNodes.append(i);
+                    freeCount++;
+                }
+            }
+            freeNodes.append(" (count: ").append(freeCount).append(")");
+            System.out.println(freeNodes.toString());
+        }
+
         while (2 * delta <= n) {
-            // System.out.println("[Phase 1] Processing at Delta: " + delta);
+            if (debug) {
+                System.out.println("[Phase 1] Processing at Delta: " + delta);
+            }
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
                 int u = edge.vertex1();
@@ -255,11 +267,19 @@ public class GabowAlgorithm {
                     continue;
                 }
 
+                if (debug) {
+                    System.out.println("Current out node: " + u + " Outer base: " + baseU + " neighbor: " + v
+                            + " neighbor base: " + baseV);
+                }
+
                 if (labelG[baseV] == UNLABELED) {
                     // Tree Growth Step: Found a free node
                     int matchedNode = matchG[v];
-                    yBase[v] = yBase[matchedNode] = 1;
-                    // yDelta[v] = yDelta[matchedNode] = delta;
+                    if (debug) {
+                        System.out.println("Tree growth: Adding " + v + " as INNER and " + matchedNode + " as OUTER");
+                    }
+                    // yBase[v] = yBase[matchedNode] = 1;
+                    yDelta[v] = yDelta[matchedNode] = delta;
                     yDelta[matchedNode] = delta;
 
                     parentG[matchedNode] = v;
@@ -277,15 +297,17 @@ public class GabowAlgorithm {
                     int ancestor = findLeastCommonAncestor(baseU, baseV);
 
                     if (ancestor != -1) {
-                        if (debug)
-                            System.out.printf("[Phase 1] Blossom detected between %d and %d with base %d\n", u, v,
-                                    ancestor);
+                        if (debug) {
+                            System.out.println("Blossom step: " + u + " and " + v + " with base "
+                                    + ancestor);
+                        }
                         // Collision in the SAME tree -> Shrink Blossom
                         shrinkPath(ancestor, u);
                         shrinkPath(ancestor, v);
                     } else {
-                        if (debug)
-                            System.out.printf("[Phase 1] SAP collision found between %d and %d\n", u, v);
+                        if (debug) {
+                            System.out.println("Augmenting path found ending at " + v);
+                        }
                         // Collision across DIFFERENT trees -> Augmenting Path Found
                         foundSap = true;
                         // break;
@@ -305,7 +327,10 @@ public class GabowAlgorithm {
                     for (int u : graph.getAllNeighbors(v)) {
                         if (isEdgeTight(u, v)) {
                             int baseU = maxPositiveBlossoms.find(u);
-
+                            if (debug) {
+                                System.out.println("Add tight edge to H: (" + u + ", " + v + ") with bases (" + baseU
+                                        + ", " + baseV + ")");
+                            }
                             // Only keep tight edges between distinct blossoms
                             if (baseU != baseV) {
                                 adjH.get(baseV).add(baseU);
@@ -334,7 +359,7 @@ public class GabowAlgorithm {
     private int computeDualY(int v) {
         int baseV = maxPositiveBlossoms.find(v);
         if (labelG[baseV] == UNLABELED)
-            return 1;
+            return yBase[v];
         if (labelG[baseV] == OUTER)
             return yBase[v] - (delta - yDelta[v]); // OUTER vertices decrease
         return yBase[v] + (delta - yDelta[v]); // INNER vertices increase
@@ -443,8 +468,15 @@ public class GabowAlgorithm {
         labelH[vH] = OUTER;
         outerTime[vH] = phase2Counter++;
 
+        if (debug) {
+            System.out.println("\n[Phase 2] Starting DFS from outer node: " + vH);
+        }
+
         for (int uH : adjH.getOrDefault(vH, new java.util.HashSet<>())) {
             parentH[uH] = vH;
+            if (debug) {
+                System.out.println("DFS visiting edge: (" + vH + ", " + uH + ")");
+            }
             if (visited[uH] && labelH[maxBlossomsH.find(uH)] == OUTER
                     && outerTime[maxBlossomsH.find(uH)] < outerTime[maxBlossomsH.find(vH)]) {
                 int zH = maxBlossomsH.find(vH);
@@ -461,6 +493,9 @@ public class GabowAlgorithm {
                 visited[uH] = true;
                 if (matchH[uH] == -1) {
                     // TODO: is every free node in H necessarily a free node in G?
+                    if (debug) {
+                        System.out.println("DFS found augmenting path to free node: " + uH);
+                    }
                     augPathFound = true;
                     ArrayList<Integer> augPath = new ArrayList<>();
                     dfStack.push(uH);
@@ -469,6 +504,10 @@ public class GabowAlgorithm {
                     augPaths.add(augPath);
                     return;
                 } else {
+                    if (debug) {
+                        System.out.println(
+                                "DFS tree growth: Adding " + uH + " and " + matchH[uH] + " to  search stack");
+                    }
                     dfStack.push(uH);
                     labelH[uH] = INNER;
                     parentH[matchH[uH]] = uH;
@@ -506,6 +545,9 @@ public class GabowAlgorithm {
             augPathG.add(curr);
 
             if (maxPositiveBlossoms.find(curr) == curr) {
+                if (debug) {
+                    System.out.println("Mapping H node " + curr + " to G node " + curr);
+                }
                 continue;
             } else if (labelG[curr] == OUTER) {
                 int base = maxPositiveBlossoms.find(curr);
