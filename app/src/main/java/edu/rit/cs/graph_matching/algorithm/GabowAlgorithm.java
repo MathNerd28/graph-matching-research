@@ -1,13 +1,8 @@
 package edu.rit.cs.graph_matching.algorithm;
 
-// import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
-// import java.util.Arrays;
 import java.util.HashSet;
-// import java.util.LinkedList;
 import java.util.List;
-// import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 
@@ -53,24 +48,10 @@ public class GabowAlgorithm {
     // private final NodePartition base;
 
     // /** Maximal positive blossoms in G */
-    // private final NodePartition dBase;
-    // /** Snapshot of dBase to preserve the H-graph structure during Phase 2 */
-    // private final int[] rep;
 
-    // /** Alternating BFS tree parent pointers */
+    // /** Edmond search tree parent pointers */
     private final int[] parentG; // ancestor in phase 1 search
     private final int[] parentH; // For Phase 2 DFS on H-graph
-
-    // /** Bridges linking the contracted blossoms (source and target) */
-    // private final int[] sourceBridge;
-    // private final int[] targetBridge;
-    // a blossom consists of two paths x--z and
-    // y--z plus the edge xy; z is the base of the blossom.
-    // the nodes on the path from x to z store x as source_bridge and y as
-    // target_bridge.
-
-    // // private final Edge[] bridgeHG;
-    // private final int[] dirHG;
 
     private final int[] path1;
     private final int[] path2;
@@ -98,11 +79,20 @@ public class GabowAlgorithm {
     // ----- H-Graph Structures for Phase 2 ----- //
     private final IntHashSet nodeH;
     private final int[] matchH; // matchH[h] = h' if h is matched to h' in H, else -1
-    private final Map<Integer, Set<Integer>> adjH = new java.util.HashMap<>();
+    private final Map<Integer, Set<Integer>> adjH;
+    // Maps an H-graph edge (baseV, baseU) to the actual G-graph edge (v, u)
+    private final Map<Integer, Map<Integer, Edge>> bridgeHG;
     // private final Map<Edge, Boolean> isEdgeofH; // isEdgeofH[e] = 1 iff the edge
     // e in G corresponds to an edge in H
     private final int[] labelH; // Labels for H-graph DFS (UNLABELED, OUTER, INNER)
     private final NodePartition maxBlossomsH;
+
+    // Mehlhorn's Bridge Caching Arrays
+    private final int[] sourceBridge;
+    private final int[] targetBridge;
+    // Phase 2 (H-Graph) Bridge Caching
+    private final int[] sourceBridgeH;
+    private final int[] targetBridgeH;
 
     /** The global dual adjustment counter (number of adjustments applied) */
     private int delta;
@@ -133,8 +123,10 @@ public class GabowAlgorithm {
         this.parentG = new int[n];
         this.parentH = new int[n];
         this.labelG = new int[n];
-        // this.sourceBridge = new int[n];
-        // this.targetBridge = new int[n];
+        this.sourceBridge = new int[n];
+        this.targetBridge = new int[n];
+        this.sourceBridgeH = new int[n];
+        this.targetBridgeH = new int[n];
 
         this.phase2Counter = 0;
 
@@ -158,6 +150,8 @@ public class GabowAlgorithm {
         java.util.Arrays.fill(this.matchH, -1);
         this.labelH = new int[n];
         this.outerTime = new int[n];
+        this.adjH = new java.util.HashMap<>();
+        this.bridgeHG = new java.util.HashMap<>();
         // this.bridgeHG = new Edge[n];
         // this.dirHG = new int[n];
 
@@ -302,8 +296,8 @@ public class GabowAlgorithm {
                                     + ancestor);
                         }
                         // Collision in the SAME tree -> Shrink Blossom
-                        shrinkPath(ancestor, u);
-                        shrinkPath(ancestor, v);
+                        shrinkPath(ancestor, u, v);
+                        shrinkPath(ancestor, v, u);
                     } else {
                         if (debug) {
                             System.out.println("Augmenting path found ending at " + v);
@@ -336,6 +330,9 @@ public class GabowAlgorithm {
                                 adjH.get(baseV).add(baseU);
                                 adjH.putIfAbsent(baseU, new java.util.HashSet<>());
                                 adjH.get(baseU).add(baseV);
+
+                                bridgeHG.putIfAbsent(baseV, new java.util.HashMap<>());
+                                bridgeHG.get(baseV).put(baseU, new Edge(v, u));
 
                                 if (matchG[u] == v) {
                                     matchH[baseV] = baseU;
@@ -380,38 +377,30 @@ public class GabowAlgorithm {
         }
     }
 
-    private void shrinkPath(int blossomBase, int outerNode) {
+    private void shrinkPath(int blossomBase, int outerNodeThisPath, int outerNodeOtherPath) {
         // System.out.println("[Phase 1] Shrinking blossom at base: " + blossomBase + "
         // from " + start + " to " + target);
-        int v = maxPositiveBlossoms.find(outerNode);
+        int v = maxPositiveBlossoms.find(outerNodeThisPath);
         while (v != blossomBase) {
-            // base.union(v, blossomBase);
-            // delayedUnions.add(v);
-            // delayedUnions.add(blossomBase);
+            // Union the current OUTER node
             maxPositiveBlossoms.union(v, blossomBase, blossomBase);
 
-            // v = matchG[v];
-            // base.union(v, blossomBase);
-            // delayedUnions.add(v);
-            // delayedUnions.add(blossomBase);
+            // Union the matched node, which is INNER
             v = matchG[v];
             maxPositiveBlossoms.union(v, blossomBase, blossomBase);
 
-            // base.makeRep(blossomBase);
+            // Set the bridge for the OUTER node
+            sourceBridge[v] = outerNodeThisPath;
+            targetBridge[v] = outerNodeOtherPath;
 
-            // sourceBridge[v] = start;
-            // targetBridge[v] = target;
-
-            // Adjust dual baselines for the newly assimilated nodes
+            // Adjust dual baselines for the newly OUTER nodes
             yBase[v] = yBase[v] + (delta - yDelta[v]);
             yDelta[v] = delta;
 
-            // Re-scan from the newly OUTER nodes
+            // Scan edges from the newly OUTER nodes
             scanEdges(v);
             v = maxPositiveBlossoms.find(parentG[v]);
         }
-        // delayedUnions.add(blossomBase);
-        // delayedUnions.add(blossomBase);
     }
 
     private int findLeastCommonAncestor(int baseU, int baseV) {
@@ -452,6 +441,10 @@ public class GabowAlgorithm {
         for (int vH : nodeH) {
             if (matchH[vH] == -1 && labelH[vH] == UNLABELED) {
                 augPathDFS(vH, augPaths);
+                if (debug) {
+                    System.out.println("Finished DFS from node " + vH + ", found augmenting path in contracted H: "
+                            + augPaths.get(augPaths.size() - 1));
+                }
             }
         }
         for (ArrayList<Integer> aphG : augPaths) {
@@ -527,11 +520,10 @@ public class GabowAlgorithm {
                 continue;
             } else if (labelH[curr] == OUTER) {
                 int base = maxBlossomsH.find(curr);
-                curr = matchH[curr];
-                // Added curr != -1 safety check
-                while (base != curr && curr != -1) {
-                    augPath.add(curr);
-                    curr = parentH[curr];
+                unrollBlossomH(augPath, curr, base);
+                if (debug) {
+                    System.out.println(
+                            "Unrolled H blossom OUTER node " + curr + " to H path: " + augPath);
                 }
             }
         }
@@ -540,26 +532,156 @@ public class GabowAlgorithm {
 
     ArrayList<Integer> findAugPathG(ArrayList<Integer> apH) {
         ArrayList<Integer> augPathG = new ArrayList<>();
+        int last = -1;
         while (!apH.isEmpty()) {
-            int curr = apH.remove(apH.size() - 1);
-            augPathG.add(curr);
-
-            if (maxPositiveBlossoms.find(curr) == curr) {
-                if (debug) {
-                    System.out.println("Mapping H node " + curr + " to G node " + curr);
-                }
-                continue;
-            } else if (labelG[curr] == OUTER) {
-                int base = maxPositiveBlossoms.find(curr);
-                curr = matchG[curr];
-                // Added curr != -1 safety check
-                while (base != curr && curr != -1) {
+            int curr = apH.remove(0);
+            if (debug) {
+                System.out.println("[Phase 2] Processing H node " + curr);
+            }
+            int base = maxPositiveBlossoms.find(curr);
+            int next = apH.isEmpty() ? -1 : apH.get(0);
+            if (next != -1) {
+                Edge bridge = bridgeHG.get(curr).get(next);
+                if (new Edge(curr, next).equals(bridge)) {
+                    // curr is a blossom base in G
+                    if (debug) {
+                        System.out.println(
+                                "H node " + curr + " is a blossom base in G");
+                    }
                     augPathG.add(curr);
-                    curr = parentG[curr];
+                    last = next;
+                    continue;
+                } else {
+                    // The edge in H corresponds to a tight edge in G that connects the two
+                    // blossoms, with at least one internal node
+                    last = (maxPositiveBlossoms.find(bridge.vertex1()) == base) ? bridge.vertex2() : bridge.vertex1();
+                    if (bridge.vertex1() == base || bridge.vertex2() == base) {
+                        // curr is the base of the blossom in G, so we only need to unroll the other
+                        // endpoint
+                        if (debug) {
+                            System.out.println(
+                                    "H node " + curr + " is a blossom base in G");
+                        }
+                        augPathG.add(curr);
+                        continue;
+                    }
+                    ArrayList<Integer> internalPathG = new ArrayList<>();
+                    // unroll the blossom to retieve a path in G
+                    unrollBlossomG(internalPathG,
+                            (maxPositiveBlossoms.find(bridge.vertex1()) == base) ? bridge.vertex1() : bridge.vertex2(),
+                            base);
+
+                    if (debug) {
+                        System.out.println(
+                                "Unroll node " + curr + " to internal path: "
+                                        + internalPathG + " ending at base: " + base);
+                    }
+
+                    for (int i = 0; i < internalPathG.size(); i++) {
+                        augPathG.add(internalPathG.get(i));
+                    }
+                }
+            } else {
+                if (debug) {
+                    System.out.println("The last node in apH is: " + curr + " corresponding G node is: " + last);
+                }
+                if (last == base) {
+                    augPathG.add(last);
+                } else {
+                    ArrayList<Integer> internalPathG = new ArrayList<>();
+                    // unroll the blossom to retieve a path in G
+                    unrollBlossomG(internalPathG, last, base);
+
+                    if (debug) {
+                        System.out.println(
+                                "Unroll node " + curr + " to internal path: "
+                                        + internalPathG + " ending at base: " + base);
+                    }
+
+                    for (int i = 0; i < internalPathG.size(); i++) {
+                        augPathG.add(internalPathG.get(i));
+                    }
                 }
             }
         }
         return augPathG;
+    }
+
+    /**
+     * Recursively tracks the internal path of a blossom in G, starting from entry
+     * and ending at exit, and adds the internal nodes, including the entry and
+     * exit, to augPath.
+     * * @param augPath
+     * 
+     * @param entry
+     * @param exit
+     */
+    void unrollBlossomG(ArrayList<Integer> augPath, int entry, int exit) {
+        if (entry == exit) {
+            augPath.addLast(entry);
+            return;
+        }
+
+        if (labelG[entry] == OUTER) {
+            int matchedNode = matchG[entry];
+            int parentNode = parentG[matchedNode];
+            augPath.addLast(entry);
+            augPath.addLast(matchedNode);
+            unrollBlossomG(augPath, parentNode, exit);
+        } else {
+            int src = sourceBridge[entry];
+            int tgt = targetBridge[entry];
+            int matchedNode = matchG[entry];
+
+            // 1. Add the initial matched edge for this INNER node
+            augPath.addLast(entry);
+
+            // 2. Trace upwards from the source of the bridge to the matched node.
+            // Since we need to walk downwards from the matched node to the bridge,
+            // we **reverse** the collected path.
+            ArrayList<Integer> temp = new ArrayList<>();
+            unrollBlossomG(temp, src, matchedNode);
+            for (int i = temp.size() - 1; i >= 0; i--) {
+                augPath.addLast(temp.get(i));
+            }
+
+            // 3. Cross the bridge and continue unrolling from the target side up to the
+            // exit
+            unrollBlossomG(augPath, tgt, exit);
+        }
+    }
+
+    /**
+     * Recursively tracks the internal path of a blossom in the contracted H-graph.
+     */
+    void unrollBlossomH(ArrayList<Integer> pathH, int entry, int exit) {
+        if (entry == exit) {
+            pathH.addLast(entry);
+            return;
+        }
+
+        if (labelH[entry] == OUTER) {
+            int matchedNode = matchH[entry];
+            int parentNode = parentH[matchedNode]; // This MUST point directly to the next OUTER node
+            pathH.addLast(entry);
+            pathH.addLast(matchedNode);
+            unrollBlossomH(pathH, parentNode, exit);
+        } else {
+            // entry is an INNER node trapped in an H-blossom. Jump using the cached bridge!
+            int src = sourceBridgeH[entry];
+            int tgt = targetBridgeH[entry];
+            int matchedNode = matchH[entry];
+
+            pathH.addLast(entry);
+
+            ArrayList<Integer> temp = new ArrayList<>();
+            unrollBlossomH(temp, src, matchedNode);
+            for (int i = temp.size() - 1; i >= 0; i--) {
+                pathH.addLast(temp.get(i));
+            }
+
+            unrollBlossomH(pathH, tgt, exit);
+        }
     }
 
     /**
