@@ -4,14 +4,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-// import java.util.Stack;
 
 import java.util.Map;
 
 import edu.rit.cs.graph_matching.IntHashSet;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
-// import edu.rit.cs.graph_matching.util.IntHashSet;
 
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
@@ -523,58 +521,6 @@ public class GabowAlgorithm {
             }
         }
     }
-
-    /**
-     * Constructs the augmenting path in the H-graph by tracing parent pointers
-     * and expanding any crossed H-blossoms using the cached bridges.
-     * 
-     * @param start The OUTER node in the DFS tree where the free node was
-     *              discovered
-     * @param end   The newly discovered free node
-     * @return The fully unrolled augmenting path in H from root to end
-     */
-    // ArrayList<Integer> findAugPathH(int start, int end) {
-    // ArrayList<Integer> augPath = new ArrayList<>();
-
-    // // 1. Add the final free node to the end of our backwards path
-    // augPath.add(end);
-
-    // // 2. Find the root of this specific alternating DFS tree
-    // int root = start;
-    // while (matchH[root] != -1) {
-    // root = parentH[matchH[root]];
-    // }
-
-    // // 3. Unroll the H-path backwards from vH all the way up to the root
-    // ArrayList<Integer> temp = new ArrayList<>();
-    // unrollBlossomH(temp, start, root);
-
-    // // 4. Append the unrolled sequence
-    // for (int x : temp) {
-    // augPath.add(x);
-    // }
-
-    // 5. The path was constructed backwards (from uH up to root).
-    // Reverse it so it correctly goes from root -> free node.
-    // java.util.Collections.reverse(augPath);
-
-    // while (!dfStack.isEmpty()) {
-    // int curr = dfStack.pop();
-    // augPath.add(curr);
-
-    // if (maxBlossomsH.find(curr) == curr) {
-    // continue;
-    // } else if (labelH[curr] == OUTER) {
-    // int base = maxBlossomsH.find(curr);
-    // unrollBlossomH(augPath, curr, base);
-    // if (debug) {
-    // System.out.println(
-    // "Unrolled H blossom OUTER node " + curr + " to H path: " + augPath);
-    // }
-    // }
-    // // }
-    // return augPath;
-    // }
 
     /**
      * Constructs the augmenting path in the H-graph by tracing parent pointers
