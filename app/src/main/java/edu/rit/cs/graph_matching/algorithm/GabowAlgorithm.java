@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.Stack;
+// import java.util.Stack;
 
 import java.util.Map;
 
@@ -97,9 +97,12 @@ public class GabowAlgorithm {
     /** The global dual adjustment counter (number of adjustments applied) */
     private int delta;
     private final int[] outerTime;
+    // private final int[] outerTimeH;
 
-    private final Stack<Integer> dfStack;
+    // private final Stack<Integer> dfStack;
     private final boolean[] visited;
+
+    private boolean augPathFound;
 
     // ----- Priority Queue & Auxiliary Path Tracking ----- //
 
@@ -150,6 +153,7 @@ public class GabowAlgorithm {
         java.util.Arrays.fill(this.matchH, -1);
         this.labelH = new int[n];
         this.outerTime = new int[n];
+        // private final int[] outerTimeH;
         this.adjH = new java.util.HashMap<>();
         this.bridgeHG = new java.util.HashMap<>();
         // this.bridgeHG = new Edge[n];
@@ -158,7 +162,7 @@ public class GabowAlgorithm {
         // Hash map for tight edge lookups
         // this.isEdgeofH = new java.util.HashMap<>();
 
-        this.dfStack = new Stack<>();
+        // this.dfStack = new Stack<>();
         this.visited = new boolean[n];
         this.maxBlossomsH = new NodePartition(n);
     }
@@ -203,9 +207,10 @@ public class GabowAlgorithm {
         java.util.Arrays.fill(matchH, -1);
         java.util.Arrays.fill(labelH, UNLABELED);
         java.util.Arrays.fill(outerTime, 0);
+        // java.util.Arrays.fill(outerTimeH, 0);
         java.util.Arrays.fill(visited, false); // Clear visited for DFS
         maxBlossomsH.reset(n);
-        dfStack.clear();
+        // dfStack.clear();
         phase2Counter = 1;
 
         java.util.Arrays.fill(labelG, UNLABELED);
@@ -433,15 +438,20 @@ public class GabowAlgorithm {
     // Phase 2: DFS on the Contracted H-Graph
     // -------------------------------------------------------------------
 
-    boolean augPathFound = false;
-
     private void executePhase2() {
-
         ArrayList<ArrayList<Integer>> augPaths = new ArrayList<>(n);
         for (int vH : nodeH) {
             if (matchH[vH] == -1 && labelH[vH] == UNLABELED) {
-                augPathDFS(vH, augPaths);
-                if (debug) {
+                augPathFound = false;
+
+                visited[vH] = true;
+                labelH[vH] = OUTER;
+                outerTime[vH] = phase2Counter++;
+
+                // FIX: Pass vH as the rootH
+                augPathDFS(vH, vH, augPaths);
+
+                if (debug && augPathFound) {
                     System.out.println("Finished DFS from node " + vH + ", found augmenting path in contracted H: "
                             + augPaths.get(augPaths.size() - 1));
                 }
@@ -450,83 +460,146 @@ public class GabowAlgorithm {
         for (ArrayList<Integer> aphG : augPaths) {
             augmentG(aphG);
         }
-
     }
 
-    private void augPathDFS(int vH, ArrayList<ArrayList<Integer>> augPaths) {
+    private void augPathDFS(int vH, int rootH, ArrayList<ArrayList<Integer>> augPaths) {
         if (augPathFound)
             return;
-        dfStack.push(vH);
-        visited[vH] = true;
-        labelH[vH] = OUTER;
-        outerTime[vH] = phase2Counter++;
 
-        if (debug) {
+        if (debug)
             System.out.println("\n[Phase 2] Starting DFS from outer node: " + vH);
-        }
 
         for (int uH : adjH.getOrDefault(vH, new java.util.HashSet<>())) {
-            parentH[uH] = vH;
-            if (debug) {
+            if (debug)
                 System.out.println("DFS visiting edge: (" + vH + ", " + uH + ")");
-            }
-            if (visited[uH] && labelH[maxBlossomsH.find(uH)] == OUTER
-                    && outerTime[maxBlossomsH.find(uH)] < outerTime[maxBlossomsH.find(vH)]) {
-                int zH = maxBlossomsH.find(vH);
-                int currH = uH;
-                while (zH != currH) {
-                    if (labelH[currH] == INNER) {
-                        labelH[currH] = OUTER;
-                        augPathDFS(currH, augPaths);
-                    }
-                    maxBlossomsH.union(zH, maxBlossomsH.find(currH), zH);
-                    currH = dfStack.pop();
-                }
-            } else if (!visited[uH]) {
-                visited[uH] = true;
+
+            int baseV = maxBlossomsH.find(vH);
+            int baseU = maxBlossomsH.find(uH);
+
+            if (labelH[baseU] == UNLABELED) {
+                labelH[uH] = INNER;
+                parentH[uH] = vH;
+
                 if (matchH[uH] == -1) {
-                    // TODO: is every free node in H necessarily a free node in G?
-                    if (debug) {
+                    if (debug)
                         System.out.println("DFS found augmenting path to free node: " + uH);
-                    }
                     augPathFound = true;
-                    ArrayList<Integer> augPath = new ArrayList<>();
-                    dfStack.push(uH);
-                    labelH[uH] = INNER;
-                    augPath = findAugPathH();
+
+                    // FIX: Pass rootH to the path reconstructor
+                    ArrayList<Integer> augPath = findAugPathH(vH, uH, rootH);
                     augPaths.add(augPath);
+
                     return;
                 } else {
-                    if (debug) {
-                        System.out.println(
-                                "DFS tree growth: Adding " + uH + " and " + matchH[uH] + " to  search stack");
+                    int nextOuter = matchH[uH];
+                    if (debug)
+                        System.out.println("DFS tree growth: Adding " + uH + " and " + nextOuter + " to search stack");
+
+                    labelH[nextOuter] = OUTER;
+                    outerTime[nextOuter] = phase2Counter++;
+
+                    // FIX: Pass rootH recursively
+                    augPathDFS(nextOuter, rootH, augPaths);
+                }
+            } else if (labelH[baseU] == OUTER && outerTime[baseV] < outerTime[baseU]) {
+                int curr = baseU;
+
+                while (curr != baseV) {
+                    maxBlossomsH.union(curr, baseV, baseV);
+
+                    int matchedNode = matchH[curr];
+                    maxBlossomsH.union(matchedNode, baseV, baseV);
+
+                    sourceBridgeH[matchedNode] = uH;
+                    targetBridgeH[matchedNode] = vH;
+
+                    if (labelH[matchedNode] == INNER) {
+                        // FIX: Pass rootH recursively
+                        augPathDFS(matchedNode, rootH, augPaths);
                     }
-                    dfStack.push(uH);
-                    labelH[uH] = INNER;
-                    parentH[matchH[uH]] = uH;
-                    augPathDFS(matchH[uH], augPaths);
+
+                    curr = maxBlossomsH.find(parentH[matchedNode]);
                 }
             }
         }
     }
 
-    ArrayList<Integer> findAugPathH() {
-        ArrayList<Integer> augPath = new ArrayList<>();
-        while (!dfStack.isEmpty()) {
-            int curr = dfStack.pop();
-            augPath.add(curr);
+    /**
+     * Constructs the augmenting path in the H-graph by tracing parent pointers
+     * and expanding any crossed H-blossoms using the cached bridges.
+     * 
+     * @param start The OUTER node in the DFS tree where the free node was
+     *              discovered
+     * @param end   The newly discovered free node
+     * @return The fully unrolled augmenting path in H from root to end
+     */
+    // ArrayList<Integer> findAugPathH(int start, int end) {
+    // ArrayList<Integer> augPath = new ArrayList<>();
 
-            if (maxBlossomsH.find(curr) == curr) {
-                continue;
-            } else if (labelH[curr] == OUTER) {
-                int base = maxBlossomsH.find(curr);
-                unrollBlossomH(augPath, curr, base);
-                if (debug) {
-                    System.out.println(
-                            "Unrolled H blossom OUTER node " + curr + " to H path: " + augPath);
-                }
-            }
+    // // 1. Add the final free node to the end of our backwards path
+    // augPath.add(end);
+
+    // // 2. Find the root of this specific alternating DFS tree
+    // int root = start;
+    // while (matchH[root] != -1) {
+    // root = parentH[matchH[root]];
+    // }
+
+    // // 3. Unroll the H-path backwards from vH all the way up to the root
+    // ArrayList<Integer> temp = new ArrayList<>();
+    // unrollBlossomH(temp, start, root);
+
+    // // 4. Append the unrolled sequence
+    // for (int x : temp) {
+    // augPath.add(x);
+    // }
+
+    // 5. The path was constructed backwards (from uH up to root).
+    // Reverse it so it correctly goes from root -> free node.
+    // java.util.Collections.reverse(augPath);
+
+    // while (!dfStack.isEmpty()) {
+    // int curr = dfStack.pop();
+    // augPath.add(curr);
+
+    // if (maxBlossomsH.find(curr) == curr) {
+    // continue;
+    // } else if (labelH[curr] == OUTER) {
+    // int base = maxBlossomsH.find(curr);
+    // unrollBlossomH(augPath, curr, base);
+    // if (debug) {
+    // System.out.println(
+    // "Unrolled H blossom OUTER node " + curr + " to H path: " + augPath);
+    // }
+    // }
+    // // }
+    // return augPath;
+    // }
+
+    /**
+     * Constructs the augmenting path in the H-graph by tracing parent pointers
+     * and expanding any crossed H-blossoms using the cached bridges.
+     */
+
+    ArrayList<Integer> findAugPathH(int start, int end, int rootH) {
+        ArrayList<Integer> augPath = new ArrayList<>();
+
+        // 1. Add the final free node to the end of our backwards path
+        augPath.add(end);
+
+        // 2. Unroll the H-path backwards from the OUTER node (start) all the way up to
+        // the root
+        ArrayList<Integer> temp = new ArrayList<>();
+        unrollBlossomH(temp, start, rootH); // FIX: Safely unroll up to rootH
+
+        // 3. Append the unrolled sequence
+        for (int x : temp) {
+            augPath.add(x);
         }
+
+        // 4. Reverse it so it correctly goes from root -> free node.
+        java.util.Collections.reverse(augPath);
+
         return augPath;
     }
 
