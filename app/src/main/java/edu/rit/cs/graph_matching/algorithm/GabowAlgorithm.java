@@ -7,7 +7,7 @@ import java.util.Set;
 
 import java.util.Map;
 
-import edu.rit.cs.graph_matching.IntHashSet;
+import edu.rit.cs.graph_matching.util.IntHashSet;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
