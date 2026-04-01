@@ -11,7 +11,8 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.util.IntSetQueue;
 
 public class MeetInTheMiddleAlgorithm implements MatchingAlgorithm {
-    private static final int RETRY_THRESHOLD = 1;
+    private static final int     RETRY_THRESHOLD         = 1;
+    private static final boolean INCORPORATE_EVEN_CYCLES = true;
 
     private final Graph           graph;
     private final RandomGenerator random;
@@ -186,7 +187,7 @@ public class MeetInTheMiddleAlgorithm implements MatchingAlgorithm {
 
             int w = w0;
             while (true) {
-                if (heads[inPathVertex[w]] >= 0) {
+                if (heads[inPathVertex[w]] == w) {
                     // wrong parity
                     return PathStatus.PARITY;
                 }
@@ -205,9 +206,40 @@ public class MeetInTheMiddleAlgorithm implements MatchingAlgorithm {
                     // Intersected an even cycle of a different path before the
                     // other path was invalidated
 
-                    // This is so incredibly unlikely that it doesn't really
-                    // matter what we do here, so just do the simplest thing
-                    return PathStatus.PARITY;
+                    if (!INCORPORATE_EVEN_CYCLES) {
+                        // Option 1: erase the even cycle
+
+                        v = adjacents[w];
+                        while (v != v0) {
+                            removeVertex(v);
+                            removeEdge(v);
+                            removeVertex(w);
+                            w = matches[v];
+                            v = adjacents[w];
+                        }
+
+                        removeVertex(v0);
+                        removeVertex(w);
+                        removeEdge(v0);
+                        return PathStatus.ACTIVE;
+                    } else {
+                        // Option 2: incorporate the even cycle
+
+                        v = adjacents[w];
+                        while (v != v0) {
+                            addVertex(v, start);
+                            addVertex(w, start);
+                            w = matches[v];
+                            v = adjacents[w];
+                        }
+
+                        addVertex(w, start);
+                        addVertex(v0, start);
+                        removeEdge(v0);
+                        addEdge(head, v0);
+                        heads[start] = w;
+                        return PathStatus.ACTIVE;
+                    }
                 }
             }
         }
