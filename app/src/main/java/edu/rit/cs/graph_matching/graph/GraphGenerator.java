@@ -291,7 +291,7 @@ public final class GraphGenerator {
     /**
      * Generates a simple cycle graph on n vertices of the pattern
      * 0-1-2-...-(n-1)-0 Returns the graph directly if vertex count <= 1
-     * 
+     *
      * @param graph
      *     the graph to edit in-place
      * @return the same graph instance
@@ -368,8 +368,9 @@ public final class GraphGenerator {
 
     /**
      * Generates a graph composed of n cliques of size k arranged in a loop.
-     * From each clique, one internal edge is removed (opens up 2 vertices), and the cliques are
-     * connected in a cycle using those exposed vertices. The resulting graph is a (k - 1)-regular graph.
+     * From each clique, one internal edge is removed (opens up 2 vertices), and
+     * the cliques are connected in a cycle using those exposed vertices. The
+     * resulting graph is a (k - 1)-regular graph.
      *
      * @param graph
      *     the graph to edit in-place; vertices count must be exactly n * k
@@ -410,11 +411,46 @@ public final class GraphGenerator {
         }
 
         // Connect cliques in a loop
-        // Method: 0 indexed vertex of this clique -> 1 indexed vertex of the next clique
+        // Method: 0 indexed vertex of this clique -> 1 indexed vertex of the
+        // next clique
         for (int c = 0; c < n; c++) {
             int base = c * k;
             int nextBase = ((c + 1) % n) * k;
             graph.addEdge(base + 1, nextBase);
+        }
+
+        return graph;
+    }
+
+    /**
+     * Generate a graph constructed from a pair of k-cliques, with each vertex
+     * in clique A bridged to a corresponding vertex in clique B. The resulting
+     * graph is (n/2)-regular.
+     *
+     * @param graph
+     *     the graph to edit in-place; its size must be even
+     * @return the same graph instance
+     */
+    public static MutableGraph generateCliqueBridgeGraph(MutableGraph graph) {
+        graph.clear();
+
+        if (graph.size() % 2 != 0) {
+            throw new IllegalArgumentException("Graph must have an even number of vertices");
+        }
+
+        // Build each clique
+        for (int c = 0; c < 2; c++) {
+            int base = c * (graph.size() / 2);
+            for (int i = 0; i < graph.size() / 2; i++) {
+                for (int j = i + 1; j < graph.size() / 2; j++) {
+                    graph.addEdge(base + i, base + j);
+                }
+            }
+        }
+
+        for (int v = 0; v < graph.size() / 2; v++) {
+            int w = v + (graph.size() / 2);
+            graph.addEdge(v, w);
         }
 
         return graph;
