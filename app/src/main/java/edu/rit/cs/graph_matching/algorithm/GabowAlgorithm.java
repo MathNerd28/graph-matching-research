@@ -1,11 +1,14 @@
 package edu.rit.cs.graph_matching.algorithm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-
 import java.util.Map;
+import java.util.Set;
 
 import edu.rit.cs.graph_matching.util.IntHashSet;
 import edu.rit.cs.graph_matching.graph.Graph;
@@ -14,7 +17,7 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
  * c.f.https://arxiv.org/abs/1703.03998
- * the implementation is also based on this paper:fs
+ * the implementation is also based on this paper:
  * https://arxiv.org/abs/2409.14849
  * <p>
  * This class implements a dual-driven adaptation of Edmonds' algorithm. It
@@ -25,14 +28,11 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
  * augmenting paths over the implicitly contracted H-graph using Depth-First
  * Search.
  */
-public class GabowAlgorithm {
+public class GabowAlgorithm implements MatchingAlgorithm {
 
-    public boolean debug = false; // Add this near your other class fields
-
-    // path
-    private static final int UNLABELED = 0;
-    private static final int OUTER = 1;
-    private static final int INNER = 2;
+    private enum Label {
+        UNLABELED, OUTER, INNER
+    }
 
     private final Graph graph;
     private final int n;
@@ -41,8 +41,6 @@ public class GabowAlgorithm {
     private final int[] matchG;
 
     // ----- Blossom Contraction Structures ----- //
-
-    // /** Edmond search tree parent pointers */
     private final int[] parentG; // ancestor in phase 1 search
     private final int[] parentH; // For Phase 2 DFS on H-graph
 
@@ -50,7 +48,7 @@ public class GabowAlgorithm {
     private final int[] path2;
 
     /** Node labels in the alternating forest (UNLABELED, OUTER, INNER) */
-    private final int[] labelG;
+    private final Label[] labelG;
 
     /** Array-based priority queue for O(1) tight-edge discovery */
     private final PriorityQueueArray queue;
@@ -60,14 +58,14 @@ public class GabowAlgorithm {
     private final NodePartition maxPositiveBlossoms; // Tracks the maximal positive blossoms in G
     private final IntHashSet phase1Tree; // Tracks nodes currently in the Phase 1 alternating tree
 
-    int lcaSearchTime = 0; // Global counter to mark nodes during least common ancestor search
+    private int lcaSearchTime = 0; // Global counter to mark nodes during least common ancestor search
 
     /**
      * base dual and the time when the node is labelled; the node is represented by
      * its base if contracted
      */
-    private int[] yBase;
-    private int[] yDelta;
+    private final int[] yBase;
+    private final int[] yDelta;
 
     // ----- H-Graph Structures for Phase 2 ----- //
     private final IntHashSet nodeH;
@@ -75,14 +73,13 @@ public class GabowAlgorithm {
     private final Map<Integer, Set<Integer>> adjH;
     // Maps an H-graph edge (baseV, baseU) to the actual G-graph edge (v, u)
     private final Map<Integer, Map<Integer, Edge>> bridgeHG;
-    // private final Map<Edge, Boolean> isEdgeofH; // isEdgeofH[e] = 1 iff the edge
-    // e in G corresponds to an edge in H
-    private final int[] labelH; // Labels for H-graph DFS (UNLABELED, OUTER, INNER)
+    private final Label[] labelH; // Labels for H-graph DFS (UNLABELED, OUTER, INNER)
     private final NodePartition maxBlossomsH;
 
     // Mehlhorn's Bridge Caching Arrays
     private final int[] sourceBridge;
     private final int[] targetBridge;
+
     // Phase 2 (H-Graph) Bridge Caching
     private final int[] sourceBridgeH;
     private final int[] targetBridgeH;
@@ -90,18 +87,19 @@ public class GabowAlgorithm {
     /** The global dual adjustment counter (number of adjustments applied) */
     private int delta;
     private final int[] outerTime;
-    // private final int[] outerTimeH;
-
-    // private final Stack<Integer> dfStack;
     private final boolean[] visited;
 
+    // ----- State Machine Variables for MatchingAlgorithm Interface ----- //
+    private Iterator<Integer> nodeHItr;
+    private boolean isFinished = false;
     private boolean augPathFound;
 
     /**
      * Initializes the algorithm over the given graph.
      *
      * @param graph   the input graph
-     * @param matches the current matching array (modified in place during Phase 2)
+     * @param matches the current matching array (modified in place during
+     *                execution)
      */
     public GabowAlgorithm(Graph graph, int[] matches) {
         this.graph = graph;
@@ -113,7 +111,7 @@ public class GabowAlgorithm {
 
         this.parentG = new int[n];
         this.parentH = new int[n];
-        this.labelG = new int[n];
+        this.labelG = new Label[n];
         this.sourceBridge = new int[n];
         this.targetBridge = new int[n];
         this.sourceBridgeH = new int[n];
@@ -122,7 +120,7 @@ public class GabowAlgorithm {
         this.phase2Counter = 0;
 
         this.yBase = new int[n];
-        java.util.Arrays.fill(this.yBase, 1); // Initial y(u) = 1 for all vertices
+        Arrays.fill(this.yBase, 1); // Initial y(u) = 1 for all vertices
         this.yDelta = new int[n];
 
         // Max augmenting path length is n, meaning delta <= n/2
@@ -134,29 +132,77 @@ public class GabowAlgorithm {
         // Phase 2 H-graph arrays
         this.nodeH = new IntHashSet();
         this.matchH = new int[n];
-        java.util.Arrays.fill(this.matchH, -1);
-        this.labelH = new int[n];
+        Arrays.fill(this.matchH, -1);
+        this.labelH = new Label[n];
         this.outerTime = new int[n];
-        this.adjH = new java.util.HashMap<>();
-        this.bridgeHG = new java.util.HashMap<>();
+        this.adjH = new HashMap<>();
+        this.bridgeHG = new HashMap<>();
 
         this.visited = new boolean[n];
         this.maxBlossomsH = new NodePartition(n);
     }
 
-    /**
-     * Computes the maximum cardinality matching by repeatedly running Phase 1 and
-     * Phase 2.
-     *
-     * @return a Set containing the edges that make up the maximum matching
-     */
-    public Set<Edge> computeMaximumMatching() {
-        // Loop: Phase 1 -> if no augmenting path halt -> Phase 2 -> augment
-        while (executePhase1()) {
-            executePhase2();
+    // -------------------------------------------------------------------
+    // MatchingAlgorithm Interface Methods
+    // -------------------------------------------------------------------
+
+    @Override
+    public int augment() {
+        // Cooperatively check for thread interruption
+        if (Thread.interrupted() || isFinished) {
+            return -1;
         }
 
-        // Construct the final matching set from the matches array
+        // Initial setup or when a new Phase 1 search is needed
+        if (nodeHItr == null) {
+            if (!executePhase1()) {
+                isFinished = true;
+                return -1;
+            }
+            nodeHItr = nodeH.iterator();
+        }
+
+        while (true) {
+            // Resume Phase 2 DFS from where we left off
+            while (nodeHItr.hasNext()) {
+                int vH = nodeHItr.next();
+                if (matchH[vH] == -1 && labelH[vH] == Label.UNLABELED) {
+                    augPathFound = false;
+                    visited[vH] = true;
+                    labelH[vH] = Label.OUTER;
+                    outerTime[vH] = phase2Counter++;
+
+                    ArrayList<Integer> apH = new ArrayList<>();
+                    augPathDFS(vH, vH, apH);
+
+                    // If a path is found, augment immediately and pause Phase 2
+                    if (augPathFound) {
+                        ArrayList<Integer> augPathG = findAugPathG(apH);
+
+                        // Augment in G
+                        for (int i = 0; i < augPathG.size() - 1; i += 2) {
+                            int v = augPathG.get(i);
+                            int w = augPathG.get(i + 1);
+                            matchG[v] = w;
+                            matchG[w] = v;
+                        }
+
+                        return augPathG.size() - 1; // Return length for data collection
+                    }
+                }
+            }
+
+            // Phase 2 exhausted for this Phase 1 graph. Run Phase 1 again.
+            if (!executePhase1()) {
+                isFinished = true;
+                return -1;
+            }
+            nodeHItr = nodeH.iterator();
+        }
+    }
+
+    @Override
+    public Set<Edge> getCurrentMatching() {
         Set<Edge> matchingEdges = new HashSet<>();
         for (int v = 0; v < n; v++) {
             int w = matchG[v];
@@ -164,37 +210,39 @@ public class GabowAlgorithm {
                 matchingEdges.add(new Edge(v, w));
             }
         }
-
         return matchingEdges;
+    }
+
+    @Override
+    public boolean isFinished() {
+        return isFinished;
     }
 
     // -------------------------------------------------------------------
     // Phase 1: Dual-Driven Edmonds' Search for Shortest Augmenting Paths
     // -------------------------------------------------------------------
 
-    public boolean executePhase1() {
-        if (debug)
-            System.out.println("[Phase 1] Processing at Delta: " + delta);
+    private boolean executePhase1() {
         queue.clear();
         delta = 0;
         maxPositiveBlossoms.reset(n);
         boolean foundSap = false;
         phase1Tree.clear();
         nodeH.clear();
-        java.util.Arrays.fill(matchH, -1);
-        java.util.Arrays.fill(labelH, UNLABELED);
-        java.util.Arrays.fill(parentH, -1);
-        java.util.Arrays.fill(outerTime, 0);
-        java.util.Arrays.fill(visited, false); // Clear visited for DFS
+        Arrays.fill(matchH, -1);
+        Arrays.fill(labelH, Label.UNLABELED);
+        Arrays.fill(parentH, -1);
+        Arrays.fill(outerTime, 0);
+        Arrays.fill(visited, false); // Clear visited for DFS
         maxBlossomsH.reset(n);
         phase2Counter = 1;
 
-        java.util.Arrays.fill(labelG, UNLABELED);
-        java.util.Arrays.fill(parentG, -1);
+        Arrays.fill(labelG, Label.UNLABELED);
+        Arrays.fill(parentG, -1);
 
         for (int v = 0; v < n; v++) {
             if (matchG[v] == -1) {
-                labelG[v] = OUTER;
+                labelG[v] = Label.OUTER;
                 yBase[v] = 0; // Free vertices have y = 0 initially
                 yDelta[v] = 0;
                 phase1Tree.add(v);
@@ -204,32 +252,14 @@ public class GabowAlgorithm {
             }
         }
 
-        if (debug) {
-            int freeCount = 0;
-            StringBuilder freeNodes = new StringBuilder("[Phase 1] Free nodes: ");
-            for (int i = 0; i < n; i++) {
-                if (matchG[i] == -1) {
-                    if (freeCount > 0)
-                        freeNodes.append(", ");
-                    freeNodes.append(i);
-                    freeCount++;
-                }
-            }
-            freeNodes.append(" (count: ").append(freeCount).append(")");
-            System.out.println(freeNodes.toString());
-        }
-
         while (2 * delta <= n) {
-            if (debug) {
-                System.out.println("[Phase 1] Processing at Delta: " + delta);
-            }
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
                 int u = edge.vertex1();
                 int v = edge.vertex2();
 
                 // Ensure 'u' is the OUTER node
-                if (labelG[maxPositiveBlossoms.find(u)] != OUTER) {
+                if (labelG[maxPositiveBlossoms.find(u)] != Label.OUTER) {
                     int temp = u;
                     u = v;
                     v = temp;
@@ -239,100 +269,43 @@ public class GabowAlgorithm {
                 int baseV = maxPositiveBlossoms.find(v);
 
                 // Ignore invalid or stale edges inside the same blossom
-                if (labelG[baseU] != OUTER || v == matchG[u] || baseU == baseV || labelG[baseV] == INNER) {
+                if (labelG[baseU] != Label.OUTER || v == matchG[u] || baseU == baseV || labelG[baseV] == Label.INNER) {
                     continue;
                 }
 
-                if (debug) {
-                    System.out.println("Current out node: " + u + " Outer base: " + baseU + " neighbor: " + v
-                            + " neighbor base: " + baseV);
-                }
-
-                if (labelG[baseV] == UNLABELED) {
+                if (labelG[baseV] == Label.UNLABELED) {
                     // Tree Growth Step: Found a free node
                     int matchedNode = matchG[v];
-                    if (debug) {
-                        System.out.println("Tree growth: Adding " + v + " as INNER and " + matchedNode + " as OUTER");
-                    }
-                    // yBase[v] = yBase[matchedNode] = 1;
                     yDelta[v] = yDelta[matchedNode] = delta;
                     yDelta[matchedNode] = delta;
 
                     parentG[matchedNode] = v;
                     parentG[v] = u;
 
-                    labelG[v] = INNER;
-                    labelG[matchedNode] = OUTER;
+                    labelG[v] = Label.INNER;
+                    labelG[matchedNode] = Label.OUTER;
 
                     phase1Tree.add(v);
                     phase1Tree.add(matchedNode);
 
                     scanEdges(matchedNode);
-                } else if (labelG[baseV] == OUTER) {
+                } else if (labelG[baseV] == Label.OUTER) {
                     // Collision between OUTER nodes
                     int ancestor = findLeastCommonAncestor(baseU, baseV);
 
                     if (ancestor != -1) {
-                        if (debug) {
-                            System.out.println("Blossom step: " + u + " and " + v + " with base "
-                                    + ancestor);
-                        }
                         // Collision in the SAME tree -> Shrink Blossom
                         shrinkPath(ancestor, u, v);
                         shrinkPath(ancestor, v, u);
                     } else {
-                        if (debug) {
-                            System.out.println("Augmenting path found ending at " + v);
-                        }
                         // Collision across DIFFERENT trees -> Augmenting Path Found
                         foundSap = true;
-                        // break;
                     }
                 }
             }
 
             if (foundSap) {
-                adjH.clear(); // Clear from previous iterations
-                bridgeHG.clear(); // Clear old bridges
-                nodeH.clear(); // Ensure nodeH is completely rebuilt
-
-                // Construct H explicitly
-                for (int v : phase1Tree) {
-                    int baseV = maxPositiveBlossoms.find(v);
-
-                    // We must include all active tree nodes (both OUTER and unshrunk INNER)
-                    nodeH.add(baseV);
-                    adjH.putIfAbsent(baseV, new java.util.HashSet<>());
-
-                    for (int u : graph.getAllNeighbors(v)) {
-                        if (isEdgeTight(u, v)) {
-                            int baseU = maxPositiveBlossoms.find(u);
-
-                            // Only add edges between distinct blossom bases
-                            if (baseU != baseV) {
-
-                                // H must contain EXACTLY the alternating tree + the valid OUTER cross-edges.
-                                boolean isMatched = (matchG[u] == v);
-                                boolean isTreeEdge = (parentG[u] == v) || (parentG[v] == u);
-                                boolean isOuterCrossEdge = (labelG[baseV] == OUTER && labelG[baseU] == OUTER);
-
-                                if (isMatched || isTreeEdge || isOuterCrossEdge) {
-                                    adjH.get(baseV).add(baseU);
-                                    adjH.putIfAbsent(baseU, new java.util.HashSet<>());
-                                    adjH.get(baseU).add(baseV);
-
-                                    bridgeHG.putIfAbsent(baseV, new java.util.HashMap<>());
-                                    bridgeHG.get(baseV).put(baseU, new Edge(v, u));
-
-                                    if (isMatched) {
-                                        matchH[baseV] = baseU;
-                                        matchH[baseU] = baseV;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                buildHGraph();
                 return true;
             }
 
@@ -342,23 +315,83 @@ public class GabowAlgorithm {
         return false;
     }
 
+    /**
+     * Explcitly consturct the H-graph for Phase 2.
+     */
+    private void buildHGraph() {
+        adjH.clear(); // Clear from previous iterations
+        bridgeHG.clear(); // Clear old bridges
+        nodeH.clear(); // Ensure nodeH is completely rebuilt
+
+        for (int v : phase1Tree) {
+            int baseV = maxPositiveBlossoms.find(v);
+
+            // We must include all active tree nodes (both OUTER and unshrunk INNER)
+            nodeH.add(baseV);
+            adjH.putIfAbsent(baseV, new HashSet<>());
+
+            for (int u : graph.getAllNeighbors(v)) {
+                // Ignore loose edges
+                if (!isEdgeTight(u, v)) {
+                    continue;
+                }
+
+                int baseU = maxPositiveBlossoms.find(u);
+
+                // Ignore inner edges and self loops
+                if (baseU == baseV) {
+                    continue;
+                }
+
+                // H must contain EXACTLY the alternating tree + the valid OUTER cross-edges.
+                boolean isMatched = (matchG[u] == v);
+                boolean isTreeEdge = (parentG[u] == v) || (parentG[v] == u);
+                boolean isOuterCrossEdge = (labelG[baseV] == Label.OUTER && labelG[baseU] == Label.OUTER);
+
+                // Ignore edges that don't fit the H-graph criteria
+                if (!isMatched && !isTreeEdge && !isOuterCrossEdge) {
+                    continue;
+                }
+
+                // If we survive the guard clauses, add the edge to H
+                adjH.get(baseV).add(baseU);
+                adjH.putIfAbsent(baseU, new HashSet<>());
+                adjH.get(baseU).add(baseV);
+
+                bridgeHG.putIfAbsent(baseV, new HashMap<>());
+                bridgeHG.get(baseV).put(baseU, new Edge(v, u));
+
+                if (isMatched) {
+                    matchH[baseV] = baseU;
+                    matchH[baseU] = baseV;
+                }
+            }
+        }
+    }
+
     private int computeDualY(int v) {
         int baseV = maxPositiveBlossoms.find(v);
-        if (labelG[baseV] == UNLABELED)
-            return yBase[v];
-        if (labelG[baseV] == OUTER)
-            return yBase[v] - (delta - yDelta[v]); // OUTER vertices decrease
-        return yBase[v] + (delta - yDelta[v]); // INNER vertices increase
+        switch (labelG[baseV]) {
+            case UNLABELED:
+                return yBase[v];
+            case OUTER:
+                return yBase[v] - (delta - yDelta[v]); // OUTER vertices decrease
+            case INNER:
+                return yBase[v] + (delta - yDelta[v]); // INNER vertices increase
+            default:
+                return yBase[v];
+        }
     }
 
     private void scanEdges(int u) {
         for (int v : graph.getAllNeighbors(u)) {
             int baseV = maxPositiveBlossoms.find(v);
-            if (matchG[v] == u || labelG[baseV] == INNER)
+            if (matchG[v] == u || labelG[baseV] == Label.INNER) {
                 continue;
+            }
 
             int slack = computeDualY(u) + computeDualY(v);
-            if (labelG[baseV] == UNLABELED) {
+            if (labelG[baseV] == Label.UNLABELED) {
                 queue.add(new Edge(u, v), delta + slack);
             } else {
                 queue.add(new Edge(u, v), delta + slack / 2);
@@ -409,83 +442,58 @@ public class GabowAlgorithm {
             }
         }
 
-        if (path1[baseV] == lcaSearchTime)
+        if (path1[baseV] == lcaSearchTime) {
             return baseV;
-        if (path2[baseU] == lcaSearchTime)
+        }
+        if (path2[baseU] == lcaSearchTime) {
             return baseU;
+        }
         return -1;
+    }
+
+    private boolean isEdgeTight(int u, int v) {
+        // w(e) = 2 if e is in M, 0 otherwise
+        int w = (matchG[u] == v) ? 2 : 0;
+        return computeDualY(u) + computeDualY(v) == w;
     }
 
     // -------------------------------------------------------------------
     // Phase 2: DFS on the Contracted H-Graph
     // -------------------------------------------------------------------
 
-    private void executePhase2() {
-        ArrayList<ArrayList<Integer>> augPaths = new ArrayList<>(n);
-        for (int vH : nodeH) {
-            if (matchH[vH] == -1 && labelH[vH] == UNLABELED) {
-                augPathFound = false;
-
-                visited[vH] = true;
-                labelH[vH] = OUTER;
-                outerTime[vH] = phase2Counter++;
-
-                // FIX: Pass vH as the rootH
-                augPathDFS(vH, vH, augPaths);
-
-                if (debug && augPathFound) {
-                    System.out.println("Finished DFS from node " + vH + ", found augmenting path in contracted H: "
-                            + augPaths.get(augPaths.size() - 1));
-                }
-            }
-        }
-        for (ArrayList<Integer> aphG : augPaths) {
-            augmentG(aphG);
-        }
-    }
-
-    private void augPathDFS(int vH, int rootH, ArrayList<ArrayList<Integer>> augPaths) {
-        if (augPathFound)
+    private void augPathDFS(int vH, int rootH, ArrayList<Integer> augPath) {
+        if (augPathFound) {
             return;
+        }
 
-        if (debug)
-            System.out.println("\n[Phase 2] Starting DFS from outer node: " + vH);
-
-        for (int uH : adjH.getOrDefault(vH, new java.util.HashSet<>())) {
-            if (augPathFound)
+        for (int uH : adjH.getOrDefault(vH, new HashSet<>())) {
+            if (augPathFound) {
                 return;
-            if (debug)
-                System.out.println("DFS visiting edge: (" + vH + ", " + uH + ")");
+            }
 
             int baseV = maxBlossomsH.find(vH);
             int baseU = maxBlossomsH.find(uH);
 
-            if (labelH[baseU] == UNLABELED) {
-                labelH[uH] = INNER;
+            if (labelH[baseU] == Label.UNLABELED) {
+                labelH[uH] = Label.INNER;
                 parentH[uH] = vH;
 
                 if (matchH[uH] == -1) {
-                    if (debug)
-                        System.out.println("DFS found augmenting path to free node: " + uH);
                     augPathFound = true;
-
-                    ArrayList<Integer> augPath = findAugPathH(vH, uH, rootH);
-                    augPaths.add(augPath);
-
+                    // Add the discovered path to the passed reference
+                    augPath.addAll(findAugPathH(vH, uH, rootH));
                     return;
                 } else {
                     int nextOuter = matchH[uH];
-                    if (debug)
-                        System.out.println("DFS tree growth: Adding " + uH + " and " + nextOuter + " to search stack");
-
-                    labelH[nextOuter] = OUTER;
+                    labelH[nextOuter] = Label.OUTER;
                     outerTime[nextOuter] = phase2Counter++;
 
-                    augPathDFS(nextOuter, rootH, augPaths);
-                    if (augPathFound)
+                    augPathDFS(nextOuter, rootH, augPath);
+                    if (augPathFound) {
                         return;
+                    }
                 }
-            } else if (labelH[baseU] == OUTER && outerTime[baseV] < outerTime[baseU]) {
+            } else if (labelH[baseU] == Label.OUTER && outerTime[baseV] < outerTime[baseU]) {
                 int curr = baseU;
 
                 while (curr != baseV) {
@@ -497,11 +505,12 @@ public class GabowAlgorithm {
                     sourceBridgeH[matchedNode] = uH;
                     targetBridgeH[matchedNode] = vH;
 
-                    if (labelH[matchedNode] == INNER) {
-                        // Pass rootH recursively
-                        augPathDFS(matchedNode, rootH, augPaths);
-                        if (augPathFound)
+                    if (labelH[matchedNode] == Label.INNER) {
+                        // Pass single list down recursively
+                        augPathDFS(matchedNode, rootH, augPath);
+                        if (augPathFound) {
                             return;
+                        }
                     }
 
                     curr = maxBlossomsH.find(parentH[matchedNode]);
@@ -514,8 +523,7 @@ public class GabowAlgorithm {
      * Constructs the augmenting path in the H-graph by tracing parent pointers
      * and expanding any crossed H-blossoms using the cached bridges.
      */
-
-    ArrayList<Integer> findAugPathH(int start, int end, int rootH) {
+    private ArrayList<Integer> findAugPathH(int start, int end, int rootH) {
         ArrayList<Integer> augPath = new ArrayList<>();
 
         // 1. Add the final free node to the end of our backwards path
@@ -524,7 +532,7 @@ public class GabowAlgorithm {
         // 2. Unroll the H-path backwards from the OUTER node (start) all the way up to
         // the root
         ArrayList<Integer> temp = new ArrayList<>();
-        unrollBlossomH(temp, start, rootH); // FIX: Safely unroll up to rootH
+        unrollBlossomH(temp, start, rootH);
 
         // 3. Append the unrolled sequence
         for (int x : temp) {
@@ -532,16 +540,15 @@ public class GabowAlgorithm {
         }
 
         // 4. Reverse it so it correctly goes from root -> free node.
-        java.util.Collections.reverse(augPath);
+        Collections.reverse(augPath);
 
         return augPath;
     }
 
-    ArrayList<Integer> findAugPathG(ArrayList<Integer> apH) {
+    private ArrayList<Integer> findAugPathG(ArrayList<Integer> apH) {
         ArrayList<Integer> augPathG = new ArrayList<>();
 
-        // Mehlhorn's Pairwise Logic:
-        // Process the H-nodes in chunks of 2.
+        // Mehlhorn's Pairwise Logic: Process the H-nodes in chunks of 2.
         // Every pair (b0, b1) is connected by an UNMATCHED bridge.
         for (int i = 0; i < apH.size(); i += 2) {
             int b0 = apH.get(i);
@@ -561,7 +568,7 @@ public class GabowAlgorithm {
             // unrollBlossomG gives Bridge -> Base, so we reverse it.
             ArrayList<Integer> leftPath = new ArrayList<>();
             unrollBlossomG(leftPath, u, b0);
-            java.util.Collections.reverse(leftPath);
+            Collections.reverse(leftPath);
             augPathG.addAll(leftPath);
 
             // 3. Unroll the Right Blossom (b1): Bridge -> Base
@@ -569,7 +576,6 @@ public class GabowAlgorithm {
             ArrayList<Integer> rightPath = new ArrayList<>();
             unrollBlossomG(rightPath, v, b1);
             augPathG.addAll(rightPath);
-
         }
 
         return augPathG;
@@ -579,18 +585,14 @@ public class GabowAlgorithm {
      * Recursively tracks the internal path of a blossom in G, starting from entry
      * and ending at exit, and adds the internal nodes, including the entry and
      * exit, to augPath.
-     * * @param augPath
-     * 
-     * @param entry
-     * @param exit
      */
-    void unrollBlossomG(ArrayList<Integer> augPath, int entry, int exit) {
+    private void unrollBlossomG(ArrayList<Integer> augPath, int entry, int exit) {
         if (entry == exit) {
             augPath.addLast(entry);
             return;
         }
 
-        if (labelG[entry] == OUTER) {
+        if (labelG[entry] == Label.OUTER) {
             int matchedNode = matchG[entry];
             int parentNode = parentG[matchedNode];
             augPath.addLast(entry);
@@ -622,13 +624,13 @@ public class GabowAlgorithm {
     /**
      * Recursively tracks the internal path of a blossom in the contracted H-graph.
      */
-    void unrollBlossomH(ArrayList<Integer> pathH, int entry, int exit) {
+    private void unrollBlossomH(ArrayList<Integer> pathH, int entry, int exit) {
         if (entry == exit) {
             pathH.addLast(entry);
             return;
         }
 
-        if (labelH[entry] == OUTER) {
+        if (labelH[entry] == Label.OUTER) {
             int matchedNode = matchH[entry];
             int parentNode = parentH[matchedNode]; // This MUST point directly to the next OUTER node
             pathH.addLast(entry);
@@ -650,28 +652,6 @@ public class GabowAlgorithm {
 
             unrollBlossomH(pathH, tgt, exit);
         }
-    }
-
-    /**
-     * Fills in the parts inside the dbase-blossoms and then augments the path.
-     */
-    private void augmentG(ArrayList<Integer> aphG) {
-        ArrayList<Integer> augPathG = findAugPathG(aphG);
-        if (debug)
-            System.out.println("[Phase 2] Corresponding augmenting path in G: " + augPathG);
-
-        for (int i = 0; i < augPathG.size() - 1; i += 2) {
-            int v = augPathG.get(i);
-            int w = augPathG.get(i + 1);
-            matchG[v] = w;
-            matchG[w] = v;
-        }
-    }
-
-    private boolean isEdgeTight(int u, int v) {
-        // w(e) = 2 if e is in M, 0 otherwise
-        int w = (matchG[u] == v) ? 2 : 0;
-        return computeDualY(u) + computeDualY(v) == w;
     }
 
     // -------------------------------------------------------------------
@@ -697,8 +677,9 @@ public class GabowAlgorithm {
         }
 
         public void clear() {
-            for (int i = 0; i < maxDelta; i++)
+            for (int i = 0; i < maxDelta; i++) {
                 queues[i].clear();
+            }
             currentDelta = 0;
         }
 
@@ -709,26 +690,31 @@ public class GabowAlgorithm {
         }
 
         public Edge pollNextAtDelta(int targetDelta) {
-            if (targetDelta > currentDelta)
+            if (targetDelta > currentDelta) {
                 currentDelta = targetDelta;
-            if (targetDelta >= maxDelta || queues[targetDelta].isEmpty())
+            }
+            if (targetDelta >= maxDelta || queues[targetDelta].isEmpty()) {
                 return null;
+            }
             return queues[targetDelta].remove(queues[targetDelta].size() - 1);
         }
     }
 
-    public class NodePartition {
-        private int[] parent; // parent[i] gives the parent of node i in the union-find structure
-        private int[] rank;
-        private int[] blossomBase; // blossomBase[i] gives the base of the blossom that node i immediately belongs
-                                   // to; for non-blossom nodes, this is just the node itself
+    private static class NodePartition {
+        private final int[] parent; // parent[i] gives the parent of node i in the union-find structure
+        private final int[] rank;
+        private final int[] blossomBase; // blossomBase[i] gives the base of the blossom that node i immediately belongs
+                                         // to
 
         /**
          * Initializes the data structure for a maximum of n vertices.
-         * 
+         *
          * @param n The maximum number of vertices in the graph.
          */
         public NodePartition(int n) {
+            parent = new int[n];
+            rank = new int[n];
+            blossomBase = new int[n];
             reset(n);
         }
 
@@ -787,9 +773,6 @@ public class GabowAlgorithm {
         }
 
         public void reset(int n) {
-            parent = new int[n];
-            rank = new int[n];
-            blossomBase = new int[n];
             // Initially, the tree is empty.
             // We initialize the arrays such that when a node is added, it represents
             // itself.
@@ -799,6 +782,5 @@ public class GabowAlgorithm {
                 blossomBase[i] = i;
             }
         }
-
     }
 }

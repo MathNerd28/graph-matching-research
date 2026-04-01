@@ -9,15 +9,11 @@ import java.util.Random;
 import java.util.Set;
 
 import org.junit.jupiter.params.ParameterizedTest;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
-import edu.rit.cs.graph_matching.graph.Graph;
-import edu.rit.cs.graph_matching.graph.Graph.Edge;
-import edu.rit.cs.graph_matching.graph.GraphGenerator;
-import edu.rit.cs.graph_matching.graph.GraphUtils;
-import edu.rit.cs.graph_matching.graph.MutableGraph;
+import edu.rit.cs.graph_matching.graph.*;
 
 class GabowAlgorithmTest {
 
@@ -34,7 +30,7 @@ class GabowAlgorithmTest {
         Arrays.fill(matches, -1);
         GabowAlgorithm algorithm = new GabowAlgorithm(g, matches);
 
-        Set<Edge> matching = algorithm.computeMaximumMatching();
+        Set<Edge> matching = algorithm.getMaximumMatching();
 
         assertEquals(1, matching.size(), "Star graphs always have a maximum matching of 1 edge");
         assertTrue(GraphUtils.isValidMatching(g, matching), "Matching must be valid");
@@ -65,7 +61,7 @@ class GabowAlgorithmTest {
         Arrays.fill(matches, -1);
         GabowAlgorithm algorithm = new GabowAlgorithm(g, matches);
 
-        Set<Edge> matching = algorithm.computeMaximumMatching();
+        Set<Edge> matching = algorithm.getMaximumMatching();
 
         assertEquals(matchingSize, matching.size(), "Star-wheel hybrid graphs have a fixed maximum matching size");
         assertTrue(GraphUtils.isValidMatching(g, matching), "Matching must be valid");
@@ -96,7 +92,7 @@ class GabowAlgorithmTest {
         Arrays.fill(matches, -1);
         GabowAlgorithm algorithm = new GabowAlgorithm(g, matches);
 
-        Set<Edge> matching = algorithm.computeMaximumMatching();
+        Set<Edge> matching = algorithm.getMaximumMatching();
 
         assertEquals(vertices / 2, matching.size(), "Regular bipartite graphs should have perfect matchings");
         assertTrue(GraphUtils.isValidMatching(g, matching), "Matching should be valid");
@@ -132,7 +128,7 @@ class GabowAlgorithmTest {
             Arrays.fill(matches, -1);
             GabowAlgorithm algorithm = new GabowAlgorithm(g, matches);
 
-            Set<Edge> matching = algorithm.computeMaximumMatching();
+            Set<Edge> matching = algorithm.getMaximumMatching();
 
             assertEquals(g.size() / 2, matching.size(),
                     "Generated regular general graphs should hit near-perfect matchings");
