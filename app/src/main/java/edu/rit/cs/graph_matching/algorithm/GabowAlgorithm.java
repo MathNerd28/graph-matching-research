@@ -6,9 +6,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 
 import edu.rit.cs.graph_matching.util.IntHashSet;
 import edu.rit.cs.graph_matching.graph.Graph;
@@ -37,7 +37,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     private final Graph graph;
     private final int n;
 
-    /** Current matching status; matches[v] = w, or -1 if free */
+    /** Current matching status; matchG[v] = w, or -1 if free */
     private final int[] matchG;
 
     // ----- Blossom Contraction Structures ----- //
@@ -94,6 +94,10 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     private boolean isFinished = false;
     private boolean augPathFound;
 
+    // ----- Structural wrappers for unified blossom unrolling ----- //
+    private final BlossomStructure gStruct;
+    private final BlossomStructure hStruct;
+
     /**
      * Initializes the algorithm over the given graph.
      *
@@ -140,6 +144,10 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
         this.visited = new boolean[n];
         this.maxBlossomsH = new NodePartition(n);
+
+        // Initialize reusable structural wrappers
+        this.gStruct = new BlossomStructure(labelG, matchG, parentG, sourceBridge, targetBridge);
+        this.hStruct = new BlossomStructure(labelH, matchH, parentH, sourceBridgeH, targetBridgeH);
     }
 
     // -------------------------------------------------------------------
@@ -246,7 +254,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 yBase[v] = 0; // Free vertices have y = 0 initially
                 yDelta[v] = 0;
                 phase1Tree.add(v);
-                scanEdges(v);
+                scanEdges(v); // incident edges of v are added to queue[tight for them to become tight]
             } else {
                 yBase[v] = 1; // matched vertices start with y = 1 initially
             }
@@ -276,7 +284,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 if (labelG[baseV] == Label.UNLABELED) {
                     // Tree Growth Step: Found a free node
                     int matchedNode = matchG[v];
-                    yDelta[v] = yDelta[matchedNode] = delta;
+                    yDelta[v] = delta;
                     yDelta[matchedNode] = delta;
 
                     parentG[matchedNode] = v;
@@ -532,7 +540,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         // 2. Unroll the H-path backwards from the OUTER node (start) all the way up to
         // the root
         ArrayList<Integer> temp = new ArrayList<>();
-        unrollBlossomH(temp, start, rootH);
+        unrollBlossom(temp, start, rootH, hStruct);
 
         // 3. Append the unrolled sequence
         for (int x : temp) {
@@ -565,16 +573,16 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             }
 
             // 2. Unroll the Left Blossom (b0): Base -> Bridge
-            // unrollBlossomG gives Bridge -> Base, so we reverse it.
+            // unrollBlossom natively traces Bridge -> Base, so we reverse it.
             ArrayList<Integer> leftPath = new ArrayList<>();
-            unrollBlossomG(leftPath, u, b0);
+            unrollBlossom(leftPath, u, b0, gStruct);
             Collections.reverse(leftPath);
             augPathG.addAll(leftPath);
 
             // 3. Unroll the Right Blossom (b1): Bridge -> Base
-            // unrollBlossomG natively traces Bridge -> Base, so we just append it.
+            // unrollBlossom natively traces Bridge -> Base, so we just append it.
             ArrayList<Integer> rightPath = new ArrayList<>();
-            unrollBlossomG(rightPath, v, b1);
+            unrollBlossom(rightPath, v, b1, gStruct);
             augPathG.addAll(rightPath);
         }
 
@@ -582,75 +590,42 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     }
 
     /**
-     * Recursively tracks the internal path of a blossom in G, starting from entry
+     * Recursively tracks the internal path of a blossom, starting from entry
      * and ending at exit, and adds the internal nodes, including the entry and
-     * exit, to augPath.
+     * exit, to the given list.
      */
-    private void unrollBlossomG(ArrayList<Integer> augPath, int entry, int exit) {
+    private void unrollBlossom(ArrayList<Integer> path, int entry, int exit, BlossomStructure struct) {
         if (entry == exit) {
-            augPath.addLast(entry);
+            path.addLast(entry);
             return;
         }
 
-        if (labelG[entry] == Label.OUTER) {
-            int matchedNode = matchG[entry];
-            int parentNode = parentG[matchedNode];
-            augPath.addLast(entry);
-            augPath.addLast(matchedNode);
-            unrollBlossomG(augPath, parentNode, exit);
+        if (struct.label[entry] == Label.OUTER) {
+            int matchedNode = struct.match[entry];
+            int parentNode = struct.parent[matchedNode];
+            path.addLast(entry);
+            path.addLast(matchedNode);
+            unrollBlossom(path, parentNode, exit, struct);
         } else {
-            int src = sourceBridge[entry];
-            int tgt = targetBridge[entry];
-            int matchedNode = matchG[entry];
+            int src = struct.sourceBridge[entry];
+            int tgt = struct.targetBridge[entry];
+            int matchedNode = struct.match[entry];
 
             // 1. Add the initial matched edge for this INNER node
-            augPath.addLast(entry);
+            path.addLast(entry);
 
             // 2. Trace upwards from the source of the bridge to the matched node.
             // Since we need to walk downwards from the matched node to the bridge,
             // we **reverse** the collected path.
             ArrayList<Integer> temp = new ArrayList<>();
-            unrollBlossomG(temp, src, matchedNode);
+            unrollBlossom(temp, src, matchedNode, struct);
             for (int i = temp.size() - 1; i >= 0; i--) {
-                augPath.addLast(temp.get(i));
+                path.addLast(temp.get(i));
             }
 
             // 3. Cross the bridge and continue unrolling from the target side up to the
             // exit
-            unrollBlossomG(augPath, tgt, exit);
-        }
-    }
-
-    /**
-     * Recursively tracks the internal path of a blossom in the contracted H-graph.
-     */
-    private void unrollBlossomH(ArrayList<Integer> pathH, int entry, int exit) {
-        if (entry == exit) {
-            pathH.addLast(entry);
-            return;
-        }
-
-        if (labelH[entry] == Label.OUTER) {
-            int matchedNode = matchH[entry];
-            int parentNode = parentH[matchedNode]; // This MUST point directly to the next OUTER node
-            pathH.addLast(entry);
-            pathH.addLast(matchedNode);
-            unrollBlossomH(pathH, parentNode, exit);
-        } else {
-            // entry is an INNER node trapped in an H-blossom. Jump using the cached bridge!
-            int src = sourceBridgeH[entry];
-            int tgt = targetBridgeH[entry];
-            int matchedNode = matchH[entry];
-
-            pathH.addLast(entry);
-
-            ArrayList<Integer> temp = new ArrayList<>();
-            unrollBlossomH(temp, src, matchedNode);
-            for (int i = temp.size() - 1; i >= 0; i--) {
-                pathH.addLast(temp.get(i));
-            }
-
-            unrollBlossomH(pathH, tgt, exit);
+            unrollBlossom(path, tgt, exit, struct);
         }
     }
 
@@ -659,20 +634,40 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     // -------------------------------------------------------------------
 
     /**
+     * Structural wrapper holding references to arrays required for blossom
+     * unrolling.
+     */
+    private static class BlossomStructure {
+        final Label[] label;
+        final int[] match;
+        final int[] parent;
+        final int[] sourceBridge;
+        final int[] targetBridge;
+
+        BlossomStructure(Label[] label, int[] match, int[] parent, int[] sourceBridge, int[] targetBridge) {
+            this.label = label;
+            this.match = match;
+            this.parent = parent;
+            this.sourceBridge = sourceBridge;
+            this.targetBridge = targetBridge;
+        }
+    }
+
+    /**
      * Array-based priority queue strictly bounded to maximum delta n/2.
      * Guarantees O(1) amortized insertion and extraction.
      */
     private static class PriorityQueueArray {
-        private final List<Edge>[] queues;
+        private final Stack<Edge>[] queues;
         private final int maxDelta;
         private int currentDelta = 0;
 
         @SuppressWarnings("unchecked")
         public PriorityQueueArray(int maxDelta) {
             this.maxDelta = maxDelta;
-            this.queues = new ArrayList[maxDelta];
+            this.queues = new Stack[maxDelta];
             for (int i = 0; i < maxDelta; i++) {
-                queues[i] = new ArrayList<>();
+                queues[i] = new Stack<>();
             }
         }
 
@@ -685,7 +680,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
         public void add(Edge edge, int tightDelta) {
             if (tightDelta < maxDelta) {
-                queues[tightDelta].add(edge);
+                queues[tightDelta].push(edge);
             }
         }
 
@@ -696,7 +691,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             if (targetDelta >= maxDelta || queues[targetDelta].isEmpty()) {
                 return null;
             }
-            return queues[targetDelta].remove(queues[targetDelta].size() - 1);
+            return queues[targetDelta].pop();
         }
     }
 
