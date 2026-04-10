@@ -178,7 +178,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                     augPathFound = false;
                     visited[vH] = true;
                     labelH[vH] = Label.OUTER;
-                    outerTime[vH] = phase2Counter++;
+                    outerTime[vH] = phase2Counter;
+                    phase2Counter++;
 
                     ArrayList<Integer> apH = new ArrayList<>();
                     augPathDFS(vH, vH, apH);
@@ -324,7 +325,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     }
 
     /**
-     * Explcitly consturct the H-graph for Phase 2.
+     * Explicitly construct the H-graph for Phase 2.
      */
     private void buildHGraph() {
         adjH.clear(); // Clear from previous iterations
@@ -379,16 +380,12 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
     private int computeDualY(int v) {
         int baseV = maxPositiveBlossoms.find(v);
-        switch (labelG[baseV]) {
-            case UNLABELED:
-                return yBase[v];
-            case OUTER:
-                return yBase[v] - (delta - yDelta[v]); // OUTER vertices decrease
-            case INNER:
-                return yBase[v] + (delta - yDelta[v]); // INNER vertices increase
-            default:
-                return yBase[v];
-        }
+        return switch (labelG[baseV]) {
+            case UNLABELED -> yBase[v];
+            case OUTER -> yBase[v] - (delta - yDelta[v]); // OUTER vertices decrease
+            case INNER -> yBase[v] + (delta - yDelta[v]); // INNER vertices increase
+            default -> yBase[v];
+        };
     }
 
     private void scanEdges(int u) {
@@ -475,9 +472,6 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         }
 
         for (int uH : adjH.getOrDefault(vH, new HashSet<>())) {
-            if (augPathFound) {
-                return;
-            }
 
             int baseV = maxBlossomsH.find(vH);
             int baseU = maxBlossomsH.find(uH);
@@ -494,7 +488,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 } else {
                     int nextOuter = matchH[uH];
                     labelH[nextOuter] = Label.OUTER;
-                    outerTime[nextOuter] = phase2Counter++;
+                    outerTime[nextOuter] = phase2Counter;
+                    phase2Counter++;
 
                     augPathDFS(nextOuter, rootH, augPath);
                     if (augPathFound) {
@@ -594,7 +589,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
      * and ending at exit, and adds the internal nodes, including the entry and
      * exit, to the given list.
      */
-    private void unrollBlossom(ArrayList<Integer> path, int entry, int exit, BlossomStructure struct) {
+    private static void unrollBlossom(ArrayList<Integer> path, int entry, int exit, BlossomStructure struct) {
         if (entry == exit) {
             path.addLast(entry);
             return;
@@ -644,7 +639,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         final int[] sourceBridge;
         final int[] targetBridge;
 
-        BlossomStructure(Label[] label, int[] match, int[] parent, int[] sourceBridge, int[] targetBridge) {
+        private BlossomStructure(Label[] label, int[] match, int[] parent, int[] sourceBridge, int[] targetBridge) {
             this.label = label;
             this.match = match;
             this.parent = parent;
@@ -663,7 +658,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         private int currentDelta = 0;
 
         @SuppressWarnings("unchecked")
-        public PriorityQueueArray(int maxDelta) {
+        private PriorityQueueArray(int maxDelta) {
             this.maxDelta = maxDelta;
             this.queues = new Stack[maxDelta];
             for (int i = 0; i < maxDelta; i++) {
@@ -671,20 +666,20 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             }
         }
 
-        public void clear() {
+        private void clear() {
             for (int i = 0; i < maxDelta; i++) {
                 queues[i].clear();
             }
             currentDelta = 0;
         }
 
-        public void add(Edge edge, int tightDelta) {
+        private void add(Edge edge, int tightDelta) {
             if (tightDelta < maxDelta) {
                 queues[tightDelta].push(edge);
             }
         }
 
-        public Edge pollNextAtDelta(int targetDelta) {
+        private Edge pollNextAtDelta(int targetDelta) {
             if (targetDelta > currentDelta) {
                 currentDelta = targetDelta;
             }
@@ -706,7 +701,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
          *
          * @param n The maximum number of vertices in the graph.
          */
-        public NodePartition(int n) {
+        private NodePartition(int n) {
             parent = new int[n];
             rank = new int[n];
             blossomBase = new int[n];
@@ -730,7 +725,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
          * Find(u): Returns the canonical representative (the base of the blossom)
          * for the set containing u.
          */
-        public int find(int u) {
+        private int find(int u) {
             int root = getRoot(u);
             return blossomBase[root];
         }
@@ -739,7 +734,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
          * union(u, v): Merges the sets containing u and v.
          * Precondition: {u, v} must be an edge in E(T).
          */
-        public void union(int u, int v, int newBase) {
+        private void union(int u, int v, int newBase) {
             int rootU = getRoot(u);
             int rootV = getRoot(v);
 
@@ -762,12 +757,12 @@ public class GabowAlgorithm implements MatchingAlgorithm {
          * After unioning a cycle into a blossom, this forces a specific node
          * (the lowest common ancestor) to act as the canonical base of the new set.
          */
-        public void makeRep(int base) {
+        private void makeRep(int base) {
             int root = getRoot(base);
             blossomBase[root] = base;
         }
 
-        public void reset(int n) {
+        private void reset(int n) {
             // Initially, the tree is empty.
             // We initialize the arrays such that when a node is added, it represents
             // itself.
