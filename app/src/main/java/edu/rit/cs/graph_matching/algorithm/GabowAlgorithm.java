@@ -633,11 +633,11 @@ public class GabowAlgorithm implements MatchingAlgorithm {
      * unrolling.
      */
     private static class BlossomStructure {
-        final Label[] label;
-        final int[] match;
-        final int[] parent;
-        final int[] sourceBridge;
-        final int[] targetBridge;
+        private final Label[] label;
+        private final int[] match;
+        private final int[] parent;
+        private final int[] sourceBridge;
+        private final int[] targetBridge;
 
         private BlossomStructure(Label[] label, int[] match, int[] parent, int[] sourceBridge, int[] targetBridge) {
             this.label = label;
