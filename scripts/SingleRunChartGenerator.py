@@ -62,7 +62,7 @@ def plot_pathlength(df, ax, ax_color, window_size, line_style):
 
 def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to):
     """
-    Based on the user input, generate a chart from the data in the specified CSV file
+    Based on the user input, generate a single-run chart from the data in the specified CSV file
 
     :param csv_file_path: csv file path containing the data to plot
     :param left_y_value: the values to plot on the left axis

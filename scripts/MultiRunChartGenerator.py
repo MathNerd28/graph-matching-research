@@ -4,6 +4,15 @@ import argparse
 import re
 
 def plot_runtime(csvs, ax, ax_color, line_style):
+    """
+    Plot the runtime against the matching size on the given axis (left or right).
+
+    :param csvs: csvs files containing the data to plot
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param line_style: the style of the line based on if its the left or right axis
+    """
+
     data = {}
     for csv in csvs:
         df = pd.read_csv(csv)
@@ -23,6 +32,16 @@ def plot_runtime(csvs, ax, ax_color, line_style):
     ax.tick_params(axis='y', colors=ax_color)
 
 def plot_operation(csvs, operation, ax, ax_color, line_style):
+    """
+    Plot the specific operation against the matching size on the given axis (left or right).
+
+    :param csvs: csvs files containing the data to plot
+    :param operation: the specific operation
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param line_style: the style of the line based on if its the left or right axis
+    """
+
     data = {}
     for csv in csvs:
         df = pd.read_csv(csv)
@@ -42,6 +61,15 @@ def plot_operation(csvs, operation, ax, ax_color, line_style):
     ax.tick_params(axis='y', colors=ax_color)
 
 def plot_pathlength(csvs, ax, ax_color, line_style):
+    """
+    Plot the path length against the matching size on the given axis (left or right).
+
+    :param csvs: csvs files containing the data to plot
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param line_style: the style of the line based on if its the left or right axis
+    """
+
     data = {}
     for csv in csvs:
         df = pd.read_csv(csv)
@@ -61,6 +89,12 @@ def plot_pathlength(csvs, ax, ax_color, line_style):
     ax.tick_params(axis='y', colors=ax_color)
 
 def extract_graph_size(filepath):
+    """
+    Read the file name that is in a standardized format and return the graph size
+
+    :param filepath: csv file path containing the data to plot
+    """
+
     match = re.search(r'-(10M|1M|100k|10k|1k|100|10)', filepath, re.IGNORECASE)
     if not match:
         raise ValueError(f"Could not extract graph size from filename: {filepath}")
@@ -73,6 +107,17 @@ def extract_graph_size(filepath):
     return int(size_str)
 
 def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to):
+    """
+    Based on the user input, generate a multi-run chart from the data in the specified CSV files
+
+    :param csvs: csvs files containing the data to plot
+    :param left_y_value: the values to plot on the left axis
+    :param right_y_value: the values to plot on the right axis
+    :param left_unit: the unit for the left axis
+    :param right_unit: the unit for the right axis
+    :param save_to: file name to save the generated plot (if None, the plot will be displayed instead)
+    """
+    
     fig, ax1 = plt.subplots()
     if right_y_value:
         ax2 = ax1.twinx()
