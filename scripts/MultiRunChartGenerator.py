@@ -3,14 +3,9 @@ import pandas as pd
 import argparse
 import re
 
-def plot_runtime(csvs, ax, ax_color, line_style):
+def plot_data(csvs, ax, ax_color, line_style, data_type):
     """
-    Plot the runtime against the matching size on the given axis (left or right).
-
-    :param csvs: csvs files containing the data to plot
-    :param ax: ax object to plot on
-    :param ax_color: the color of the ax object
-    :param line_style: the style of the line based on if its the left or right axis
+    Plot the specified data against the matching size on the given axis (left or right).
     """
 
     data = {}
@@ -18,74 +13,22 @@ def plot_runtime(csvs, ax, ax_color, line_style):
         df = pd.read_csv(csv)
         size = extract_graph_size(csv)
         if size not in data:
-            data[size] = [df["Iteration Time"].cumsum().iloc[-1], 1]
+            data[size] = [df[data_type].cumsum().iloc[-1], 1]
         else:
-            data[size] = [data[size][0] + df["Iteration Time"].cumsum().iloc[-1], data[size][1] + 1]
+            data[size] = [data[size][0] + df[data_type].cumsum().iloc[-1], data[size][1] + 1]
     
     sizes = []
-    runtimes = []
+    values_to_plot = []
     for size, (total, count) in sorted(data.items()):
         sizes.append(size)
-        runtimes.append(total / count)
+        values_to_plot.append(total / count)
     
-    ax.plot(sizes, runtimes, color=ax_color, label="runtime", linestyle=line_style, marker='o')
-    ax.tick_params(axis='y', colors=ax_color)
-
-def plot_operation(csvs, operation, ax, ax_color, line_style):
-    """
-    Plot the specific operation against the matching size on the given axis (left or right).
-
-    :param csvs: csvs files containing the data to plot
-    :param operation: the specific operation
-    :param ax: ax object to plot on
-    :param ax_color: the color of the ax object
-    :param line_style: the style of the line based on if its the left or right axis
-    """
-
-    data = {}
-    for csv in csvs:
-        df = pd.read_csv(csv)
-        size = extract_graph_size(csv)
-        if size not in data:
-            data[size] = [df[operation].cumsum().iloc[-1], 1]
-        else:
-            data[size] = [data[operation][0] + df["Iteration Time"].cumsum().iloc[-1], data[size][1] + 1]
-    
-    sizes = []
-    operation_count = []
-    for size, (total, count) in sorted(data.items()):
-        sizes.append(size)
-        operation_count.append(total / count)
-    
-    ax.plot(sizes, operation_count, color=ax_color, label=operation, linestyle=line_style, marker='o')
-    ax.tick_params(axis='y', colors=ax_color)
-
-def plot_pathlength(csvs, ax, ax_color, line_style):
-    """
-    Plot the path length against the matching size on the given axis (left or right).
-
-    :param csvs: csvs files containing the data to plot
-    :param ax: ax object to plot on
-    :param ax_color: the color of the ax object
-    :param line_style: the style of the line based on if its the left or right axis
-    """
-
-    data = {}
-    for csv in csvs:
-        df = pd.read_csv(csv)
-        size = extract_graph_size(csv)
-        if size not in data:
-            data[size] = [df["Path Length"].cumsum().iloc[-1], 1]
-        else:
-            data[size] = [data["Path Length"][0] + df["Iteration Time"].cumsum().iloc[-1], data[size][1] + 1]
-    
-    sizes = []
-    path_length = []
-    for size, (total, count) in sorted(data.items()):
-        sizes.append(size)
-        path_length.append(total / count)
-    
-    ax.plot(sizes, path_length, color=ax_color, label="pathLength", linestyle=line_style, marker='o')
+    if data_type == "Iteration Time":
+        ax.plot(sizes, values_to_plot, color=ax_color, label="runtime", linestyle=line_style, marker='o')
+    elif data_type == "Path Length":
+        ax.plot(sizes, values_to_plot, color=ax_color, label="pathLength", linestyle=line_style, marker='o')
+    else:
+        ax.plot(sizes, values_to_plot, color=ax_color, label=data_type, linestyle=line_style, marker='o')
     ax.tick_params(axis='y', colors=ax_color)
 
 def extract_graph_size(filepath):
@@ -95,15 +38,16 @@ def extract_graph_size(filepath):
     :param filepath: csv file path containing the data to plot
     """
 
-    match = re.search(r'-(10M|1M|100k|10k|1k|100|10)', filepath, re.IGNORECASE)
+    match = re.search(r'-(\d+)([kM]?)-\d+_\d+\.csv$', filepath, re.IGNORECASE)
     if not match:
         raise ValueError(f"Could not extract graph size from filename: {filepath}")
     
-    size_str = match.group(1).lower()
-    if 'm' in size_str:
-        return int(size_str[:-1]) * 1000000
-    if 'k' in size_str:
-        return int(size_str[:-1]) * 1000
+    size_str = match.group(1)
+    suffix = match.group(2).lower()
+    if 'm' in suffix:
+        return int(size_str) * 1000000
+    if 'k' in suffix:
+        return int(size_str) * 1000
     return int(size_str)
 
 def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to):
@@ -143,21 +87,21 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
 
     for value in left_y_value:
         if value == "runtime":
-            plot_runtime(csvs, ax1, COLOR_MAP[value], "-")
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Iteration Time")
         elif value == "pathLength":
-            plot_pathlength(csvs, ax1, COLOR_MAP[value], "-")
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Path Length")
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_operation(csvs, column, ax1, COLOR_MAP[value], "-")
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", column)
 
     for value in right_y_value:
         if value == "runtime":
-            plot_runtime(csvs, ax2, COLOR_MAP[value], "--")
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Iteration Time")
         elif value == "pathLength":
-            plot_pathlength(csvs, ax2, COLOR_MAP[value], "--")
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Path Length")
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_operation(csvs, column, ax2, COLOR_MAP[value], "--")
+            plot_data(csvs, column, ax2, COLOR_MAP[value], "--", column)
 
     if left_unit:
         ax1.set_ylabel(f"({left_unit})")
