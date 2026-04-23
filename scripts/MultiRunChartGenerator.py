@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
 import re
+import os
 
 def plot_data(csvs, ax, ax_color, line_style, data_type):
     """
@@ -49,6 +50,24 @@ def extract_graph_size(filepath):
     if 'k' in suffix:
         return int(size_str) * 1000
     return int(size_str)
+
+def collect_csv_files(directory):
+    """
+    Returns the list of csv files from a specified directory
+
+    :param directory: directory containing all the csv files
+    """
+    csv_files = []
+
+    if os.path.isdir(directory):
+        for root, _, files in os.walk(directory):
+            for f in files:
+                if f.endswith(".csv"):
+                    csv_files.append(os.path.join(root, f))
+    else:
+        csv_files.append(directory)
+
+    return csv_files
 
 def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to):
     """
@@ -134,11 +153,18 @@ def main():
         )
     )
 
-    parser.add_argument(
-        "csvs",
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "-c", "-csvs",
         metavar="CSV_FILES",
         nargs="+",
         help="Path to the CSV files."
+    )
+
+    group.add_argument(
+        "-R", "--recursive",
+        metavar="RECURSIVE",
+        help="Recurse through a directory to find the csv files",
     )
  
     parser.add_argument(
@@ -196,9 +222,24 @@ def main():
     )
 
     args = parser.parse_args()
-    for csv in args.csvs:
-        print(csv, extract_graph_size(csv))
-    multi_run_chart(args.csvs, args.left, args.right, args.left_unit, args.right_unit, args.save)
+    if (args.recursive):
+        multi_run_chart(
+            collect_csv_files(args.recursive), 
+            args.left, 
+            args.right, 
+            args.left_unit, 
+            args.right_unit, 
+            args.save
+        )
+    else:
+        multi_run_chart(
+            args.c, 
+            args.left, 
+            args.right, 
+            args.left_unit, 
+            args.right_unit, 
+            args.save
+        )
 
 if __name__=="__main__":
     main()
