@@ -69,7 +69,7 @@ def collect_csv_files(directory):
 
     return csv_files
 
-def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to):
+def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale):
     """
     Based on the user input, generate a multi-run chart from the data in the specified CSV files
 
@@ -85,6 +85,9 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
     if right_y_value:
         ax2 = ax1.twinx()
     ax1.set_xlabel("Graph Size")
+
+    if log_scale:
+        ax1.set_xscale("log")
 
     COLOR_MAP = {
         "runtime": "blue",
@@ -221,6 +224,12 @@ def main():
         help="Save the figure as a png instead of displaying it."
     )
 
+    parser.add_argument(
+        "-log", "--log_scale",
+        help="Use a log scale for the x-axis",
+        action="store_true"
+    )
+
     args = parser.parse_args()
     if (args.recursive):
         multi_run_chart(
@@ -229,7 +238,8 @@ def main():
             args.right, 
             args.left_unit, 
             args.right_unit, 
-            args.save
+            args.save,
+            args.log_scale
         )
     else:
         multi_run_chart(
@@ -238,7 +248,8 @@ def main():
             args.right, 
             args.left_unit, 
             args.right_unit, 
-            args.save
+            args.save,
+            args.log_scale
         )
 
 if __name__=="__main__":
