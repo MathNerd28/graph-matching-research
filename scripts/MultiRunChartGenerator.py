@@ -7,6 +7,12 @@ import os
 def plot_data(csvs, ax, ax_color, line_style, data_type):
     """
     Plot the specified data against the matching size on the given axis (left or right).
+
+    :param csvs: csvs files containing the data to plot
+    :param ax: ax object to plot on
+    :param ax_color: the color of the ax object
+    :param line_style: the style of the line based on if its the left or right axis
+    :param data_type: the type of data being plotted
     """
 
     data = {}
@@ -123,7 +129,7 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
             plot_data(csvs, ax2, COLOR_MAP[value], "--", "Path Length")
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_data(csvs, column, ax2, COLOR_MAP[value], "--", column)
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", column)
 
     if left_unit:
         ax1.set_ylabel(f"({left_unit})")
