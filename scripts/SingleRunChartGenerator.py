@@ -62,7 +62,7 @@ def plot_pathlength(df, ax, ax_color, window_size, line_style):
 
 def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to):
     """
-    Based on the user input, generate a chart from the data in the specified CSV file
+    Based on the user input, generate a single-run chart from the data in the specified CSV file
 
     :param csv_file_path: csv file path containing the data to plot
     :param left_y_value: the values to plot on the left axis
@@ -136,13 +136,13 @@ def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_un
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate charts using data from a CSV file.",
+        description="Generate single run charts using data from a CSV file.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  python scripts\ChartGenerator.py results.csv -l pathLength -r runtime -c\n"
-            "  python scripts\ChartGenerator.py results.csv -l getRandomNeighbor -r hasEdge size -ra 10\n"
-            "  python scripts\ChartGenerator.py results.csv -l runtime -r hasEdge -c -lu ms -ru count -s plot"
+            "  python scripts\\SingleRunChartGenerator.py results.csv -l pathLength -r runtime -c\n"
+            "  python scripts\\SingleRunChartGenerator.py results.csv -l getRandomNeighbor -r hasEdge size -ra 10\n"
+            "  python scripts\\SingleRunChartGenerator.py results.csv -l runtime -r hasEdge -c -lu ms -ru count -s plot"
         )
     )
 
@@ -185,7 +185,6 @@ def main():
         default=[],
         help="Plot type(s) to display on the right y-axis for double axis plot (choices: pathLength, runtime, getRandomNeighbor, hasEdge, getAllNeighbors, getDegree, size)."
     )
-
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
