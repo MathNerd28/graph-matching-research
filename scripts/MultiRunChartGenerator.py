@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import argparse
 import re
 import os
+from TrendlineGenerator import draw_trendline
 
-def plot_data(csvs, ax, ax_color, line_style, data_type):
+def plot_data(csvs, ax, ax_color, line_style, data_type, trendline=False):
     """
     Plot the specified data against the matching size on the given axis (left or right).
 
@@ -13,6 +15,7 @@ def plot_data(csvs, ax, ax_color, line_style, data_type):
     :param ax_color: the color of the ax object
     :param line_style: the style of the line based on if its the left or right axis
     :param data_type: the type of data being plotted
+    :param trendline: overlay a best-fit trendline if True
     """
 
     data = {}
@@ -23,13 +26,13 @@ def plot_data(csvs, ax, ax_color, line_style, data_type):
             data[size] = [df[data_type].cumsum().iloc[-1], 1]
         else:
             data[size] = [data[size][0] + df[data_type].cumsum().iloc[-1], data[size][1] + 1]
-    
+
     sizes = []
     values_to_plot = []
     for size, (total, count) in sorted(data.items()):
         sizes.append(size)
         values_to_plot.append(total / count)
-    
+
     if data_type == "Iteration Time":
         ax.plot(sizes, values_to_plot, color=ax_color, label="runtime", linestyle=line_style, marker='o')
     elif data_type == "Path Length":
@@ -37,6 +40,13 @@ def plot_data(csvs, ax, ax_color, line_style, data_type):
     else:
         ax.plot(sizes, values_to_plot, color=ax_color, label=data_type, linestyle=line_style, marker='o')
     ax.tick_params(axis='y', colors=ax_color)
+
+    if trendline and len(sizes) >= 4:
+        fit = draw_trendline(np.array(sizes, dtype=float), np.array(values_to_plot, dtype=float))
+        if fit["predictor"]:
+            x_s = np.linspace(min(sizes), max(sizes), 300)
+            ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
+                    alpha=0.7, label=f"{fit['name']} (R²={fit['r2']:.3f})")
 
 def extract_graph_size(filepath):
     """
@@ -75,7 +85,7 @@ def collect_csv_files(directory):
 
     return csv_files
 
-def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale):
+def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale, trendline=False):
     """
     Based on the user input, generate a multi-run chart from the data in the specified CSV files
 
@@ -85,6 +95,7 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
     :param left_unit: the unit for the left axis
     :param right_unit: the unit for the right axis
     :param save_to: file name to save the generated plot (if None, the plot will be displayed instead)
+    :param trendline: overlay a best-fit trendline on each series if True
     """
     
     fig, ax1 = plt.subplots()
@@ -115,21 +126,21 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
 
     for value in left_y_value:
         if value == "runtime":
-            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Iteration Time")
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Iteration Time", trendline)
         elif value == "pathLength":
-            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Path Length")
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Path Length", trendline)
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_data(csvs, ax1, COLOR_MAP[value], "-", column)
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", column, trendline)
 
     for value in right_y_value:
         if value == "runtime":
-            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Iteration Time")
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Iteration Time", trendline)
         elif value == "pathLength":
-            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Path Length")
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Path Length", trendline)
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_data(csvs, ax2, COLOR_MAP[value], "--", column)
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", column, trendline)
 
     if left_unit:
         ax1.set_ylabel(f"({left_unit})")
@@ -236,26 +247,34 @@ def main():
         action="store_true"
     )
 
+    parser.add_argument(
+        "-tr", "--trendline",
+        action="store_true",
+        help="Overlay a best-fit trendline on each plotted series."
+    )
+
     args = parser.parse_args()
     if (args.recursive):
         multi_run_chart(
-            collect_csv_files(args.recursive), 
-            args.left, 
-            args.right, 
-            args.left_unit, 
-            args.right_unit, 
+            collect_csv_files(args.recursive),
+            args.left,
+            args.right,
+            args.left_unit,
+            args.right_unit,
             args.save,
-            args.log_scale
+            args.log_scale,
+            args.trendline
         )
     else:
         multi_run_chart(
-            args.c, 
-            args.left, 
-            args.right, 
-            args.left_unit, 
-            args.right_unit, 
+            args.c,
+            args.left,
+            args.right,
+            args.left_unit,
+            args.right_unit,
             args.save,
-            args.log_scale
+            args.log_scale,
+            args.trendline
         )
 
 if __name__=="__main__":
