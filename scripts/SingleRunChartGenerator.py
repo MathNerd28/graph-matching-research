@@ -101,7 +101,7 @@ def plot_pathlength(df, ax, ax_color, window_size, line_style, trendline=False, 
                 ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
                         alpha=0.7, label=f"{fit['name']} (R²={fit['r2']:.3f})")
 
-def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to, trendline=False, polynomial=False):
+def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to, trendline=False, polynomial=False, title=None):
     """
     Based on the user input, generate a single-run chart from the data in the specified CSV file
 
@@ -169,8 +169,10 @@ def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_un
         lines_right, labels_right = ax2.get_legend_handles_labels()
         all_lines = all_lines + lines_right
         all_labels = all_labels + labels_right
-    fig.legend(all_lines, all_labels, loc='lower center',
-               bbox_to_anchor=(0.5, 1.0), ncol=2, borderaxespad=0)
+    fig.legend(all_lines, all_labels, loc='upper center',
+               bbox_to_anchor=(0.5, 0), ncol=2, borderaxespad=0)
+    if title:
+        fig.suptitle(title)
     plt.tight_layout()
 
     if save_to:
@@ -278,15 +280,22 @@ def main():
         help="Include polynomial (n^k) as a trendline candidate (off by default)."
     )
 
+    parser.add_argument(
+        "-t", "--title",
+        metavar="TITLE",
+        default=None,
+        help="Title to display above the chart."
+    )
+
     args = parser.parse_args()
 
     if args.rolling_avg is not None and args.rolling_avg < 1:
         parser.error("Rolling average window size must be at least 1.")
 
     if args.cumulative:
-        single_run_chart(args.csv, args.left, args.right, -1, args.left_unit, args.right_unit, args.save, args.trendline, args.polynomial)
+        single_run_chart(args.csv, args.left, args.right, -1, args.left_unit, args.right_unit, args.save, args.trendline, args.polynomial, args.title)
     else:
-        single_run_chart(args.csv, args.left, args.right, args.rolling_avg, args.left_unit, args.right_unit, args.save, args.trendline, args.polynomial)
+        single_run_chart(args.csv, args.left, args.right, args.rolling_avg, args.left_unit, args.right_unit, args.save, args.trendline, args.polynomial, args.title)
 
 if __name__=="__main__":
     main()

@@ -85,7 +85,7 @@ def collect_csv_files(directory):
 
     return csv_files
 
-def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale, trendline=False, polynomial=False):
+def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale, trendline=False, polynomial=False, title=None):
     """
     Based on the user input, generate a multi-run chart from the data in the specified CSV files
 
@@ -154,8 +154,10 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
         lines_right, labels_right = ax2.get_legend_handles_labels()
         all_lines = all_lines + lines_right
         all_labels = all_labels + labels_right
-    fig.legend(all_lines, all_labels, loc='lower center',
-               bbox_to_anchor=(0.5, 1.0), ncol=2, borderaxespad=0)
+    fig.legend(all_lines, all_labels, loc='upper center',
+               bbox_to_anchor=(0.5, 0), ncol=2, borderaxespad=0)
+    if title:
+        fig.suptitle(title)
     plt.tight_layout()
 
     if save_to:
@@ -263,6 +265,13 @@ def main():
         help="Include polynomial (n^k) as a trendline candidate (off by default)."
     )
 
+    parser.add_argument(
+        "-t", "--title",
+        metavar="TITLE",
+        default=None,
+        help="Title to display above the chart."
+    )
+
     args = parser.parse_args()
     if (args.recursive):
         multi_run_chart(
@@ -274,7 +283,8 @@ def main():
             args.save,
             args.log_scale,
             args.trendline,
-            args.polynomial
+            args.polynomial,
+            args.title
         )
     else:
         multi_run_chart(
@@ -286,7 +296,8 @@ def main():
             args.save,
             args.log_scale,
             args.trendline,
-            args.polynomial
+            args.polynomial,
+            args.title
         )
 
 if __name__=="__main__":
