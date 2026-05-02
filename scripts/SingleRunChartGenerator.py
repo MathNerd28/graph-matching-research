@@ -4,7 +4,7 @@ import pandas as pd
 import argparse
 from TrendlineGenerator import draw_trendline
 
-def plot_runtime(df, ax, ax_color, window_size, line_style, trendline=False):
+def plot_runtime(df, ax, ax_color, window_size, line_style, trendline=False, polynomial=False):
     """
     Plot the runtime against the matching size on the given axis (left or right).
 
@@ -26,14 +26,16 @@ def plot_runtime(df, ax, ax_color, window_size, line_style, trendline=False):
 
     if trendline:
         clean = df[["Matching Size", "Runtime"]].dropna()
+        if len(clean) > 200:
+            clean = clean.iloc[np.linspace(0, len(clean) - 1, 200, dtype=int)]
         if len(clean) >= 4:
-            fit = draw_trendline(clean["Matching Size"].values, clean["Runtime"].values)
+            fit = draw_trendline(clean["Matching Size"].values, clean["Runtime"].values, polynomial)
             if fit["predictor"]:
                 x_s = np.linspace(clean["Matching Size"].min(), clean["Matching Size"].max(), 300)
                 ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
                         alpha=0.7, label=f"{fit['name']} (R²={fit['r2']:.3f})")
 
-def plot_operation(df, operation, ax, ax_color, window_size, line_style, trendline=False):
+def plot_operation(df, operation, ax, ax_color, window_size, line_style, trendline=False, polynomial=False):
     """
     Plot the specific operation against the matching size on the given axis (left or right).
 
@@ -44,6 +46,7 @@ def plot_operation(df, operation, ax, ax_color, window_size, line_style, trendli
     :param window_size: window size for calculating the rolling average
     :param line_style: the style of the line based on if its the left or right axis
     :param trendline: overlay a best-fit trendline if True
+    :param polynomial: include polynomial (n^k) as a candidate fit if True
     """
 
     if (window_size == -1):
@@ -57,14 +60,16 @@ def plot_operation(df, operation, ax, ax_color, window_size, line_style, trendli
     if trendline:
         col = f"{operation} Count"
         clean = df[["Matching Size", col]].dropna()
+        if len(clean) > 200:
+            clean = clean.iloc[np.linspace(0, len(clean) - 1, 200, dtype=int)]
         if len(clean) >= 4:
-            fit = draw_trendline(clean["Matching Size"].values, clean[col].values)
+            fit = draw_trendline(clean["Matching Size"].values, clean[col].values, polynomial)
             if fit["predictor"]:
                 x_s = np.linspace(clean["Matching Size"].min(), clean["Matching Size"].max(), 300)
                 ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
                         alpha=0.7, label=f"{fit['name']} (R²={fit['r2']:.3f})")
 
-def plot_pathlength(df, ax, ax_color, window_size, line_style, trendline=False):
+def plot_pathlength(df, ax, ax_color, window_size, line_style, trendline=False, polynomial=False):
     """
     Plot the path length against the matching size on the given axis (left or right).
 
@@ -74,6 +79,7 @@ def plot_pathlength(df, ax, ax_color, window_size, line_style, trendline=False):
     :param window_size: window size for calculating the rolling average
     :param line_style: the style of the line based on if its the left or right axis
     :param trendline: overlay a best-fit trendline if True
+    :param polynomial: include polynomial (n^k) as a candidate fit if True
     """
 
     if (window_size == -1):
@@ -86,14 +92,16 @@ def plot_pathlength(df, ax, ax_color, window_size, line_style, trendline=False):
 
     if trendline:
         clean = df[["Matching Size", "Path Length"]].dropna()
+        if len(clean) > 200:
+            clean = clean.iloc[np.linspace(0, len(clean) - 1, 200, dtype=int)]
         if len(clean) >= 4:
-            fit = draw_trendline(clean["Matching Size"].values, clean["Path Length"].values)
+            fit = draw_trendline(clean["Matching Size"].values, clean["Path Length"].values, polynomial)
             if fit["predictor"]:
                 x_s = np.linspace(clean["Matching Size"].min(), clean["Matching Size"].max(), 300)
                 ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
                         alpha=0.7, label=f"{fit['name']} (R²={fit['r2']:.3f})")
 
-def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to, trendline=False):
+def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_unit, right_unit, save_to, trendline=False, polynomial=False):
     """
     Based on the user input, generate a single-run chart from the data in the specified CSV file
 
@@ -105,6 +113,7 @@ def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_un
     :param right_unit: the unit for the right axis
     :param save_to: file name to save the generated plot (if None, the plot will be displayed instead)
     :param trendline: overlay a best-fit trendline on each series if True
+    :param polynomial: include polynomial (n^k) as a candidate fit if True
     """
     df = pd.read_csv(csv_file_path)
 
@@ -133,21 +142,21 @@ def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_un
     
     for value in left_y_value:
         if value == "runtime":
-            plot_runtime(df, ax1, COLOR_MAP[value], window, "-", trendline)
+            plot_runtime(df, ax1, COLOR_MAP[value], window, "-", trendline, polynomial)
         elif value == "pathLength":
-            plot_pathlength(df, ax1, COLOR_MAP[value], window, "-", trendline)
+            plot_pathlength(df, ax1, COLOR_MAP[value], window, "-", trendline, polynomial)
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_operation(df, column, ax1, COLOR_MAP[value], window, "-", trendline)
+            plot_operation(df, column, ax1, COLOR_MAP[value], window, "-", trendline, polynomial)
 
     for value in right_y_value:
         if value == "runtime":
-            plot_runtime(df, ax2, COLOR_MAP[value], window, "--", trendline)
+            plot_runtime(df, ax2, COLOR_MAP[value], window, "--", trendline, polynomial)
         elif value == "pathLength":
-            plot_pathlength(df, ax2, COLOR_MAP[value], window, "--", trendline)
+            plot_pathlength(df, ax2, COLOR_MAP[value], window, "--", trendline, polynomial)
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_operation(df, column, ax2, COLOR_MAP[value], window, "--", trendline)
+            plot_operation(df, column, ax2, COLOR_MAP[value], window, "--", trendline, polynomial)
 
     if left_unit:
         ax1.set_ylabel(f"({left_unit})")
@@ -155,11 +164,14 @@ def single_run_chart(csv_file_path, left_y_value, right_y_value, window, left_un
         ax2.set_ylabel(f"({right_unit})")
     
     lines_left, labels_left = ax1.get_legend_handles_labels()
-    ax1.legend(lines_left, labels_left, loc='upper left', title="Left Axis")
-
+    all_lines, all_labels = lines_left, labels_left
     if right_y_value:
         lines_right, labels_right = ax2.get_legend_handles_labels()
-        ax2.legend(lines_right, labels_right, loc='upper right', title="Right Axis")
+        all_lines = all_lines + lines_right
+        all_labels = all_labels + labels_right
+    fig.legend(all_lines, all_labels, loc='lower center',
+               bbox_to_anchor=(0.5, 1.0), ncol=2, borderaxespad=0)
+    plt.tight_layout()
 
     if save_to:
         file = f"{save_to}.png"
@@ -260,15 +272,21 @@ def main():
         help="Overlay a best-fit trendline on each plotted series."
     )
 
+    parser.add_argument(
+        "-p", "--polynomial",
+        action="store_true",
+        help="Include polynomial (n^k) as a trendline candidate (off by default)."
+    )
+
     args = parser.parse_args()
 
     if args.rolling_avg is not None and args.rolling_avg < 1:
         parser.error("Rolling average window size must be at least 1.")
 
     if args.cumulative:
-        single_run_chart(args.csv, args.left, args.right, -1, args.left_unit, args.right_unit, args.save, args.trendline)
+        single_run_chart(args.csv, args.left, args.right, -1, args.left_unit, args.right_unit, args.save, args.trendline, args.polynomial)
     else:
-        single_run_chart(args.csv, args.left, args.right, args.rolling_avg, args.left_unit, args.right_unit, args.save, args.trendline)
+        single_run_chart(args.csv, args.left, args.right, args.rolling_avg, args.left_unit, args.right_unit, args.save, args.trendline, args.polynomial)
 
 if __name__=="__main__":
     main()

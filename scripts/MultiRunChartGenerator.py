@@ -6,7 +6,7 @@ import re
 import os
 from TrendlineGenerator import draw_trendline
 
-def plot_data(csvs, ax, ax_color, line_style, data_type, trendline=False):
+def plot_data(csvs, ax, ax_color, line_style, data_type, trendline=False, polynomial=False):
     """
     Plot the specified data against the matching size on the given axis (left or right).
 
@@ -42,7 +42,7 @@ def plot_data(csvs, ax, ax_color, line_style, data_type, trendline=False):
     ax.tick_params(axis='y', colors=ax_color)
 
     if trendline and len(sizes) >= 4:
-        fit = draw_trendline(np.array(sizes, dtype=float), np.array(values_to_plot, dtype=float))
+        fit = draw_trendline(np.array(sizes, dtype=float), np.array(values_to_plot, dtype=float), polynomial)
         if fit["predictor"]:
             x_s = np.linspace(min(sizes), max(sizes), 300)
             ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
@@ -85,7 +85,7 @@ def collect_csv_files(directory):
 
     return csv_files
 
-def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale, trendline=False):
+def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, save_to, log_scale, trendline=False, polynomial=False):
     """
     Based on the user input, generate a multi-run chart from the data in the specified CSV files
 
@@ -96,6 +96,7 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
     :param right_unit: the unit for the right axis
     :param save_to: file name to save the generated plot (if None, the plot will be displayed instead)
     :param trendline: overlay a best-fit trendline on each series if True
+    :param polynomial: include polynomial (n^k) as a candidate fit if True
     """
     
     fig, ax1 = plt.subplots()
@@ -126,21 +127,21 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
 
     for value in left_y_value:
         if value == "runtime":
-            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Iteration Time", trendline)
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Iteration Time", trendline, polynomial)
         elif value == "pathLength":
-            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Path Length", trendline)
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", "Path Length", trendline, polynomial)
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_data(csvs, ax1, COLOR_MAP[value], "-", column, trendline)
+            plot_data(csvs, ax1, COLOR_MAP[value], "-", column, trendline, polynomial)
 
     for value in right_y_value:
         if value == "runtime":
-            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Iteration Time", trendline)
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Iteration Time", trendline, polynomial)
         elif value == "pathLength":
-            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Path Length", trendline)
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", "Path Length", trendline, polynomial)
         elif value in OPERATION_MAP:
             column = OPERATION_MAP[value]
-            plot_data(csvs, ax2, COLOR_MAP[value], "--", column, trendline)
+            plot_data(csvs, ax2, COLOR_MAP[value], "--", column, trendline, polynomial)
 
     if left_unit:
         ax1.set_ylabel(f"({left_unit})")
@@ -148,11 +149,14 @@ def multi_run_chart(csvs, left_y_value, right_y_value, left_unit, right_unit, sa
         ax2.set_ylabel(f"({right_unit})")
     
     lines_left, labels_left = ax1.get_legend_handles_labels()
-    ax1.legend(lines_left, labels_left, loc='upper left', title="Left Axis")
-
+    all_lines, all_labels = lines_left, labels_left
     if right_y_value:
         lines_right, labels_right = ax2.get_legend_handles_labels()
-        ax2.legend(lines_right, labels_right, loc='upper right', title="Right Axis")
+        all_lines = all_lines + lines_right
+        all_labels = all_labels + labels_right
+    fig.legend(all_lines, all_labels, loc='lower center',
+               bbox_to_anchor=(0.5, 1.0), ncol=2, borderaxespad=0)
+    plt.tight_layout()
 
     if save_to:
         file = f"{save_to}.png"
@@ -253,6 +257,12 @@ def main():
         help="Overlay a best-fit trendline on each plotted series."
     )
 
+    parser.add_argument(
+        "-p", "--polynomial",
+        action="store_true",
+        help="Include polynomial (n^k) as a trendline candidate (off by default)."
+    )
+
     args = parser.parse_args()
     if (args.recursive):
         multi_run_chart(
@@ -263,7 +273,8 @@ def main():
             args.right_unit,
             args.save,
             args.log_scale,
-            args.trendline
+            args.trendline,
+            args.polynomial
         )
     else:
         multi_run_chart(
@@ -274,7 +285,8 @@ def main():
             args.right_unit,
             args.save,
             args.log_scale,
-            args.trendline
+            args.trendline,
+            args.polynomial
         )
 
 if __name__=="__main__":
