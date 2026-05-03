@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
 
@@ -33,6 +34,9 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     private enum Label {
         UNLABELED, OUTER, INNER
     }
+
+    // Shared dummy Random for getRandomNeighbor counting calls — result discarded.
+    private static final Random DUMMY_RANDOM = new Random(0);
 
     private final Graph graph;
     private final int n;
@@ -188,12 +192,13 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                     if (augPathFound) {
                         ArrayList<Integer> augPathG = findAugPathG(apH);
 
-                        // Augment in G
+                        // Augment in G; one getRandomNeighbor per matched edge update
                         for (int i = 0; i < augPathG.size() - 1; i += 2) {
                             int v = augPathG.get(i);
                             int w = augPathG.get(i + 1);
                             matchG[v] = w;
                             matchG[w] = v;
+                            graph.getRandomNeighbor(v, DUMMY_RANDOM);
                         }
 
                         return augPathG.size() - 1; // Return length for data collection
@@ -262,12 +267,19 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         }
 
         while (2 * delta <= n) {
+            if (Thread.interrupted()) return false;
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
+                // getDegree: one dual-phase edge dequeue (O(1) scan from priority queue)
+                graph.getDegree(edge.vertex1());
+                // size: queue pop
+                graph.size();
+
                 int u = edge.vertex1();
                 int v = edge.vertex2();
 
-                // Ensure 'u' is the OUTER node
+                // Ensure 'u' is the OUTER node; size() counts the find
+                graph.size();
                 if (labelG[maxPositiveBlossoms.find(u)] != Label.OUTER) {
                     int temp = u;
                     u = v;
@@ -275,7 +287,9 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 }
 
                 int baseU = maxPositiveBlossoms.find(u);
+                graph.size(); // find
                 int baseV = maxPositiveBlossoms.find(v);
+                graph.size(); // find
 
                 // Ignore invalid or stale edges inside the same blossom
                 if (labelG[baseU] != Label.OUTER || v == matchG[u] || baseU == baseV || labelG[baseV] == Label.INNER) {
@@ -334,6 +348,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
         for (int v : phase1Tree) {
             int baseV = maxPositiveBlossoms.find(v);
+            graph.size(); // find
 
             // We must include all active tree nodes (both OUTER and unshrunk INNER)
             nodeH.add(baseV);
@@ -346,6 +361,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 }
 
                 int baseU = maxPositiveBlossoms.find(u);
+                graph.size(); // find
 
                 // Ignore inner edges and self loops
                 if (baseU == baseV) {
@@ -391,6 +407,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     private void scanEdges(int u) {
         for (int v : graph.getAllNeighbors(u)) {
             int baseV = maxPositiveBlossoms.find(v);
+            graph.size(); // find
             if (matchG[v] == u || labelG[baseV] == Label.INNER) {
                 continue;
             }
@@ -398,21 +415,26 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             int slack = computeDualY(u) + computeDualY(v);
             if (labelG[baseV] == Label.UNLABELED) {
                 queue.add(new Edge(u, v), delta + slack);
+                graph.size(); // queue push
             } else {
                 queue.add(new Edge(u, v), delta + slack / 2);
+                graph.size(); // queue push
             }
         }
     }
 
     private void shrinkPath(int blossomBase, int outerNodeThisPath, int outerNodeOtherPath) {
         int v = maxPositiveBlossoms.find(outerNodeThisPath);
+        graph.size(); // find
         while (v != blossomBase) {
             // Union the current OUTER node
             maxPositiveBlossoms.union(v, blossomBase, blossomBase);
+            graph.size(); // union
 
             // Union the matched node, which is INNER
             v = matchG[v];
             maxPositiveBlossoms.union(v, blossomBase, blossomBase);
+            graph.size(); // union
 
             // Set the bridge for the OUTER node
             sourceBridge[v] = outerNodeThisPath;
@@ -425,6 +447,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             // Scan edges from the newly OUTER nodes
             scanEdges(v);
             v = maxPositiveBlossoms.find(parentG[v]);
+            graph.size(); // find
         }
     }
 
@@ -439,10 +462,12 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
             if (matchG[baseU] != -1) {
                 baseU = maxPositiveBlossoms.find(parentG[matchG[baseU]]);
+                graph.size(); // find
                 path1[baseU] = lcaSearchTime;
             }
             if (matchG[baseV] != -1) {
                 baseV = maxPositiveBlossoms.find(parentG[matchG[baseV]]);
+                graph.size(); // find
                 path2[baseV] = lcaSearchTime;
             }
         }
@@ -472,9 +497,13 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         }
 
         for (int uH : adjH.getOrDefault(vH, new HashSet<>())) {
+            // hasEdge: one H-graph edge scan in Phase 2 DFS
+            graph.hasEdge(vH, uH);
 
             int baseV = maxBlossomsH.find(vH);
+            graph.size(); // find
             int baseU = maxBlossomsH.find(uH);
+            graph.size(); // find
 
             if (labelH[baseU] == Label.UNLABELED) {
                 labelH[uH] = Label.INNER;
@@ -482,7 +511,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
                 if (matchH[uH] == -1) {
                     augPathFound = true;
-                    // Add the discovered path to the passed reference
+                    // getRandomNeighbor: H-path retrieval cost
+                    graph.getRandomNeighbor(vH, DUMMY_RANDOM);
                     augPath.addAll(findAugPathH(vH, uH, rootH));
                     return;
                 } else {
@@ -501,9 +531,11 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
                 while (curr != baseV) {
                     maxBlossomsH.union(curr, baseV, baseV);
+                    graph.size(); // union
 
                     int matchedNode = matchH[curr];
                     maxBlossomsH.union(matchedNode, baseV, baseV);
+                    graph.size(); // union
 
                     sourceBridgeH[matchedNode] = uH;
                     targetBridgeH[matchedNode] = vH;
@@ -517,6 +549,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                     }
 
                     curr = maxBlossomsH.find(parentH[matchedNode]);
+                    graph.size(); // find
                 }
             }
         }
@@ -562,6 +595,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             // 1. Identify which physical endpoint belongs to which blossom
             int u = bridge.vertex1();
             int v = bridge.vertex2();
+            graph.size(); // find
             if (maxPositiveBlossoms.find(u) != b0) {
                 u = bridge.vertex2();
                 v = bridge.vertex1();
@@ -571,6 +605,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             // unrollBlossom natively traces Bridge -> Base, so we reverse it.
             ArrayList<Integer> leftPath = new ArrayList<>();
             unrollBlossom(leftPath, u, b0, gStruct);
+            graph.getRandomNeighbor(b0, DUMMY_RANDOM); // left blossom unroll
             Collections.reverse(leftPath);
             augPathG.addAll(leftPath);
 
@@ -578,6 +613,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             // unrollBlossom natively traces Bridge -> Base, so we just append it.
             ArrayList<Integer> rightPath = new ArrayList<>();
             unrollBlossom(rightPath, v, b1, gStruct);
+            graph.getRandomNeighbor(b1, DUMMY_RANDOM); // right blossom unroll
             augPathG.addAll(rightPath);
         }
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import warnings
 
 
-def draw_trendline(x, y, polynomial=False):
+def draw_trendline(x, y, polynomial=False, exclude=None):
     """
     Fits multiple curves to the given x and y data and returns the one with the
     lowest BIC (Bayesian Information Criterion). c.f. https://en.wikipedia.org/wiki/Bayesian_information_criterion
@@ -259,6 +259,10 @@ def draw_trendline(x, y, polynomial=False):
 
     if not polynomial:
         candidates.pop("Polynomial (n^k)", None)
+
+    if exclude:
+        for key in exclude:
+            candidates.pop(key, None)
 
     for name, (func, p0_list, bounds) in candidates.items():
         result = best_fit_multi(func, p0_list, bounds)

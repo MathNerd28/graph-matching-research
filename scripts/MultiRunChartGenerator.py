@@ -42,7 +42,8 @@ def plot_data(csvs, ax, ax_color, line_style, data_type, trendline=False, polyno
     ax.tick_params(axis='y', colors=ax_color)
 
     if trendline and len(sizes) >= 4:
-        fit = draw_trendline(np.array(sizes, dtype=float), np.array(values_to_plot, dtype=float), polynomial)
+        fit = draw_trendline(np.array(sizes, dtype=float), np.array(values_to_plot, dtype=float),
+                             polynomial, exclude={"Log complement (-A·log(N-n))"})
         if fit["predictor"]:
             x_s = np.linspace(min(sizes), max(sizes), 300)
             ax.plot(x_s, fit["predictor"](x_s), color=ax_color, linestyle=":",
