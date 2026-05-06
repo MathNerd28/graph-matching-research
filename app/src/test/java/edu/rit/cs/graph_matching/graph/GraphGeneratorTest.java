@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,6 +18,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import edu.rit.cs.graph_matching.algorithm.EdmondsAlgorithm;
+import edu.rit.cs.graph_matching.algorithm.HopcroftKarpAlgorithm;
+import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.util.IntHashSet;
 
 class GraphGeneratorTest {
@@ -292,6 +296,139 @@ class GraphGeneratorTest {
             // Test the correct connection between cliques
             assertTrue(graph.hasEdge(base + 1, nextBase));
         }
+    }
+
+    @Test
+    void testGenerateUniqueMatchingInvalidN() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateUniqueMatchingGraph(new AdjacencySetGraph(0), 0, 0.5);
+        });
+    }
+
+    @Test
+    void testGenerateUniqueMatchingInvalidRatio() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateUniqueMatchingGraph(new AdjacencySetGraph(6), 3, -0.1);
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateUniqueMatchingGraph(new AdjacencySetGraph(6), 3, 1.1);
+        });
+    }
+
+    @Test
+    void testGenerateUniqueMatchingWrongSize() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            GraphGenerator.generateUniqueMatchingGraph(new AdjacencySetGraph(5), 3, 0.5);
+        });
+    }
+
+    @Test
+    void testGenerateUniqueMatchingN1() {
+        MutableGraph graph = new AdjacencySetGraph(2);
+        GraphGenerator.generateUniqueMatchingGraph(graph, 1, 0.5);
+        assertEquals(1, graph.getDegree(0));
+        assertTrue(graph.hasEdge(0, 1));
+    }
+
+    // Verify the expected matching edges (u_i, v_i = n+i) all exist.
+    @ParameterizedTest
+    @CsvSource({ "4, 0.0", "4, 0.25", "4, 0.5", "4, 1.0", "6, 0.0", "6, 0.5", "6, 1.0",
+                 "8, 0.5" })
+    void testGenerateUniqueMatchingMatchingEdgesPresent(int n, double splitRatio) {
+        MutableGraph graph = new AdjacencySetGraph(2 * n);
+        GraphGenerator.generateUniqueMatchingGraph(graph, n, splitRatio);
+
+        for (int i = 0; i < n; i++) {
+            assertTrue(graph.hasEdge(i, n + i),
+                    "Expected matching edge (" + i + ", " + (n + i) + ") missing");
+        }
+    }
+
+    // All edges must cross the bipartition: left (0..n-1) only connects to right (n..2n-1).
+    @ParameterizedTest
+    @CsvSource({ "5, 0.0", "5, 0.25", "5, 1.0", "10, 0.5", "10, 1.0" })
+    void testGenerateUniqueMatchingIsBipartite(int n, double splitRatio) {
+        MutableGraph graph = new AdjacencySetGraph(2 * n);
+        GraphGenerator.generateUniqueMatchingGraph(graph, n, splitRatio);
+
+        for (int u = 0; u < n; u++) {
+            for (int neighbor : graph.getAllNeighbors(u)) {
+                assertTrue(neighbor >= n,
+                        "Left vertex " + u + " connected to left vertex " + neighbor);
+            }
+        }
+        for (int v = n; v < 2 * n; v++) {
+            for (int neighbor : graph.getAllNeighbors(v)) {
+                assertTrue(neighbor < n,
+                        "Right vertex " + v + " connected to right vertex " + neighbor);
+            }
+        }
+    }
+
+    // ratio=0.0 always picks the leftmost pivot, producing an upper-triangular
+    // bipartite graph: u_i connects to v_i, v_{i+1}, ..., v_{n-1}.
+    @ParameterizedTest
+    @ValueSource(ints = { 1, 2, 3, 4, 5, 8 })
+    void testGenerateUniqueMatchingRatio0IsUpperTriangular(int n) {
+        MutableGraph graph = new AdjacencySetGraph(2 * n);
+        GraphGenerator.generateUniqueMatchingGraph(graph, n, 0.0);
+
+        int expectedEdges = n * (n + 1) / 2;
+        int actualEdges = 0;
+        for (int i = 0; i < 2 * n; i++) {
+            actualEdges += graph.getDegree(i);
+        }
+        actualEdges /= 2;
+        assertEquals(expectedEdges, actualEdges);
+
+        for (int i = 0; i < n; i++) {
+            for (int j = i; j < n; j++) {
+                assertTrue(graph.hasEdge(i, n + j),
+                        "Expected edge (" + i + ", " + (n + j) + ")");
+            }
+        }
+    }
+
+    // ratio=1.0 always picks the rightmost pivot, producing a lower-triangular
+    // bipartite graph: v_j connects to u_0, u_1, ..., u_j.
+    @ParameterizedTest
+    @ValueSource(ints = { 1, 2, 3, 4, 5, 8 })
+    void testGenerateUniqueMatchingRatio1IsLowerTriangular(int n) {
+        MutableGraph graph = new AdjacencySetGraph(2 * n);
+        GraphGenerator.generateUniqueMatchingGraph(graph, n, 1.0);
+
+        int expectedEdges = n * (n + 1) / 2;
+        int actualEdges = 0;
+        for (int i = 0; i < 2 * n; i++) {
+            actualEdges += graph.getDegree(i);
+        }
+        actualEdges /= 2;
+        assertEquals(expectedEdges, actualEdges);
+
+        for (int j = 0; j < n; j++) {
+            for (int i = 0; i <= j; i++) {
+                assertTrue(graph.hasEdge(i, n + j),
+                        "Expected edge (" + i + ", " + (n + j) + ")");
+            }
+        }
+    }
+
+    // If the perfect matching is unique, two independent algorithms must agree on it.
+    @ParameterizedTest
+    @CsvSource({ "1, 0.5", "3, 0.0", "3, 0.5", "3, 1.0", "6, 0.0", "6, 0.5", "6, 1.0",
+                 "10, 0.0", "10, 0.5", "10, 1.0", "20, 0.33", "50, 0.5" })
+    void testGenerateUniqueMatchingIsUnique(int n, double splitRatio) {
+        MutableGraph graph = new AdjacencySetGraph(2 * n);
+        GraphGenerator.generateUniqueMatchingGraph(graph, n, splitRatio);
+
+        Set<Edge> edmondsMatching = new EdmondsAlgorithm(graph).getMaximumMatching();
+        Set<Edge> hopcroftMatching = new HopcroftKarpAlgorithm(graph).getMaximumMatching();
+
+        assertEquals(n, edmondsMatching.size(), "Edmonds: expected perfect matching of size " + n);
+        assertEquals(n, hopcroftMatching.size(),
+                "Hopcroft-Karp: expected perfect matching of size " + n);
+        assertEquals(edmondsMatching, hopcroftMatching,
+                "Algorithms disagree on the matching — uniqueness violated");
     }
 
     /**

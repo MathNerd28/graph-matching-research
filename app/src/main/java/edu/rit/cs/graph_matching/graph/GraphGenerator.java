@@ -8,14 +8,15 @@ import java.util.random.RandomGenerator;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
 
 public final class GraphGenerator {
-    private GraphGenerator() {}
+    private GraphGenerator() {
+    }
 
     /**
      * Generates a star graph with the given number of edges. Matchings: leaves
      * + 1 - Empty Set - Single Edge Maximum Matchings: 1
      *
      * @param graph
-     *     the graph to edit in-place
+     *              the graph to edit in-place
      * @return the same graph instance
      */
     public static MutableGraph generateStarGraph(MutableGraph graph) {
@@ -30,9 +31,9 @@ public final class GraphGenerator {
      * Generates an edited star graph to have the specific maxMatching.
      *
      * @param graph
-     *     the graph to edit in-place
+     *                    the graph to edit in-place
      * @param maxMatching
-     *     the desired size of the maximum matching
+     *                    the desired size of the maximum matching
      * @return the same graph instance
      */
     public static MutableGraph generateStarGraphWithMatching(MutableGraph graph, int maxMatching) {
@@ -60,13 +61,13 @@ public final class GraphGenerator {
      * them with a fixed probability.
      *
      * @param vertices
-     *     number of vertices
+     *                 number of vertices
      * @param edgeProb
-     *     probability of adding an edge between any pair
+     *                 probability of adding an edge between any pair
      * @return the same graph instance
      */
     public static MutableGraph generateRandomGraph(MutableGraph graph, double edgeProb,
-                                                   RandomGenerator random) {
+            RandomGenerator random) {
         if (edgeProb < 0.0 || edgeProb > 1.0) {
             throw new IllegalArgumentException("edgeProb must be between 0.0 and 1.0");
         }
@@ -93,11 +94,11 @@ public final class GraphGenerator {
      * average degree greater than 50% of total vertices).
      *
      * @param graph
-     *     the graph to edit in-place
+     *                the graph to edit in-place
      * @param degrees
-     *     the desired degree sequence
+     *                the desired degree sequence
      * @param random
-     *     random number generator
+     *                random number generator
      * @return the same graph instance
      */
     public static MutableGraph generateGraph(MutableGraph graph, int[] degrees, Random random) {
@@ -182,17 +183,17 @@ public final class GraphGenerator {
      * specified degree sequence.
      *
      * @param graph
-     *     the graph to edit in-place
+     *                        the graph to edit in-place
      * @param verticesPerSide
-     *     number of vertices on each side
+     *                        number of vertices on each side
      * @param degree
-     *     the desired degree sequence
+     *                        the desired degree sequence
      * @param random
-     *     random number generator
+     *                        random number generator
      * @return the same graph instance
      */
     public static MutableGraph generateBipartiteGraph(MutableGraph graph, int[] leftDegrees,
-                                                      int[] rightDegrees, RandomGenerator random) {
+            int[] rightDegrees, RandomGenerator random) {
         int leftVerticesCount = leftDegrees.length;
         int rightVerticesCount = rightDegrees.length;
         if (graph.size() != leftVerticesCount + rightVerticesCount) {
@@ -293,7 +294,7 @@ public final class GraphGenerator {
      * 0-1-2-...-(n-1)-0 Returns the graph directly if vertex count <= 1
      * 
      * @param graph
-     *     the graph to edit in-place
+     *              the graph to edit in-place
      * @return the same graph instance
      */
     public static MutableGraph generateLoopGraph(MutableGraph graph) {
@@ -315,9 +316,9 @@ public final class GraphGenerator {
      * Randomly shuffle the given integer array.
      *
      * @param array
-     *     the array to shuffle
+     *               the array to shuffle
      * @param random
-     *     the random generator to use
+     *               the random generator to use
      */
     private static void shuffle(LongIntArray array, RandomGenerator random) {
         for (long i = array.getSize() - 1; i > 0; i--) {
@@ -330,8 +331,8 @@ public final class GraphGenerator {
 
     static class LongIntArray {
         private static final int BLOCK_SIZE = 1 << 30;
-        private final int[][]    array;
-        private final long       size;
+        private final int[][] array;
+        private final long size;
 
         LongIntArray(long size) {
             this.size = size;
@@ -368,15 +369,17 @@ public final class GraphGenerator {
 
     /**
      * Generates a graph composed of n cliques of size k arranged in a loop.
-     * From each clique, one internal edge is removed (opens up 2 vertices), and the cliques are
-     * connected in a cycle using those exposed vertices. The resulting graph is a (k - 1)-regular graph.
+     * From each clique, one internal edge is removed (opens up 2 vertices), and the
+     * cliques are
+     * connected in a cycle using those exposed vertices. The resulting graph is a
+     * (k - 1)-regular graph.
      *
      * @param graph
-     *     the graph to edit in-place; vertices count must be exactly n * k
+     *              the graph to edit in-place; vertices count must be exactly n * k
      * @param n
-     *     the number of cliques (mus be at least 2)
+     *              the number of cliques (mus be at least 2)
      * @param k
-     *     the size of each clique (must be at least 3 for this algorithm)
+     *              the size of each clique (must be at least 3 for this algorithm)
      * @return the same graph instance
      */
 
@@ -410,7 +413,8 @@ public final class GraphGenerator {
         }
 
         // Connect cliques in a loop
-        // Method: 0 indexed vertex of this clique -> 1 indexed vertex of the next clique
+        // Method: 0 indexed vertex of this clique -> 1 indexed vertex of the next
+        // clique
         for (int c = 0; c < n; c++) {
             int base = c * k;
             int nextBase = ((c + 1) % n) * k;
@@ -419,4 +423,68 @@ public final class GraphGenerator {
 
         return graph;
     }
+
+    /**
+     * Generates a bipartite graph on 2n vertices with a unique perfect matching.
+     * Left side: vertices 0..n-1, right side: vertices n..2n-1.
+     * The unique matching pairs vertex i with vertex n+i for each i.
+     *
+     * The construction recurses: at each level the pivot is chosen at position
+     * floor(splitRatio * subproblemSize), clamped to a valid index. The right
+     * vertex of the pivot is connected to every left vertex before the pivot,
+     * and the left vertex of the pivot is connected to every right vertex after
+     * the pivot, making all other matchings infeasible.
+     *
+     * @param graph
+     *                   the graph to edit in-place; vertex count must be exactly 2 * n
+     * @param n
+     *                   number of vertices per side (must be >= 1)
+     * @param splitRatio
+     *                   fraction of the subproblem to place on the left of the pivot
+     *                   at each recursion level (must be in [0.0, 1.0]);
+     *                   0.0 or 1.0 produces a triangular graph (densest),
+     *                   0.5 splits in the middle (sparsest)
+     * @return the same graph instance
+     */
+    public static MutableGraph generateUniqueMatchingGraph(MutableGraph graph, int n,
+            double splitRatio) {
+        if (n < 1) {
+            throw new IllegalArgumentException("n must be at least 1");
+        }
+        if (!Double.isFinite(splitRatio) || splitRatio < 0.0 || splitRatio > 1.0) {
+            throw new IllegalArgumentException("splitRatio must be between 0.0 and 1.0 inclusive");
+        }
+        if (graph.size() != 2 * n) {
+            throw new IllegalArgumentException("Graph size must be exactly 2 * n");
+        }
+
+        graph.clear();
+        buildUniqueMatchingRecursive(graph, 0, n - 1, n, splitRatio);
+        return graph;
+    }
+
+    private static void buildUniqueMatchingRecursive(MutableGraph graph, int first, int last,
+            int rightOffset, double splitRatio) {
+        int subproblemSize = last - first + 1;
+        if (subproblemSize <= 0) {
+            return;
+        }
+
+        int pivotIndex = Math.min((int) (splitRatio * subproblemSize), subproblemSize - 1);
+        int pivotLeft  = first + pivotIndex;
+        int pivotRight = rightOffset + first + pivotIndex;
+
+        graph.addEdge(pivotLeft, pivotRight);
+
+        for (int leftBeforePivot = first; leftBeforePivot < pivotLeft; leftBeforePivot++) {
+            graph.addEdge(leftBeforePivot, pivotRight);
+        }
+        for (int rightAfterPivot = pivotLeft + 1; rightAfterPivot <= last; rightAfterPivot++) {
+            graph.addEdge(pivotLeft, rightOffset + rightAfterPivot);
+        }
+
+        buildUniqueMatchingRecursive(graph, first, pivotLeft - 1, rightOffset, splitRatio);
+        buildUniqueMatchingRecursive(graph, pivotLeft + 1, last, rightOffset, splitRatio);
+    }
+
 }
