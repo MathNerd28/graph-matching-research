@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 import edu.rit.cs.graph_matching.algorithm.DaniHayesAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.EdmondsAlgorithm;
+import edu.rit.cs.graph_matching.algorithm.GabowAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.GoelKapralovKhanna;
 import edu.rit.cs.graph_matching.algorithm.HopcroftKarpAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.MatchingAlgorithm;
@@ -168,6 +169,33 @@ public final class Main {
                     String.format("loop -n=%d", vertices),
                     () -> GraphGenerator.generateLoopGraph(new AdjacencySetGraph(vertices)));
         }
+
+        @Command(name = "clique-loop", mixinStandardHelpOptions = true,
+                 description = "Clique-loop graph: n cliques of size k arranged in a cycle, each (k-1)-regular")
+        public int generateCliqueLoopGraph(
+        // @formatter:off
+            @Mixin OutputParams params,
+            @Option(names = { "-n", "--size" }, required = true,
+                    description = "Total number of vertices (must equal num_cliques * clique_size)")
+            int totalVertices,
+            @Option(names = { "-k", "--clique-size" }, defaultValue = "0",
+                    description = "Clique size (>= 3); defaults to round(sqrt(totalVertices))")
+            int cliqueSize
+        // @formatter:on
+        ) throws IOException {
+            int k = cliqueSize > 0 ? cliqueSize : Math.max(3, (int) Math.round(Math.sqrt(totalVertices)));
+            int nCliques = totalVertices / k;
+            int actualVertices = nCliques * k;
+            if (nCliques < 2) {
+                throw new IllegalArgumentException(
+                        "Need at least 2 cliques; got nCliques=" + nCliques + " with k=" + k
+                                + " and totalVertices=" + totalVertices);
+            }
+            return generateGraphs(params, "CliqueLoop",
+                    String.format("clique-loop -n=%d -k=%d", nCliques, k),
+                    () -> GraphGenerator.generateCliqueLoopGraph(
+                            new AdjacencySetGraph(actualVertices), nCliques, k));
+        }
     }
 
     @Command(name = "run", mixinStandardHelpOptions = true,
@@ -176,6 +204,7 @@ public final class Main {
         enum Algorithm {
             daniHayes,
             edmonds,
+            gabow,
             hopcroftKarp,
             goelKapralovKhanna,
         }
@@ -274,6 +303,11 @@ public final class Main {
             return switch (algorithm) {
                 case Algorithm.daniHayes -> new DaniHayesAlgorithm(graph, random);
                 case Algorithm.edmonds -> new EdmondsAlgorithm(graph);
+                case Algorithm.gabow -> {
+                    int[] matches = new int[graph.size()];
+                    java.util.Arrays.fill(matches, -1);
+                    yield new GabowAlgorithm(graph, matches);
+                }
                 case Algorithm.hopcroftKarp -> new HopcroftKarpAlgorithm(graph);
                 case Algorithm.goelKapralovKhanna -> new GoelKapralovKhanna(graph, random);
             };

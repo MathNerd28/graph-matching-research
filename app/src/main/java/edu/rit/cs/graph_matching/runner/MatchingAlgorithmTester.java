@@ -66,9 +66,9 @@ public class MatchingAlgorithmTester implements AutoCloseable {
     }
 
     private DataPoint runIteration(Duration timeout) {
+        statistics.clear();
+        Future<IterationResult> future = executor.submit(this::iterationTask);
         try {
-            statistics.clear();
-            Future<IterationResult> future = executor.submit(this::iterationTask);
             IterationResult result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             GraphStatistics.Stats stats = statistics.getSnapshot();
             this.matchingSize++;
@@ -81,6 +81,7 @@ public class MatchingAlgorithmTester implements AutoCloseable {
             return new AugmentationDataPoint(matchingSize, result.pathLength(), result.time(),
                     stats);
         } catch (TimeoutException e) {
+            future.cancel(true);
             return new TimeoutDataPoint(matchingSize, timeout, statistics.getSnapshot());
         } catch (InterruptedException |
                  ExecutionException e) {
