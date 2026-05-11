@@ -368,17 +368,12 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                     continue;
                 }
 
-                // H must contain EXACTLY the alternating tree + the valid OUTER cross-edges.
-                boolean isMatched = (matchG[u] == v);
-                boolean isTreeEdge = (parentG[u] == v) || (parentG[v] == u);
-                boolean isOuterCrossEdge = (labelG[baseV] == Label.OUTER && labelG[baseU] == Label.OUTER);
-
-                // Ignore edges that don't fit the H-graph criteria
-                if (!isMatched && !isTreeEdge && !isOuterCrossEdge) {
+                // UNLABELED nodes were never reached by Phase 1 and have no valid matchH
+                // entry — including them would cause Phase 2 to augment through phantom free nodes.
+                if (labelG[baseU] == Label.UNLABELED) {
                     continue;
                 }
 
-                // If we survive the guard clauses, add the edge to H
                 adjH.get(baseV).add(baseU);
                 adjH.putIfAbsent(baseU, new HashSet<>());
                 adjH.get(baseU).add(baseV);
@@ -386,7 +381,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 bridgeHG.putIfAbsent(baseV, new HashMap<>());
                 bridgeHG.get(baseV).put(baseU, new Edge(v, u));
 
-                if (isMatched) {
+                if (matchG[u] == v) {
                     matchH[baseV] = baseU;
                     matchH[baseU] = baseV;
                 }
