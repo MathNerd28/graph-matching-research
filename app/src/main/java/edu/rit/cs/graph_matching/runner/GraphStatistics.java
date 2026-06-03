@@ -1,5 +1,6 @@
 package edu.rit.cs.graph_matching.runner;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
@@ -8,7 +9,7 @@ import edu.rit.cs.graph_matching.graph.Graph;
 /**
  * A wrapper that tracks how many times graph methods are called.
  */
-public class GraphStatistics implements Graph {
+public class GraphStatistics implements Graph, Statistics {
     /** The backing graph */
     private final Graph source;
 
@@ -83,19 +84,10 @@ public class GraphStatistics implements Graph {
     }
 
     /**
-     * Take a snapshot of the current statistics.
-     *
-     * @return a statistics snapshot
-     */
-    public Stats getSnapshot() {
-        return new Stats(sizeCheckCount, edgeCheckCount, degreeCheckCount, randomNeighborCount,
-                allNeighborsCount);
-    }
-
-    /**
      * Reset all statistics counters to 0.
      */
-    public void clear() {
+    @Override
+    public void reset() {
         sizeCheckCount = 0;
         edgeCheckCount = 0;
         degreeCheckCount = 0;
@@ -103,12 +95,10 @@ public class GraphStatistics implements Graph {
         allNeighborsCount = 0;
     }
 
-    /**
-     * A snapshot of the statistics collected by GraphStatistics.
-     */
-    public record Stats(int sizeCheckCount,
-                        int edgeCheckCount,
-                        int degreeCheckCount,
-                        int randomNeighborCount,
-                        int allNeighborsCount) {}
+    @Override
+    public Map<String, Object> getStatistics() {
+        return Map.of("getAllNeighbors()", allNeighborsCount, "getDegree(v)", degreeCheckCount,
+                "hasEdge(v1,v2)", edgeCheckCount, "getRandomNeighbor(v)", randomNeighborCount,
+                "size()", sizeCheckCount);
+    }
 }

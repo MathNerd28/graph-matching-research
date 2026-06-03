@@ -3,6 +3,7 @@ package edu.rit.cs.graph_matching.runner;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -61,9 +62,9 @@ class GraphStatisticsTest {
         assertEquals(Set.of(1, 2, 3), stats.getAllNeighbors(0));
         assertEquals(Set.of(), stats.getAllNeighbors(4));
 
-        GraphStatistics.Stats snapshot = stats.getSnapshot();
-        assertEquals(5, snapshot.edgeCheckCount());
-        assertEquals(10, snapshot.randomNeighborCount());
-        assertEquals(2, snapshot.allNeighborsCount());
+        Map<String, Object> snapshot = stats.getStatistics();
+        assertEquals(5, snapshot.get("hasEdge(v1,v2)"));
+        assertEquals(10, snapshot.get("getRandomNeighbor(v)"));
+        assertEquals(2, snapshot.get("getAllNeighbors()"));
     }
 }
