@@ -18,7 +18,7 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
  * c.f.https://arxiv.org/abs/1703.03998
- * the implementation is also based on this paper:
+ * the implementation also refers to this paper:
  * https://arxiv.org/abs/2409.14849
  * <p>
  * This class implements a dual-driven adaptation of Edmonds' algorithm. It
@@ -267,7 +267,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         }
 
         while (2 * delta <= n) {
-            if (Thread.interrupted()) return false;
+            if (Thread.interrupted())
+                return false;
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
                 // getDegree: one dual-phase edge dequeue (O(1) scan from priority queue)
@@ -369,7 +370,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 }
 
                 // UNLABELED nodes were never reached by Phase 1 and have no valid matchH
-                // entry — including them would cause Phase 2 to augment through phantom free nodes.
+                // entry — including them would cause Phase 2 to augment through phantom free
+                // nodes.
                 if (labelG[baseU] == Label.UNLABELED) {
                     continue;
                 }
