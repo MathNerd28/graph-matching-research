@@ -1,7 +1,15 @@
 package edu.rit.cs.graph_matching.runner;
 
 import java.time.Duration;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Random;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,24 +23,47 @@ import java.util.random.RandomGenerator;
 import edu.rit.cs.graph_matching.algorithm.MatchingAlgorithm;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
-import edu.rit.cs.graph_matching.runner.GraphStatistics.Stats;
 
 public class MatchingAlgorithmTester implements AutoCloseable {
+    public record AlgorithmInitialization(MatchingAlgorithm algorithm,
+                                          Statistics... statistics) {}
+
+    public record StatsSnapshot(Map<String, Object> entries)
+            implements Iterable<Map.Entry<String, String>> {
+        @Override
+        public Iterator<Entry<String, String>> iterator() {
+            return new Iterator<Map.Entry<String, String>>() {
+                private final Iterator<Map.Entry<String, Object>> src = entries().entrySet()
+                                                                                 .iterator();
+
+                @Override
+                public boolean hasNext() {
+                    return src.hasNext();
+                }
+
+                @Override
+                public Entry<String, String> next() {
+                    Map.Entry<String, Object> next = src.next();
+                    return Map.entry(next.getKey(), Objects.toString(next.getValue()));
+                }
+            };
+        }
+    }
+
     private final MatchingAlgorithm     algorithm;
     private final Graph                 inputGraph;
     private final Consumer<DataPoint>[] callbacks;
 
-    private final ExecutorService executor;
-    private final GraphStatistics statistics;
+    private final ExecutorService        executor;
+    private final Collection<Statistics> statistics;
 
     private int matchingSize;
 
     @SafeVarargs
-    public MatchingAlgorithmTester(BiFunction<Graph, RandomGenerator, MatchingAlgorithm> supplier,
+    public MatchingAlgorithmTester(BiFunction<Graph, RandomGenerator, AlgorithmInitialization> supplier,
                                    Graph inputGraph, RandomGenerator random,
                                    Consumer<DataPoint>... callbacks) {
         this.inputGraph = inputGraph;
-        this.statistics = new GraphStatistics(inputGraph);
         this.executor = Executors.newSingleThreadExecutor();
         this.callbacks = callbacks.clone();
 
@@ -41,12 +72,15 @@ public class MatchingAlgorithmTester implements AutoCloseable {
         }
 
         long start = System.nanoTime();
-        this.algorithm = supplier.apply(statistics, random);
+        AlgorithmInitialization init = supplier.apply(inputGraph, random);
         long end = System.nanoTime();
 
+        this.algorithm = init.algorithm();
         if (algorithm == null) {
             throw new IllegalStateException("Failed to initialize algorithm with input graph");
         }
+
+        this.statistics = List.of(init.statistics());
 
         this.matchingSize = algorithm.getCurrentMatching()
                                      .size();
@@ -55,7 +89,15 @@ public class MatchingAlgorithmTester implements AutoCloseable {
         }
 
         runCallbacks(new InitializationDataPoint(Duration.ofNanos(end - start),
-                statistics.getSnapshot()));
+                takeSnapshot()));
+    }
+
+    private StatsSnapshot takeSnapshot() {
+        SortedMap<String, Object> combined = new TreeMap<>();
+        for (Statistics s : statistics) {
+            combined.putAll(s.getStatistics());
+        }
+        return new StatsSnapshot(combined);
     }
 
     private IterationResult iterationTask() {
@@ -66,11 +108,14 @@ public class MatchingAlgorithmTester implements AutoCloseable {
     }
 
     private DataPoint runIteration(Duration timeout) {
-        statistics.clear();
+        for (Statistics s : statistics) {
+            s.reset();
+        }
+
         Future<IterationResult> future = executor.submit(this::iterationTask);
         try {
             IterationResult result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            GraphStatistics.Stats stats = statistics.getSnapshot();
+            StatsSnapshot stats = takeSnapshot();
             this.matchingSize++;
 
             if (result.pathLength() == -1 || result.pathLength() % 2 == 0) {
@@ -82,7 +127,7 @@ public class MatchingAlgorithmTester implements AutoCloseable {
                     stats);
         } catch (TimeoutException e) {
             future.cancel(true);
-            return new TimeoutDataPoint(matchingSize, timeout, statistics.getSnapshot());
+            return new TimeoutDataPoint(matchingSize, timeout, takeSnapshot());
         } catch (InterruptedException |
                  ExecutionException e) {
             // TODO: what happened here???
@@ -142,23 +187,23 @@ public class MatchingAlgorithmTester implements AutoCloseable {
     public sealed interface DataPoint {}
 
     public record InitializationDataPoint(Duration time,
-                                          Stats statsSnapshot)
+                                          StatsSnapshot statsSnapshot)
             implements DataPoint {}
 
     public record AugmentationDataPoint(int matchingSize,
                                         int pathLength,
                                         Duration time,
-                                        Stats statsSnapshot)
+                                        StatsSnapshot statsSnapshot)
             implements DataPoint {}
 
     public record TimeoutDataPoint(int matchingSize,
                                    Duration timeout,
-                                   Stats statsSnapshot)
+                                   StatsSnapshot statsSnapshot)
             implements DataPoint {}
 
     public record FailureDataPoint(int matchingSize,
                                    Duration time,
-                                   Stats statsSnapshot)
+                                   StatsSnapshot statsSnapshot)
             implements DataPoint {}
 
     public record ErrorDataPoint(int matchingSize,
