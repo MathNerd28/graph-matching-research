@@ -309,8 +309,8 @@ public final class Main {
                 case Algorithm.gabow -> {
                     int[] matches = new int[graph.size()];
                     java.util.Arrays.fill(matches, -1);
-                    yield new AlgorithmInitialization(new GabowAlgorithm(graphStats, matches),
-                            graphStats);
+                    GabowAlgorithm gabow = new GabowAlgorithm(graphStats, matches);
+                    yield new AlgorithmInitialization(gabow, graphStats, gabow.getStatistics());
                 }
                 case Algorithm.hopcroftKarp ->
                      new AlgorithmInitialization(new HopcroftKarpAlgorithm(graphStats), graphStats);
