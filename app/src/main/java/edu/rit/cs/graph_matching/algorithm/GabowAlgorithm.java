@@ -17,7 +17,7 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 /**
  * Phase 1 and 2 of Gabow's O(m*sqrt(n)) Matching Algorithm.
  * c.f.https://arxiv.org/abs/1703.03998
- * the implementation is also based on this paper:
+ * the implementation also refers to this paper:
  * https://arxiv.org/abs/2409.14849
  * <p>
  * This class implements a dual-driven adaptation of Edmonds' algorithm. It
@@ -36,6 +36,9 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
     private final Graph graph;
     private final int n;
+
+    /** Algorithm-specific operation counters, exposed via {@link #getStatistics()}. */
+    private final GabowStatistics stats;
 
     /** Current matching status; matchG[v] = w, or -1 if free */
     private final int[] matchG;
@@ -109,8 +112,9 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         this.graph = graph;
         this.n = graph.size();
         this.matchG = matches;
+        this.stats = new GabowStatistics();
 
-        this.maxPositiveBlossoms = new NodePartition(n);
+        this.maxPositiveBlossoms = new NodePartition(n, stats);
         this.phase1Tree = new IntHashSet();
 
         this.parentG = new int[n];
@@ -128,7 +132,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         this.yDelta = new int[n];
 
         // Max augmenting path length is n, meaning delta <= n/2
-        this.queue = new PriorityQueueArray(n / 2 + 1);
+        this.queue = new PriorityQueueArray(n / 2 + 1, stats);
 
         this.path1 = new int[n];
         this.path2 = new int[n];
@@ -143,11 +147,18 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         this.bridgeHG = new HashMap<>();
 
         this.visited = new boolean[n];
-        this.maxBlossomsH = new NodePartition(n);
+        this.maxBlossomsH = new NodePartition(n, stats);
 
         // Initialize reusable structural wrappers
         this.gStruct = new BlossomStructure(labelG, matchG, parentG, sourceBridge, targetBridge);
         this.hStruct = new BlossomStructure(labelH, matchH, parentH, sourceBridgeH, targetBridgeH);
+    }
+
+    /**
+     * @return the algorithm-specific operation counters for this run
+     */
+    public GabowStatistics getStatistics() {
+        return stats;
     }
 
     // -------------------------------------------------------------------
@@ -188,12 +199,13 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                     if (augPathFound) {
                         ArrayList<Integer> augPathG = findAugPathG(apH);
 
-                        // Augment in G
+                        // Augment in G; each matched-edge update examines one edge
                         for (int i = 0; i < augPathG.size() - 1; i += 2) {
                             int v = augPathG.get(i);
                             int w = augPathG.get(i + 1);
                             matchG[v] = w;
                             matchG[w] = v;
+                            stats.examineEdge();
                         }
 
                         return augPathG.size() - 1; // Return length for data collection
@@ -249,21 +261,36 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         Arrays.fill(labelG, Label.UNLABELED);
         Arrays.fill(parentG, -1);
 
+        // Reset every vertex's dual to d(v) = 1 (paper, Lemma 1) and label free
+        // vertices OUTER. This MUST complete for all vertices before any edge is
+        // scanned: scanEdges reads both endpoints' duals to predict the level at
+        // which an edge becomes tight, so a not-yet-reset neighbour would be read
+        // with a stale dual left over from the previous phase, mis-bucketing the
+        // edge (it then becomes over-tight and is dropped, and an augmenting path
+        // is missed). Hence the two passes below.
         for (int v = 0; v < n; v++) {
+            yBase[v] = 1;
+            yDelta[v] = 0;
             if (matchG[v] == -1) {
                 labelG[v] = Label.OUTER;
-                yBase[v] = 0; // Free vertices have y = 0 initially
-                yDelta[v] = 0;
                 phase1Tree.add(v);
-                scanEdges(v); // incident edges of v are added to queue[tight for them to become tight]
-            } else {
-                yBase[v] = 1; // matched vertices start with y = 1 initially
+            }
+        }
+        for (int v = 0; v < n; v++) {
+            if (matchG[v] == -1) {
+                scanEdges(v); // incident edges added to the queue at their predicted tight level
             }
         }
 
         while (2 * delta <= n) {
+            if (Thread.interrupted())
+                return false;
             Edge edge;
             while ((edge = queue.pollNextAtDelta(delta)) != null) {
+                // One dual-phase edge examined after being dequeued (the pop itself
+                // is counted by the priority queue).
+                stats.examineEdge();
+
                 int u = edge.vertex1();
                 int v = edge.vertex2();
 
@@ -279,6 +306,29 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
                 // Ignore invalid or stale edges inside the same blossom
                 if (labelG[baseU] != Label.OUTER || v == matchG[u] || baseU == baseV || labelG[baseV] == Label.INNER) {
+                    continue;
+                }
+
+                // The priority queue holds lazy predictions: an edge is enqueued at
+                // the level it is predicted to become tight, but a later label change
+                // (an endpoint becoming OUTER) moves that level. With dual feasibility
+                // maintained (reduced weights stay non-negative), a popped entry that
+                // is not yet tight has positive slack; re-enqueue it at its corrected,
+                // strictly later tight level. Processing a non-tight OUTER–OUTER edge
+                // would otherwise look like a cross-tree collision and produce a
+                // spurious augmenting path, stalling the search.
+                // The priority queue holds lazy predictions: an edge is enqueued at
+                // the level it is predicted to become tight, but a later label change
+                // (an endpoint becoming OUTER) moves that level. With dual feasibility
+                // maintained (reduced weights stay non-negative), a popped entry that
+                // is not yet tight has positive slack; re-enqueue it at its corrected,
+                // strictly later tight level. Processing a non-tight OUTER–OUTER edge
+                // would otherwise look like a cross-tree collision and produce a
+                // spurious augmenting path, stalling the search.
+                if (!isEdgeTight(u, v)) {
+                    int slack = computeDualY(u) + computeDualY(v);
+                    queue.add(new Edge(u, v),
+                            labelG[baseV] == Label.UNLABELED ? delta + slack : delta + slack / 2);
                     continue;
                 }
 
@@ -326,53 +376,64 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
     /**
      * Explicitly construct the H-graph for Phase 2.
+     * <p>
+     * Following the correct definition of H (Ansaripour, Danaei &amp; Mehlhorn,
+     * arXiv:2409.14849, §2.3.4): contract the maximal positive blossoms and keep
+     * <em>all</em> tight edges connecting distinct contracted nodes. This must
+     * include matching edges between two unlabeled nodes: an unlabeled vertex is
+     * matched, and the augmenting path can enter such a matched pair through a
+     * tight non-matching edge from an even node, traverse the matching edge, and
+     * leave through another tight non-matching edge. Gabow's original rule (keep
+     * only tight edges with an outer endpoint) drops those matching edges, so H
+     * lacks some augmenting paths and Phase 1 stops short of the maximum. Because
+     * those matched pairs are not on the alternating tree, a scan restricted to
+     * {@link #phase1Tree} never visits them; we therefore scan all vertices.
      */
     private void buildHGraph() {
         adjH.clear(); // Clear from previous iterations
         bridgeHG.clear(); // Clear old bridges
         nodeH.clear(); // Ensure nodeH is completely rebuilt
 
+        // Seed H with every search-structure node so free (unmatched) vertices
+        // are present as Phase-2 search roots even if they have no tight edge.
         for (int v : phase1Tree) {
             int baseV = maxPositiveBlossoms.find(v);
-
-            // We must include all active tree nodes (both OUTER and unshrunk INNER)
             nodeH.add(baseV);
             adjH.putIfAbsent(baseV, new HashSet<>());
+        }
 
-            for (int u : graph.getAllNeighbors(v)) {
-                // Ignore loose edges
+        // Keep every tight edge between distinct contracted nodes.
+        for (int u = 0; u < n; u++) {
+            int baseU = maxPositiveBlossoms.find(u);
+            for (int v : graph.getAllNeighbors(u)) {
+                stats.examineEdge();
+
                 if (!isEdgeTight(u, v)) {
                     continue;
                 }
 
-                int baseU = maxPositiveBlossoms.find(u);
+                int baseV = maxPositiveBlossoms.find(v);
 
-                // Ignore inner edges and self loops
+                // Skip self-loops within a contracted blossom.
                 if (baseU == baseV) {
                     continue;
                 }
 
-                // H must contain EXACTLY the alternating tree + the valid OUTER cross-edges.
-                boolean isMatched = (matchG[u] == v);
-                boolean isTreeEdge = (parentG[u] == v) || (parentG[v] == u);
-                boolean isOuterCrossEdge = (labelG[baseV] == Label.OUTER && labelG[baseU] == Label.OUTER);
+                nodeH.add(baseU);
+                nodeH.add(baseV);
+                adjH.computeIfAbsent(baseU, k -> new HashSet<>())
+                    .add(baseV);
+                adjH.computeIfAbsent(baseV, k -> new HashSet<>())
+                    .add(baseU);
 
-                // Ignore edges that don't fit the H-graph criteria
-                if (!isMatched && !isTreeEdge && !isOuterCrossEdge) {
-                    continue;
-                }
+                // Record a representative G-edge for this H-edge (both directions;
+                // findAugPathG fixes orientation from the contracted endpoints).
+                bridgeHG.computeIfAbsent(baseU, k -> new HashMap<>())
+                        .put(baseV, new Edge(u, v));
 
-                // If we survive the guard clauses, add the edge to H
-                adjH.get(baseV).add(baseU);
-                adjH.putIfAbsent(baseU, new HashSet<>());
-                adjH.get(baseU).add(baseV);
-
-                bridgeHG.putIfAbsent(baseV, new HashMap<>());
-                bridgeHG.get(baseV).put(baseU, new Edge(v, u));
-
-                if (isMatched) {
-                    matchH[baseV] = baseU;
+                if (matchG[u] == v) {
                     matchH[baseU] = baseV;
+                    matchH[baseV] = baseU;
                 }
             }
         }
@@ -390,6 +451,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
     private void scanEdges(int u) {
         for (int v : graph.getAllNeighbors(u)) {
+            stats.examineEdge();
             int baseV = maxPositiveBlossoms.find(v);
             if (matchG[v] == u || labelG[baseV] == Label.INNER) {
                 continue;
@@ -472,6 +534,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         }
 
         for (int uH : adjH.getOrDefault(vH, new HashSet<>())) {
+            // One H-graph edge scanned in Phase 2 DFS
+            stats.examineEdge();
 
             int baseV = maxBlossomsH.find(vH);
             int baseU = maxBlossomsH.find(uH);
@@ -482,7 +546,6 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
                 if (matchH[uH] == -1) {
                     augPathFound = true;
-                    // Add the discovered path to the passed reference
                     augPath.addAll(findAugPathH(vH, uH, rootH));
                     return;
                 } else {
@@ -558,6 +621,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             int b1 = apH.get(i + 1);
 
             Edge bridge = bridgeHG.get(b0).get(b1);
+            stats.examineEdge(); // the bridge edge connecting the two blossoms
 
             // 1. Identify which physical endpoint belongs to which blossom
             int u = bridge.vertex1();
@@ -589,11 +653,14 @@ public class GabowAlgorithm implements MatchingAlgorithm {
      * and ending at exit, and adds the internal nodes, including the entry and
      * exit, to the given list.
      */
-    private static void unrollBlossom(ArrayList<Integer> path, int entry, int exit, BlossomStructure struct) {
+    private void unrollBlossom(ArrayList<Integer> path, int entry, int exit, BlossomStructure struct) {
         if (entry == exit) {
             path.addLast(entry);
             return;
         }
+
+        // Each step crosses one matched / tree / bridge edge of the blossom.
+        stats.examineEdge();
 
         if (struct.label[entry] == Label.OUTER) {
             int matchedNode = struct.match[entry];
@@ -655,11 +722,13 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     private static class PriorityQueueArray {
         private final Stack<Edge>[] queues;
         private final int maxDelta;
+        private final GabowStatistics stats;
         private int currentDelta = 0;
 
         @SuppressWarnings("unchecked")
-        private PriorityQueueArray(int maxDelta) {
+        private PriorityQueueArray(int maxDelta, GabowStatistics stats) {
             this.maxDelta = maxDelta;
+            this.stats = stats;
             this.queues = new Stack[maxDelta];
             for (int i = 0; i < maxDelta; i++) {
                 queues[i] = new Stack<>();
@@ -675,6 +744,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
 
         private void add(Edge edge, int tightDelta) {
             if (tightDelta < maxDelta) {
+                stats.recordPriorityQueueOperation(); // push
                 queues[tightDelta].push(edge);
             }
         }
@@ -686,6 +756,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
             if (targetDelta >= maxDelta || queues[targetDelta].isEmpty()) {
                 return null;
             }
+            stats.recordPriorityQueueOperation(); // pop
             return queues[targetDelta].pop();
         }
     }
@@ -695,13 +766,16 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         private final int[] rank;
         private final int[] blossomBase; // blossomBase[i] gives the base of the blossom that node i immediately belongs
                                          // to
+        private final GabowStatistics stats;
 
         /**
          * Initializes the data structure for a maximum of n vertices.
          *
-         * @param n The maximum number of vertices in the graph.
+         * @param n     The maximum number of vertices in the graph.
+         * @param stats counters into which each find/union is recorded
          */
-        private NodePartition(int n) {
+        private NodePartition(int n, GabowStatistics stats) {
+            this.stats = stats;
             parent = new int[n];
             rank = new int[n];
             blossomBase = new int[n];
@@ -726,6 +800,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
          * for the set containing u.
          */
         private int find(int u) {
+            stats.recordDsuOperation();
             int root = getRoot(u);
             return blossomBase[root];
         }
@@ -735,6 +810,7 @@ public class GabowAlgorithm implements MatchingAlgorithm {
          * Precondition: {u, v} must be an edge in E(T).
          */
         private void union(int u, int v, int newBase) {
+            stats.recordDsuOperation();
             int rootU = getRoot(u);
             int rootV = getRoot(v);
 
