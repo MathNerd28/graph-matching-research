@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import warnings
 
 
-def draw_trendline(x, y):
+def draw_trendline(x, y, polynomial=False):
     """
     Fits multiple curves to the given x and y data and returns the one with the
     lowest BIC (Bayesian Information Criterion). c.f. https://en.wikipedia.org/wiki/Bayesian_information_criterion
@@ -61,6 +61,12 @@ def draw_trendline(x, y):
     def func_harmonic(x, c, s, b):
         return c / (x - s) + b
 
+    # Models cumulative quantities of the form -A*log(N-x)+b, where N is the
+    # total graph size (fitted).  As x → N the curve diverges to +∞, matching
+    # the explosion seen in cumulative path-length / operation-count plots.
+    def func_log_complement(x, A, N, b):
+        return -A * np.log(N - x) + b
+
     # ------------------------------------------------------------------ #
     # Initial guesses                                                      #
     # ------------------------------------------------------------------ #
@@ -74,6 +80,15 @@ def draw_trendline(x, y):
     guess_A_log    = (y_max - y_min) / log_range if log_range != 0 else 1.0
     # nlogn scale guess: c such that c*x_max*log(x_max) ≈ y_max - y_min (at a=1)
     guess_c_nlogn  = (y_max - y_min) / (x_max * np.log(x_max)) if x_max > 1 else 1.0
+
+    def _logc_guess(N_val):
+        """Return [A, N, b] initial guess for -A*log(N-x)+b at a given N seed."""
+        if N_val <= x_max:
+            return [1.0, x_max * 1.1, y_min]
+        denom = float(np.log(N_val - x_min) - np.log(N_val - x_max))
+        A_g = (y_max - y_min) / max(denom, EPS)
+        b_g = y_min + A_g * float(np.log(N_val - x_min))
+        return [max(A_g, EPS), N_val, b_g]
 
     # ------------------------------------------------------------------ #
     # Candidates: (func, list_of_p0, bounds)                              #
@@ -137,6 +152,13 @@ def draw_trendline(x, y):
             ],
             ([-np.inf, x_max + EPS, -np.inf], [np.inf, np.inf, np.inf]),
         ),
+        # Cumulative quantities that diverge as matching size → graph size N.
+        # Multiple N seeds: close (1.1x), moderate (1.5x), far (2x, 3x).
+        "Log complement (-A·log(N-n))": (
+            func_log_complement,
+            [_logc_guess(x_max * f) for f in [1.1, 1.5, 2.0, 3.0]],
+            ([EPS, x_max + EPS, -np.inf], [np.inf, np.inf, np.inf]),
+        ),
     }
 
     # ------------------------------------------------------------------ #
@@ -191,29 +213,41 @@ def draw_trendline(x, y):
     # Format display label                                                 #
     # ------------------------------------------------------------------ #
 
+    def fmt(v):
+        """Format a coefficient readably: fixed for normal range, scientific otherwise."""
+        a = abs(v)
+        if a == 0:
+            return "0"
+        if 0.01 <= a < 10000:
+            return f"{v:.2f}"
+        return f"{v:.2e}"
+
     def format_name(name, popt):
         if name == "Linear":
             A, b = popt
-            return f"Linear: y = {A:.2f}x + {b:.2f}"
+            return f"Linear: y = {fmt(A)}x + {fmt(b)}"
         elif name == "Quadratic":
             A, b = popt
-            return f"Quadratic: y = {A:.2f}x^2 + {b:.2f}"
+            return f"Quadratic: y = {fmt(A)}x^2 + {fmt(b)}"
         elif name == "Logarithmic (log n)":
             A, b = popt
-            return f"Log: y = {A:.2f} * log(x) + {b:.2f}"
+            return f"Log: y = {fmt(A)} * log(x) + {fmt(b)}"
         elif name == "N log N":
             a, b, c = popt
-            return f"N log N: y = {c:.2f} * ({a:.2f}x) * log({a:.2f}x) + {b:.2f}"
+            return f"N log N: y = {fmt(c)} * ({fmt(a)}x) * log({fmt(a)}x) + {fmt(b)}"
         elif name == "Polynomial (n^k)":
             A, k, b = popt
-            return f"Poly: y = {A:.2f}x^{k:.2f} + {b:.2f}"
+            return f"Poly: y = {fmt(A)}x^{k:.2f} + {fmt(b)}"
         elif name == "Harmonic (c/(n-s))":
             c_h, s, b = popt
-            return f"Harmonic: y = {c_h:.2f} / (x - {s:.2f}) + {b:.2f}"
+            return f"Harmonic: y = {fmt(c_h)} / (x - {fmt(s)}) + {fmt(b)}"
         elif name == "Harmonic (n/(N-n))":
             c_h, s, b = popt
             # c is negative; rewrite c/(x-N) as |c|/(N-x) for readability
-            return f"Harmonic: y = {-c_h:.2f} / ({s:.2f} - x) + {b:.2f}"
+            return f"Harmonic: y = {fmt(-c_h)} / ({fmt(s)} - x) + {fmt(b)}"
+        elif name == "Log complement (-A·log(N-n))":
+            A, N, b = popt
+            return f"Log complement: y = -{fmt(A)} * log({fmt(N)} - x) + {fmt(b)}"
         return name
 
     # ------------------------------------------------------------------ #
@@ -222,6 +256,9 @@ def draw_trendline(x, y):
 
     best_fit = {"name": None, "params": None, "r2": -np.inf, "predictor": None}
     best_bic_global = np.inf
+
+    if not polynomial:
+        candidates.pop("Polynomial (n^k)", None)
 
     for name, (func, p0_list, bounds) in candidates.items():
         result = best_fit_multi(func, p0_list, bounds)

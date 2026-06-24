@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
@@ -18,18 +19,19 @@ import edu.rit.cs.graph_matching.algorithm.DaniHayesAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.EdmondsAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.GoelKapralovKhanna;
 import edu.rit.cs.graph_matching.algorithm.HopcroftKarpAlgorithm;
-import edu.rit.cs.graph_matching.algorithm.MatchingAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.YusterAlgorithm;
 import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
 import edu.rit.cs.graph_matching.runner.GraphFileData;
-import edu.rit.cs.graph_matching.runner.GraphStatistics.Stats;
+import edu.rit.cs.graph_matching.runner.GraphStatistics;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester;
+import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.AlgorithmInitialization;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.AugmentationDataPoint;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.DataPoint;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.InitializationDataPoint;
+import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.StatsSnapshot;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -165,8 +167,7 @@ public final class Main {
             int vertices
         // @formatter:on
         ) throws IOException {
-            return generateGraphs(params, "Loop",
-                    String.format("loop -n=%d", vertices),
+            return generateGraphs(params, "Loop", String.format("loop -n=%d", vertices),
                     () -> GraphGenerator.generateLoopGraph(new AdjacencySetGraph(vertices)));
         }
     }
@@ -248,7 +249,6 @@ public final class Main {
                     try (PrintWriter csvWriter =
                             new PrintWriter(new BufferedWriter(new FileWriter(csvOutFile)))) {
                         this.currentRunCsv = csvWriter;
-                        writeCsvHeader();
 
                         try (MatchingAlgorithmTester tester =
                                 new MatchingAlgorithmTester(this::getAlgorithm, graph, new Random(),
@@ -272,13 +272,19 @@ public final class Main {
             return CommandLine.ExitCode.OK;
         }
 
-        private MatchingAlgorithm getAlgorithm(Graph graph, RandomGenerator random) {
+        private AlgorithmInitialization getAlgorithm(Graph graph, RandomGenerator random) {
+            GraphStatistics graphStats = new GraphStatistics(graph);
             return switch (algorithm) {
-                case Algorithm.daniHayes -> new DaniHayesAlgorithm(graph, random);
-                case Algorithm.edmonds -> new EdmondsAlgorithm(graph);
-                case Algorithm.hopcroftKarp -> new HopcroftKarpAlgorithm(graph);
-                case Algorithm.goelKapralovKhanna -> new GoelKapralovKhanna(graph, random);
-                case Algorithm.yuster -> new YusterAlgorithm(graph);
+                case Algorithm.daniHayes -> new AlgorithmInitialization(
+                        new DaniHayesAlgorithm(graphStats, random), graphStats);
+                case Algorithm.edmonds ->
+                     new AlgorithmInitialization(new EdmondsAlgorithm(graphStats), graphStats);
+                case Algorithm.hopcroftKarp ->
+                     new AlgorithmInitialization(new HopcroftKarpAlgorithm(graphStats), graphStats);
+                case Algorithm.goelKapralovKhanna -> new AlgorithmInitialization(
+                        new GoelKapralovKhanna(graphStats, random), graphStats);
+                case Algorithm.yuster ->
+                     new AlgorithmInitialization(new YusterAlgorithm(graphStats), graphStats);
             };
         }
 
@@ -291,52 +297,44 @@ public final class Main {
         }
 
         private void csvCallback(DataPoint dataPoint) {
+            if (dataPoint instanceof InitializationDataPoint(Duration time, StatsSnapshot stats)) {
+                // CSV header
+                StringBuilder builder = new StringBuilder();
+                builder.append("Matching Size")
+                       .append(',')
+                       .append("Path Length")
+                       .append(',')
+                       .append("Iteration Time");
+                for (Map.Entry<String, String> stat : stats) {
+                    builder.append(",\"")
+                           .append(stat.getKey())
+                           .append("\"");
+                }
+                this.currentRunCsv.println(builder.toString());
+            }
+
             if (dataPoint instanceof AugmentationDataPoint(
             // @formatter:off
                 int matchingSize,
                 int pathLength,
                 Duration time,
-                Stats statsSnapshot
+                StatsSnapshot stats
             // @formatter:on
             )) {
+                // CSV body
                 StringBuilder builder = new StringBuilder();
                 builder.append(matchingSize)
                        .append(',')
                        .append(pathLength)
                        .append(',')
-                       .append(String.format("%.9f", 1e-9 * time.toNanos()))
-                       .append(',')
-                       .append(statsSnapshot.allNeighborsCount())
-                       .append(',')
-                       .append(statsSnapshot.degreeCheckCount())
-                       .append(',')
-                       .append(statsSnapshot.edgeCheckCount())
-                       .append(',')
-                       .append(statsSnapshot.randomNeighborCount())
-                       .append(',')
-                       .append(statsSnapshot.sizeCheckCount());
+                       .append(String.format("%.9f", 1e-9 * time.toNanos()));
+                for (Map.Entry<String, String> stat : stats) {
+                    builder.append(",\"")
+                           .append(stat.getValue())
+                           .append("\"");
+                }
                 this.currentRunCsv.println(builder.toString());
             }
-        }
-
-        private void writeCsvHeader() {
-            StringBuilder builder = new StringBuilder();
-            builder.append("Matching Size")
-                   .append(',')
-                   .append("Path Length")
-                   .append(',')
-                   .append("Iteration Time")
-                   .append(',')
-                   .append("getAllNeighbors()")
-                   .append(',')
-                   .append("getDegree(v)")
-                   .append(',')
-                   .append("\"hasEdge(v1,v2)\"")
-                   .append(',')
-                   .append("getRandomNeighbor(v)")
-                   .append(',')
-                   .append("size()");
-            this.currentRunCsv.println(builder.toString());
         }
     }
 
