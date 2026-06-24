@@ -14,89 +14,48 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.graph.MutableGraph;
 
 /**
- * Raphael Yuster's algorithm for maximum matching in regular and almost-regular
- * graphs, which runs in {@code O(r * n^2 * log n)} time on an {@code n}-vertex,
- * {@code r}-almost-regular graph (and hence {@code O(n^2 log n)} on a regular
- * graph). See "Maximum matching in regular and almost regular graphs".
+ * Raphael Yuster's exact maximum-matching algorithm for regular and
+ * almost-regular graphs ("Maximum matching in regular and almost regular
+ * graphs"): {@code O(r n^2 log n)} on an {@code r}-almost-regular {@code n}-vertex
+ * graph, hence {@code O(n^2 log n)} when regular.
  * <p>
- * The algorithm computes an <em>exact</em> maximum matching. The idea is to
- * compute the matching "bottom-up" over a sequence of progressively denser
- * spanning subgraphs {@code G_t ⊆ ... ⊆ G_1 ⊆ G_0 = G}, where each
- * {@code G_i} has roughly half the maximum degree of {@code G_{i-1}} (Lemma
- * 2.2). The sparsest graph {@code G_t} has maximum degree {@code O(sqrt(n))},
- * so
- * a maximum matching can be found there relatively cheaply. That matching is
- * then lifted level-by-level: a maximum matching of {@code G_i} is a (not
- * necessarily maximum) matching of {@code G_{i-1}}, and only a few augmenting
- * paths are needed to make it maximum again. Because denser subgraphs require
- * fewer augmentations, the total work telescopes to {@code O(r * n^2 * log n)}.
+ * It works bottom-up over spanning subgraphs {@code G_t ⊆ ... ⊆ G_0 = G}, each
+ * with roughly half the max degree of the next (Lemma 2.2), built by keeping
+ * every other edge of an Euler tour. A maximum matching is found on the sparsest
+ * {@code G_t} (max degree {@code O(sqrt(n))}), then lifted level-by-level: a
+ * maximum matching of {@code G_i} is a valid matching of {@code G_{i-1}} needing
+ * only a few more augmenting paths.
  * <p>
- * The subgraph sequence is constructed via Euler tours: each {@code G_i} keeps
- * every other edge of an Euler tour of {@code G_{i-1}} (after supplementing it
- * to an even-degree multigraph), which roughly halves every vertex's degree.
- * <p>
- * The matching work at every level is delegated to existing solvers, all
- * sharing
- * one {@code matches} array so the matching of one level becomes the starting
- * matching of the next. The sparsest level (the base case) computes a maximum
- * matching of {@code G_t} from an empty matching with {@link GabowAlgorithm},
- * whose phased shortest-augmenting-path search runs in {@code O(m * sqrt(n))}
- * (Lemma 2.4); since {@code m_t = O(n^1.5)} this base step costs
- * {@code O(n^2)}.
- * Plain single-path augmentation would need {@code O(n)} searches at
- * {@code O(m)} each, i.e. {@code O(n^2.5)} on {@code G_t}, which would dominate
- * the {@code O(n^2 log n)} target. Each denser level only lifts the existing
- * near-maximum matching with a handful of single augmenting-path searches
- * ({@code O(m)} each, Lemma 2.5), for which the lighter
- * {@link EdmondsAlgorithm}
- * suffices. Correctness does not depend on the subgraph sequence or on which
- * solver is used — the final level operates on {@code G_0 = G} itself, so the
- * result is always a maximum matching of {@code G}; the subgraph sequence only
- * governs the running time.
- * <p>
- * The algorithm is cooperatively interruptible: {@link #augment()} periodically
- * checks {@link Thread#interrupted()} and returns promptly when interrupted.
+ * Each level is delegated to a solver sharing one {@code matches} array:
+ * {@link GabowAlgorithm} ({@code O(m sqrt(n))}, Lemma 2.4) for the base,
+ * {@link EdmondsAlgorithm} ({@code O(m)} per path, Lemma 2.5) for the lifts.
+ * Correctness is independent of the subgraph sequence — the last level is
+ * {@code G} itself, so the result is always a maximum matching of {@code G}; the
+ * sequence only governs running time. {@link #augment()} is cooperatively
+ * interruptible.
  */
 public class YusterAlgorithm implements MatchingAlgorithm {
     /** The input graph, {@code G_0 = G}. */
     private final Graph graph;
 
-    /**
-     * The spanning-subgraph sequence. Index {@code 0} is the input graph
-     * {@code G} (densest); index {@code subgraphs.size() - 1} is the sparsest
-     * graph {@code G_t}. {@code subgraphs.get(i)} is {@code G_i}.
-     */
+    /** Spanning subgraphs, densest first: index 0 is {@code G}, the last is the sparsest {@code G_t}. */
     private final List<Graph> subgraphs;
 
-    /**
-     * The matching shared across all levels. {@code matches[v]} is the vertex
-     * matched with {@code v}, or {@code -1} if {@code v} is unmatched. Each
-     * per-level solver reads and updates this same array.
-     */
+    /** Matching shared across all levels: {@code matches[v]} is v's mate, or -1 if unmatched. */
     private final int[] matches;
 
-    /**
-     * The level currently being made maximum, working from the sparsest graph
-     * {@code G_t} down to {@code G_0 = G}. Once it drops below zero, the
-     * matching is a maximum matching of {@code G} and the algorithm is finished.
-     */
+    /** Level being made maximum, from the sparsest {@code G_t} down to {@code G_0 = G}; finished when {@code < 0}. */
     private int level;
 
-    /**
-     * The matching solver for the current level, operating on
-     * {@code subgraphs.get(level)} and sharing {@link #matches}. This is a
-     * {@link GabowAlgorithm} for the base level and an {@link EdmondsAlgorithm}
-     * for the lift levels (see {@link #createLevelSolver(int)}). Lazily
-     * (re)created whenever the level changes; {@code null} until first used.
-     */
+    /** Solver for the current level (Gabow at the base, Edmonds for lifts); lazily (re)created per level. */
     private MatchingAlgorithm levelSolver;
 
     /**
-     * Create a Yuster matching solver for the given graph. The subgraph
-     * sequence is constructed eagerly here in {@code O(n * d)} time.
+     * Create a Yuster matching solver; builds the subgraph sequence eagerly in
+     * {@code O(n * d)} time.
      *
      * @param graph
-     *              the graph to be solved
+     *     the graph to be solved
      */
     public YusterAlgorithm(Graph graph) {
         this.graph = graph;
@@ -112,16 +71,12 @@ public class YusterAlgorithm implements MatchingAlgorithm {
     // Subgraph-sequence construction (Corollary 2.3)
 
     /**
-     * Build the sequence {@code G_0, ..., G_t} of spanning subgraphs, where
-     * {@code G_0} is the input graph and each subsequent graph has roughly half
-     * the maximum degree of its predecessor. The number of levels {@code t} is
-     * the least integer such that {@code d / 2^t <= sqrt(n)}, where {@code d} is
-     * the maximum degree of {@code G}.
+     * Build {@code G_0, ..., G_t}: {@code G_0 = g}, each next graph has ~half the
+     * max degree, stopping once the max degree drops to {@code O(sqrt(n))}.
      *
      * @param g
-     *          the input graph {@code G_0}
-     * @return the subgraph sequence, with {@code G_0} at index 0 and the
-     *         sparsest graph {@code G_t} last
+     *     the input graph {@code G_0}
+     * @return the subgraphs, densest ({@code G_0}) first, sparsest ({@code G_t}) last
      */
     private static List<Graph> buildSubgraphSequence(Graph g) {
         int n = g.size();
@@ -148,18 +103,15 @@ public class YusterAlgorithm implements MatchingAlgorithm {
     }
 
     /**
-     * Construct a spanning subgraph in which every vertex's degree is roughly
-     * halved, faithfully following Lemma 2.2. Each connected component is
-     * supplemented to an even-degree multigraph by adding a perfect matching
-     * {@code S} on its odd-degree vertices, an Euler tour {@code e_1, ..., e_s}
-     * is taken, and the subgraph keeps {@code F \ S} where
-     * {@code F = {e_2, e_4, ...}} is the set of even-position tour edges. When a
-     * component has odd-degree vertices, its tour is rooted at one of them and
-     * begins on a supplement edge ({@code e_1 ∈ S}), which is what makes the
-     * resulting degrees satisfy {@code ⌊δ(G)/2⌋ ≤ d_{G'}(v) ≤ ⌈Δ(G)/2⌉}.
+     * Spanning subgraph with each degree roughly halved (Lemma 2.2): supplement
+     * each component to even degree with a matching {@code S} on its odd-degree
+     * vertices, take an Euler tour {@code e_1, ..., e_s}, and keep {@code F \ S}
+     * where {@code F = {e_2, e_4, ...}}. With odd-degree vertices present the tour
+     * starts on a supplement edge ({@code e_1 ∈ S}), giving the degree bound
+     * {@code ⌊δ/2⌋ ≤ d'(v) ≤ ⌈Δ/2⌉}.
      *
      * @param g
-     *          the graph to thin out
+     *     the graph to thin out
      * @return a spanning subgraph of {@code g} with roughly half the degree
      */
     private static Graph halveDegrees(Graph g) {
@@ -185,15 +137,12 @@ public class YusterAlgorithm implements MatchingAlgorithm {
                 .max()
                 .getAsInt() + 1;
 
-        // Supplement each connected component by pairing up its odd-degree
-        // vertices, making all degrees even so an Euler tour exists. These edges
-        // are created BEFORE the original edges, so they receive the lowest edge
-        // indices and therefore appear first in every vertex's incidence list
-        // (the CSR below is filled in edge-index order). Rooting a component's
-        // tour at an odd-degree vertex then traverses its supplement edge first,
-        // realizing the paper's requirement that the first tour edge be a
-        // supplement edge (e_1 ∈ S). componentStart records, per component, such
-        // a root vertex, or -1 when all degrees in the component are even.
+        // Pair each component's odd-degree vertices with supplement edges so all
+        // degrees are even (Euler tour exists). Added BEFORE the originals so they
+        // get the lowest edge indices and thus come first in each vertex's CSR
+        // incidence list; a tour rooted at an odd-degree vertex then starts on its
+        // supplement edge (the paper's e_1 ∈ S). componentStart = such a root per
+        // component, or -1 if the component is all-even.
         int[] componentStart = new int[componentCount];
         Arrays.fill(componentStart, -1);
         int[] oddPartner = new int[componentCount];
@@ -287,13 +236,10 @@ public class YusterAlgorithm implements MatchingAlgorithm {
     }
 
     /**
-     * Trace an Euler tour of the connected component containing {@code start},
-     * using Hierholzer's algorithm. All vertices in the component must have even
-     * degree in the multigraph. The tour is written into {@code tour} in forward
-     * order, so {@code tour[0]} is the first edge taken from {@code start} and
-     * any two consecutive edges share a vertex (as do the first and last). This
-     * lets even array indices ({@code tour[1], tour[3], ...}) correspond to the
-     * even tour positions {@code e_2, e_4, ...}.
+     * Euler tour of the component containing {@code start} (Hierholzer's
+     * algorithm; all degrees must be even). Written forward into {@code tour}, so
+     * consecutive edges share a vertex and {@code tour[1], tour[3], ...} are the
+     * even positions {@code e_2, e_4, ...}.
      *
      * @return the number of edges written into {@code tour}
      */
@@ -343,12 +289,8 @@ public class YusterAlgorithm implements MatchingAlgorithm {
     }
 
     /**
-     * Label each vertex with the index of its connected component.
-     *
-     * @param g
-     *          the graph
-     * @return an array mapping each vertex to a component index in
-     *         {@code [0, componentCount)}
+     * Label each vertex with its connected-component index in
+     * {@code [0, componentCount)}.
      */
     private static int[] computeComponents(Graph g) {
         int n = g.size();
@@ -382,16 +324,11 @@ public class YusterAlgorithm implements MatchingAlgorithm {
     // MatchingAlgorithm interface
 
     /**
-     * Create the matching solver for a given level, sharing {@link #matches} so
-     * the matching carries across levels.
-     * <p>
-     * The sparsest level (the base case, {@code subgraphs.size() - 1}) builds a
-     * maximum matching of {@code G_t} from an empty matching, so it uses
-     * {@link GabowAlgorithm}, whose phased shortest-augmenting-path search runs
-     * in {@code O(m * sqrt(n))} (Lemma 2.4) rather than the {@code O(n * m)} of
-     * repeated single-path augmentation. Every denser level merely lifts an
-     * existing near-maximum matching with a few single augmenting paths, for
-     * which {@link EdmondsAlgorithm} ({@code O(m)} per path, Lemma 2.5) suffices.
+     * Solver for {@code level}, sharing {@link #matches}. The base (sparsest)
+     * level builds {@code M_t} from scratch with {@link GabowAlgorithm}
+     * ({@code O(m sqrt(n))}, Lemma 2.4); denser levels only lift it with a few
+     * single augmenting paths, for which {@link EdmondsAlgorithm} ({@code O(m)}
+     * each, Lemma 2.5) suffices.
      *
      * @param level
      *     the level whose subgraph the solver should operate on
@@ -413,8 +350,7 @@ public class YusterAlgorithm implements MatchingAlgorithm {
             }
 
             if (levelSolver == null) {
-                // Operate on this level's subgraph while sharing the matching,
-                // so the previous (denser-bound) matching is lifted forward.
+                // Shares the matching, so the previous level's result is lifted forward.
                 levelSolver = createLevelSolver(level);
             }
 
@@ -423,8 +359,7 @@ public class YusterAlgorithm implements MatchingAlgorithm {
                 return result;
             }
 
-            // No augmenting paths remain at this level; the matching is maximum
-            // for G_level. Descend to the next, denser subgraph and rescan.
+            // Maximum for this level; descend to the next, denser subgraph.
             levelSolver = null;
             level--;
         }

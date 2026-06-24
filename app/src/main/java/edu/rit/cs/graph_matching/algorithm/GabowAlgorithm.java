@@ -37,7 +37,9 @@ public class GabowAlgorithm implements MatchingAlgorithm {
     private final Graph graph;
     private final int n;
 
-    /** Algorithm-specific operation counters, exposed via {@link #getStatistics()}. */
+    /**
+     * Algorithm-specific operation counters, exposed via {@link #getStatistics()}.
+     */
     private final GabowStatistics stats;
 
     /** Current matching status; matchG[v] = w, or -1 if free */
@@ -261,15 +263,8 @@ public class GabowAlgorithm implements MatchingAlgorithm {
         Arrays.fill(labelG, Label.UNLABELED);
         Arrays.fill(parentG, -1);
 
-        // Reset every vertex's dual to d(v) = 1 (paper, Lemma 1) and label free
-        // vertices OUTER. This MUST complete for all vertices before any edge is
-        // scanned: scanEdges reads both endpoints' duals to predict the level at
-        // which an edge becomes tight, so a not-yet-reset neighbour would be read
-        // with a stale dual left over from the previous phase, mis-bucketing the
-        // edge (it then becomes over-tight and is dropped, and an augmenting path
-        // is missed). Hence the two passes below.
         for (int v = 0; v < n; v++) {
-            yBase[v] = 1;
+            yBase[v] = 1; // Free vertices start with y(u) = 1, matched vertices start with y(u) = 0
             yDelta[v] = 0;
             if (matchG[v] == -1) {
                 labelG[v] = Label.OUTER;
@@ -309,14 +304,6 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                     continue;
                 }
 
-                // The priority queue holds lazy predictions: an edge is enqueued at
-                // the level it is predicted to become tight, but a later label change
-                // (an endpoint becoming OUTER) moves that level. With dual feasibility
-                // maintained (reduced weights stay non-negative), a popped entry that
-                // is not yet tight has positive slack; re-enqueue it at its corrected,
-                // strictly later tight level. Processing a non-tight OUTER–OUTER edge
-                // would otherwise look like a cross-tree collision and produce a
-                // spurious augmenting path, stalling the search.
                 // The priority queue holds lazy predictions: an edge is enqueued at
                 // the level it is predicted to become tight, but a later label change
                 // (an endpoint becoming OUTER) moves that level. With dual feasibility
@@ -422,9 +409,9 @@ public class GabowAlgorithm implements MatchingAlgorithm {
                 nodeH.add(baseU);
                 nodeH.add(baseV);
                 adjH.computeIfAbsent(baseU, k -> new HashSet<>())
-                    .add(baseV);
+                        .add(baseV);
                 adjH.computeIfAbsent(baseV, k -> new HashSet<>())
-                    .add(baseU);
+                        .add(baseU);
 
                 // Record a representative G-edge for this H-edge (both directions;
                 // findAugPathG fixes orientation from the contracted endpoints).
