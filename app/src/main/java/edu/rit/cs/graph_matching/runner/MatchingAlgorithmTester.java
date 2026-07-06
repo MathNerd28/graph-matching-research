@@ -63,8 +63,15 @@ public class MatchingAlgorithmTester implements AutoCloseable {
     public MatchingAlgorithmTester(BiFunction<Graph, RandomGenerator, AlgorithmInitialization> supplier,
                                    Graph inputGraph, RandomGenerator random,
                                    Consumer<DataPoint>... callbacks) {
+        this(supplier, inputGraph, random, false, callbacks);
+    }
+
+    @SafeVarargs
+    public MatchingAlgorithmTester(BiFunction<Graph, RandomGenerator, AlgorithmInitialization> supplier,
+                                   Graph inputGraph, RandomGenerator random,
+                                   boolean allowInitialMatching,
+                                   Consumer<DataPoint>... callbacks) {
         this.inputGraph = inputGraph;
-        this.executor = Executors.newSingleThreadExecutor();
         this.callbacks = callbacks.clone();
 
         if (random == null) {
@@ -84,9 +91,11 @@ public class MatchingAlgorithmTester implements AutoCloseable {
 
         this.matchingSize = algorithm.getCurrentMatching()
                                      .size();
-        if (matchingSize != 0) {
+        if (!allowInitialMatching && matchingSize != 0) {
             throw new IllegalStateException("Algorithm initialized with non-empty matching");
         }
+
+        this.executor = Executors.newSingleThreadExecutor();
 
         runCallbacks(new InitializationDataPoint(Duration.ofNanos(end - start),
                 takeSnapshot()));
@@ -108,29 +117,39 @@ public class MatchingAlgorithmTester implements AutoCloseable {
     }
 
     private DataPoint runIteration(Duration timeout) {
+        Future<IterationResult> future = null;
         try {
             for (Statistics s : statistics) {
                 s.reset();
             }
 
-            Future<IterationResult> future = executor.submit(this::iterationTask);
-            IterationResult result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            future = executor.submit(this::iterationTask);
+            IterationResult result =
+                    future.get(Math.max(1, timeout.toMillis()), TimeUnit.MILLISECONDS);
             StatsSnapshot stats = takeSnapshot();
-            this.matchingSize++;
 
             if (result.pathLength() == -1 || result.pathLength() % 2 == 0) {
                 // augmentation failed
                 return new FailureDataPoint(matchingSize, result.time(), stats);
             }
 
+            this.matchingSize++;
             return new AugmentationDataPoint(matchingSize, result.pathLength(), result.time(),
                     stats);
         } catch (TimeoutException e) {
+            if (future != null) {
+                future.cancel(true);
+            }
             return new TimeoutDataPoint(matchingSize, timeout, takeSnapshot());
         } catch (InterruptedException |
                  ExecutionException e) {
-            // TODO: what happened here???
-            e.printStackTrace();
+            if (future != null) {
+                future.cancel(true);
+            }
+            if (e instanceof InterruptedException) {
+                Thread.currentThread()
+                      .interrupt();
+            }
             return new ErrorDataPoint(matchingSize, e);
         }
     }

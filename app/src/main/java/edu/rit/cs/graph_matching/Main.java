@@ -22,6 +22,7 @@ import edu.rit.cs.graph_matching.algorithm.HopcroftKarpAlgorithm;
 import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
+import edu.rit.cs.graph_matching.graph.GraphGenerator.DaniHayesHardConstruction;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
 import edu.rit.cs.graph_matching.runner.GraphFileData;
 import edu.rit.cs.graph_matching.runner.GraphStatistics;
@@ -29,15 +30,19 @@ import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.AlgorithmInitialization;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.AugmentationDataPoint;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.DataPoint;
+import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.ErrorDataPoint;
+import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.FailureDataPoint;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.InitializationDataPoint;
 import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.StatsSnapshot;
+import edu.rit.cs.graph_matching.runner.MatchingAlgorithmTester.TimeoutDataPoint;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-@Command(subcommands = { Main.GenerateGraph.class, Main.RunTest.class },
+@Command(subcommands = { Main.GenerateGraph.class, Main.RunTest.class,
+                         Main.DaniHayesHardTest.class },
          mixinStandardHelpOptions = true)
 public final class Main {
     private Main() {}
@@ -332,6 +337,251 @@ public final class Main {
                 this.currentRunCsv.println(builder.toString());
             }
         }
+    }
+
+    @Command(name = "dh-hard-test", mixinStandardHelpOptions = true,
+             description = "Run Dani-Hayes on the disjoint-gadget hard construction")
+    static class DaniHayesHardTest implements Callable<Integer> {
+        @Option(names = { "-d", "--degree" }, required = true,
+                description = "Regular degree; must be even and at least 4")
+        private int degree;
+
+        @Option(names = { "-n", "--rounds" },
+                description = "Number of independent seeded rounds")
+        private int rounds = 5;
+
+        @Option(names = { "-a", "--augmentations" },
+                description = "Augmentations to attempt in each round")
+        private int augmentations = 1;
+
+        @Option(names = { "-s", "--seed" }, description = "Base random seed")
+        private long seed = 0xD0A17A9E5L;
+
+        @Option(names = { "-t", "--iteration-timeout" },
+                description = "Timeout per seeded augmentation")
+        private Duration iterationTimeout = Duration.ofSeconds(30);
+
+        @Option(names = { "-o", "--output-dir" }, description = "Output data directory")
+        private File outputDir = new File(System.getProperty("user.dir"));
+
+        private DaniHayesHardConstruction construction;
+        private PrintWriter currentRunCsv;
+        private boolean wroteCsvHeader;
+        private int currentRound;
+        private int currentAugmentation;
+        private long successfulAugmentations;
+        private long timedOutAugmentations;
+        private long failedAugmentations;
+        private long totalRandomNeighborCalls;
+
+        DaniHayesHardTest() {}
+
+        @Override
+        public Integer call() throws IOException {
+            if (rounds < 1) {
+                throw new IllegalArgumentException("rounds must be positive");
+            }
+            if (augmentations < 1) {
+                throw new IllegalArgumentException("augmentations must be positive");
+            }
+            if (!outputDir.exists() && !outputDir.mkdirs()) {
+                throw new IOException("Could not create output directory " + outputDir);
+            }
+            if (!outputDir.isDirectory()) {
+                throw new IOException(outputDir + " is not a directory");
+            }
+
+            construction = GraphGenerator.generateDaniHayesHardGraph(degree);
+            int initialMatchingSize = construction.plantedMatching()
+                                                  .size();
+
+            Instant startTime = Instant.now();
+            String safeStartTime = startTime.toString()
+                                            .replace(":", "-");
+            File csvOutFile = new File(outputDir,
+                    String.format("%s_dh-hard-d%d.csv", safeStartTime, degree));
+
+            System.out.printf(
+                    "Generated DH hard construction: d=%d, n=%d, corridor length=%d, free vertices=%d, planted matching=%d%n",
+                    degree, construction.graph()
+                                        .size(),
+                    construction.corridorLength(), construction.freeVertexCount(),
+                    initialMatchingSize);
+            System.out.printf("Writing CSV to %s%n", csvOutFile);
+
+            try (PrintWriter writer =
+                    new PrintWriter(new BufferedWriter(new FileWriter(csvOutFile)))) {
+                currentRunCsv = writer;
+                wroteCsvHeader = false;
+
+                for (int round = 1; round <= rounds; round++) {
+                    currentRound = round;
+                    currentAugmentation = 0;
+
+                    try (MatchingAlgorithmTester tester =
+                            new MatchingAlgorithmTester(this::getSeededDaniHayes,
+                                    construction.graph(), new Random(seed + round - 1), true,
+                                    this::hardExperimentCallback)) {
+                        tester.run(initialMatchingSize + augmentations, 1, iterationTimeout,
+                                iterationTimeout.multipliedBy(augmentations));
+                    }
+                }
+            }
+
+            if (successfulAugmentations > 0) {
+                double averageRandomCalls =
+                        (double) totalRandomNeighborCalls / successfulAugmentations;
+                System.out.printf(
+                        "Successful augmentations=%d, average getRandomNeighbor calls=%.3f%n",
+                        successfulAugmentations, averageRandomCalls);
+            }
+            System.out.printf("Timeouts=%d, failures=%d%n", timedOutAugmentations,
+                    failedAugmentations);
+            return CommandLine.ExitCode.OK;
+        }
+
+        private AlgorithmInitialization getSeededDaniHayes(Graph graph, RandomGenerator random) {
+            GraphStatistics graphStats = new GraphStatistics(graph);
+            return new AlgorithmInitialization(
+                    new DaniHayesAlgorithm(graphStats, random, construction.plantedMatching()),
+                    graphStats);
+        }
+
+        private void hardExperimentCallback(DataPoint dataPoint) {
+            if (dataPoint instanceof InitializationDataPoint(Duration time, StatsSnapshot stats)) {
+                if (!wroteCsvHeader) {
+                    writeHardExperimentHeader(stats);
+                    wroteCsvHeader = true;
+                }
+                return;
+            }
+
+            currentAugmentation++;
+
+            if (dataPoint instanceof AugmentationDataPoint(
+            // @formatter:off
+                int matchingSize,
+                int pathLength,
+                Duration time,
+                StatsSnapshot stats
+            // @formatter:on
+            )) {
+                successfulAugmentations++;
+                totalRandomNeighborCalls += statAsLong(stats, "getRandomNeighbor(v)");
+                writeHardExperimentRow(currentAugmentation, matchingSize - 1, matchingSize,
+                        pathLength, time, stats, "success");
+                printHardExperimentProgress(pathLength, time, stats, "success");
+            } else if (dataPoint instanceof TimeoutDataPoint(
+            // @formatter:off
+                int matchingSize,
+                Duration timeout,
+                StatsSnapshot stats
+            // @formatter:on
+            )) {
+                timedOutAugmentations++;
+                writeHardExperimentRow(currentAugmentation, matchingSize, matchingSize, -1,
+                        timeout, stats, "timeout");
+                printHardExperimentProgress(-1, timeout, stats, "timeout");
+            } else if (dataPoint instanceof FailureDataPoint(
+            // @formatter:off
+                int matchingSize,
+                Duration time,
+                StatsSnapshot stats
+            // @formatter:on
+            )) {
+                failedAugmentations++;
+                writeHardExperimentRow(currentAugmentation, matchingSize, matchingSize, -1, time,
+                        stats, "failure");
+                printHardExperimentProgress(-1, time, stats, "failure");
+            } else if (dataPoint instanceof ErrorDataPoint) {
+                failedAugmentations++;
+                System.out.printf("Round %d/%d augmentation %d/%d: error%n", currentRound, rounds,
+                        currentAugmentation, augmentations);
+            }
+        }
+
+        private void writeHardExperimentHeader(StatsSnapshot stats) {
+            StringBuilder builder = new StringBuilder();
+            builder.append("Degree")
+                   .append(',')
+                   .append("Graph Size")
+                   .append(',')
+                   .append("Corridor Length")
+                   .append(',')
+                   .append("Free Vertices")
+                   .append(',')
+                   .append("Round")
+                   .append(',')
+                   .append("Augmentation")
+                   .append(',')
+                   .append("Matching Size Before")
+                   .append(',')
+                   .append("Matching Size After")
+                   .append(',')
+                   .append("Path Length")
+                   .append(',')
+                   .append("Iteration Time");
+            for (Map.Entry<String, String> stat : stats) {
+                builder.append(",\"")
+                       .append(stat.getKey())
+                       .append("\"");
+            }
+            builder.append(',')
+                   .append("Status");
+            currentRunCsv.println(builder.toString());
+        }
+
+        private void writeHardExperimentRow(int augmentation, int matchingSizeBefore,
+                                            int matchingSizeAfter, int pathLength, Duration time,
+                                            StatsSnapshot stats, String status) {
+            StringBuilder builder = new StringBuilder();
+            builder.append(degree)
+                   .append(',')
+                   .append(construction.graph()
+                                       .size())
+                   .append(',')
+                   .append(construction.corridorLength())
+                   .append(',')
+                   .append(construction.freeVertexCount())
+                   .append(',')
+                   .append(currentRound)
+                   .append(',')
+                   .append(augmentation)
+                   .append(',')
+                   .append(matchingSizeBefore)
+                   .append(',')
+                   .append(matchingSizeAfter)
+                   .append(',')
+                   .append(pathLength)
+                   .append(',')
+                   .append(String.format("%.9f", 1e-9 * time.toNanos()));
+            for (Map.Entry<String, String> stat : stats) {
+                builder.append(",\"")
+                       .append(stat.getValue())
+                       .append("\"");
+            }
+            builder.append(',')
+                   .append(status);
+            currentRunCsv.println(builder.toString());
+        }
+
+        private void printHardExperimentProgress(int pathLength, Duration time, StatsSnapshot stats,
+                                                 String status) {
+            System.out.printf(
+                    "Round %d/%d augmentation %d/%d: %s, pathLength=%d, randomNeighbor=%d, time=%.3fs%n",
+                    currentRound, rounds, currentAugmentation, augmentations, status, pathLength,
+                    statAsLong(stats, "getRandomNeighbor(v)"), 1e-9 * time.toNanos());
+        }
+
+        private static long statAsLong(StatsSnapshot stats, String key) {
+            Object value = stats.entries()
+                                .get(key);
+            if (value instanceof Number number) {
+                return number.longValue();
+            }
+            return Long.parseLong(value.toString());
+        }
+
     }
 
     public static void main(String... args) {

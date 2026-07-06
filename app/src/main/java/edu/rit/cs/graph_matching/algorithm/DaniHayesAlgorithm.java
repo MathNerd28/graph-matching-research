@@ -1,6 +1,7 @@
 package edu.rit.cs.graph_matching.algorithm;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
@@ -76,6 +77,21 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
      *     the random number generator to be used by the algorithm.
      */
     public DaniHayesAlgorithm(Graph graph, RandomGenerator random) {
+        this(graph, random, Set.of());
+    }
+
+    /**
+     * Initialize the algorithm with a particular input graph, a pre-seeded
+     * random number generator, and an initial matching.
+     *
+     * @param graph
+     *     the input graph
+     * @param random
+     *     the random number generator to be used by the algorithm
+     * @param initialMatching
+     *     a valid matching to seed before the first augmentation
+     */
+    public DaniHayesAlgorithm(Graph graph, RandomGenerator random, Collection<Edge> initialMatching) {
         this.graph = graph;
         this.random = random;
 
@@ -88,6 +104,8 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
         for (int v = 0; v < graph.size(); v++) {
             unmatched.add(v);
         }
+
+        seedMatching(initialMatching);
         clearPath();
     }
 
@@ -158,6 +176,30 @@ public class DaniHayesAlgorithm implements MatchingAlgorithm {
             }
 
             augmentPath();
+        }
+    }
+
+    private void seedMatching(Collection<Edge> initialMatching) {
+        boolean[] seen = new boolean[graph.size()];
+        for (Edge edge : initialMatching) {
+            int vertex1 = edge.vertex1();
+            int vertex2 = edge.vertex2();
+            if (vertex1 < 0 || vertex1 >= graph.size()
+                    || vertex2 < 0 || vertex2 >= graph.size()
+                    || vertex1 == vertex2
+                    || !graph.hasEdge(edge)) {
+                throw new IllegalArgumentException("Initial matching contains a non-edge");
+            }
+            if (seen[vertex1] || seen[vertex2]) {
+                throw new IllegalArgumentException(
+                        "Initial matching contains overlapping edges");
+            }
+
+            seen[vertex1] = true;
+            seen[vertex2] = true;
+            setMatch(vertex1, vertex2);
+            unmatched.remove(vertex1);
+            unmatched.remove(vertex2);
         }
     }
 

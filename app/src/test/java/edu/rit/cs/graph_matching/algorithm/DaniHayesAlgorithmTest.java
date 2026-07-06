@@ -1,6 +1,7 @@
 package edu.rit.cs.graph_matching.algorithm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Objects;
 import java.util.Random;
@@ -9,6 +10,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -20,6 +22,33 @@ import edu.rit.cs.graph_matching.graph.MutableGraph;
 
 class DaniHayesAlgorithmTest {
     /** Runs are seeded such that the generated graphs are always the same */
+    private static final long SEED = 0xD0A17A9E5L;
+
+    @Test
+    void seededConstructorUsesInitialMatching() {
+        MutableGraph graph = new AdjacencySetGraph(4);
+        graph.addEdge(0, 1);
+        graph.addEdge(2, 3);
+
+        Set<Edge> initialMatching = Set.of(new Edge(0, 1));
+        DaniHayesAlgorithm alg = new DaniHayesAlgorithm(graph, new Random(SEED), initialMatching);
+
+        assertEquals(initialMatching, alg.getCurrentMatching());
+    }
+
+    @Test
+    void seededConstructorRejectsInvalidMatching() {
+        MutableGraph graph = new AdjacencySetGraph(4);
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new DaniHayesAlgorithm(graph, new Random(SEED),
+                        Set.of(new Edge(0, 1), new Edge(1, 2))));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DaniHayesAlgorithm(graph, new Random(SEED),
+                        Set.of(new Edge(2, 3))));
+    }
 
     @ParameterizedTest
     // @formatter:off
