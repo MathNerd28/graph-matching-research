@@ -19,6 +19,7 @@ import edu.rit.cs.graph_matching.algorithm.DaniHayesAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.EdmondsAlgorithm;
 import edu.rit.cs.graph_matching.algorithm.GoelKapralovKhanna;
 import edu.rit.cs.graph_matching.algorithm.HopcroftKarpAlgorithm;
+import edu.rit.cs.graph_matching.algorithm.YusterAlgorithm;
 import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
@@ -184,6 +185,7 @@ public final class Main {
             edmonds,
             hopcroftKarp,
             goelKapralovKhanna,
+            yuster,
         }
 
         @Parameters(description = "Algorithm to run", index = "0")
@@ -286,6 +288,8 @@ public final class Main {
                      new AlgorithmInitialization(new HopcroftKarpAlgorithm(graphStats), graphStats);
                 case Algorithm.goelKapralovKhanna -> new AlgorithmInitialization(
                         new GoelKapralovKhanna(graphStats, random), graphStats);
+                case Algorithm.yuster ->
+                     new AlgorithmInitialization(new YusterAlgorithm(graphStats), graphStats);
             };
         }
 

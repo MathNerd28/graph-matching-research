@@ -38,7 +38,8 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
     private int nextRoot = 0;
 
     /**
-     * Create a blossom matching solver for the given graph.
+     * Create a blossom matching solver for the given graph, starting from an
+     * empty matching.
      *
      * @param graph
      *     the graph to be solved
@@ -51,6 +52,27 @@ public class EdmondsAlgorithm implements MatchingAlgorithm {
         this.bases = new int[graph.size()];
 
         Arrays.fill(matches, -1);
+    }
+
+    /**
+     * Create a blossom matching solver that operates on a caller-supplied
+     * matching array. The array is used directly (not copied), so the caller
+     * can observe augmentations and share matching state across solver
+     * instances — for example, lifting a matching from one subgraph to another.
+     * The array must follow the convention {@code matches[v] = } the vertex
+     * matched with {@code v}, or {@code -1} if {@code v} is unmatched.
+     *
+     * @param graph
+     *     the graph to be solved
+     * @param matches
+     *     the (length-{@code graph.size()}) matching array to read and update
+     */
+    public EdmondsAlgorithm(Graph graph, int[] matches) {
+        this.graph = graph;
+
+        this.matches = matches;
+        this.parents = new int[graph.size()];
+        this.bases = new int[graph.size()];
     }
 
     /**
