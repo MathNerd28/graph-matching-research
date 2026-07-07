@@ -11,6 +11,12 @@ public final class GraphGenerator {
     private GraphGenerator() {
     }
 
+    public record DaniHayesHardConstruction(Graph graph,
+                                            List<Edge> plantedMatching,
+                                            int degree,
+                                            int corridorLength,
+                                            int freeVertexCount) {}
+
     /**
      * Generates a star graph with the given number of edges. Matchings: leaves
      * + 1 - Empty Set - Single Edge Maximum Matchings: 1
@@ -485,6 +491,229 @@ public final class GraphGenerator {
 
         buildUniqueMatchingRecursive(graph, first, pivotLeft - 1, rightOffset, splitRatio);
         buildUniqueMatchingRecursive(graph, pivotLeft + 1, last, rightOffset, splitRatio);
+    }
+
+    /**
+     * Returns the vertex count for the even-degree Dani-Hayes hard-instance
+     * experiment.
+     *
+     * @param degree
+     *     the regular degree; must be even and at least 4
+     * @return the number of vertices used by
+     *     {@link #generateDaniHayesHardGraph(int)}
+     */
+    public static int getDaniHayesHardVertexCount(int degree) {
+        validateDaniHayesHardDegree(degree);
+        return 7 * degree * degree + 3 * degree - 1;
+    }
+
+    /**
+     * Generates the parity-correct, disjoint-gadget Dani-Hayes adversarial
+     * corridor construction. The construction is d-regular for even d, leaves
+     * d-1 vertices free in the planted matching, and uses only local one-port
+     * degree-completion gadgets.
+     *
+     * @param degree
+     *     the regular degree; must be even and at least 4
+     * @return the generated graph and planted matching
+     */
+    public static DaniHayesHardConstruction generateDaniHayesHardGraph(int degree) {
+        return generateDaniHayesHardGraph(
+                new AdjacencySetGraph(getDaniHayesHardVertexCount(degree)), degree);
+    }
+
+    /**
+     * Generates the parity-correct, disjoint-gadget Dani-Hayes adversarial
+     * corridor construction in-place.
+     *
+     * @param graph
+     *     the graph to edit in-place
+     * @param degree
+     *     the regular degree; must be even and at least 4
+     * @return the generated graph and planted matching
+     */
+    public static DaniHayesHardConstruction generateDaniHayesHardGraph(MutableGraph graph,
+            int degree) {
+        validateDaniHayesHardDegree(degree);
+        int expectedSize = getDaniHayesHardVertexCount(degree);
+        if (graph.size() != expectedSize) {
+            throw new IllegalArgumentException(
+                    "Graph size must be exactly " + expectedSize + " for degree " + degree);
+        }
+
+        graph.clear();
+        List<Edge> plantedMatching = new ArrayList<>();
+
+        int freeVertexCount = degree - 1;
+        int corridorLength = degree / 2;
+        int cursor = 0;
+
+        // Lay out the top-level sets: S are the initially free vertices, A are
+        // the shared choice vertices, and B are the per-corridor boundary
+        // vertices. cursor always points at the next unused vertex id.
+        int freeStart = cursor;
+        cursor += freeVertexCount;
+        int sharedStart = cursor;
+        cursor += degree;
+        int boundaryStart = cursor;
+        cursor += degree;
+
+        // Allocate the corridor vertices. With zero-based array indices,
+        // inLayers[layer][corridor] is I_{layer+1}^{corridor+1}, and
+        // outLayers[layer][corridor] is O_{layer+1}^{corridor+1}.
+        int[][] inLayers = new int[corridorLength][degree];
+        int[][] outLayers = new int[corridorLength][degree];
+        for (int layer = 0; layer < corridorLength; layer++) {
+            for (int corridor = 0; corridor < degree; corridor++) {
+                inLayers[layer][corridor] = cursor++;
+                outLayers[layer][corridor] = cursor++;
+            }
+        }
+
+        // Add the complete bipartite graph S-A. Each free vertex receives all d
+        // possible first choices; each A_j already has d-1 incident free edges
+        // and will get one planted matching edge to B_j below.
+        for (int free = 0; free < freeVertexCount; free++) {
+            for (int shared = 0; shared < degree; shared++) {
+                graph.addEdge(freeStart + free, sharedStart + shared);
+            }
+        }
+
+        // Match A_j to B_j and add the unique corridor-entry edge B_j-I_1^j.
+        // Thus choosing A_j commits the alternating walk to corridor j.
+        for (int corridor = 0; corridor < degree; corridor++) {
+            int shared = sharedStart + corridor;
+            int boundary = boundaryStart + corridor;
+            addMatchedEdge(graph, plantedMatching, shared, boundary);
+            graph.addEdge(boundary, inLayers[0][corridor]);
+        }
+
+        // Add the planted matching inside every corridor layer:
+        // I_i^j is matched to O_i^j.
+        for (int layer = 0; layer < corridorLength; layer++) {
+            for (int corridor = 0; corridor < degree; corridor++) {
+                addMatchedEdge(graph, plantedMatching, inLayers[layer][corridor],
+                        outLayers[layer][corridor]);
+            }
+        }
+
+        // Add the unmatched forward edges O_i^j-I_{i+1}^j that continue along
+        // the same corridor.
+        for (int layer = 0; layer < corridorLength - 1; layer++) {
+            for (int corridor = 0; corridor < degree; corridor++) {
+                graph.addEdge(outLayers[layer][corridor], inLayers[layer + 1][corridor]);
+            }
+        }
+
+        // Add the unmatched back edges from O_i^j to the previous layer. These
+        // are the construction's deliberate cross-corridor choices; the
+        // degree-completion gadgets below remain disjoint and add no paths
+        // between corridors.
+        for (int layer = 1; layer < corridorLength; layer++) {
+            for (int corridor = 0; corridor < degree; corridor++) {
+                int out = outLayers[layer][corridor];
+                for (int shift = 0; shift < degree - 2; shift++) {
+                    graph.addEdge(out, inLayers[layer - 1][(corridor + shift) % degree]);
+                }
+            }
+        }
+
+        // Pair terminal O vertices. At the last layer, each O has its planted
+        // matching edge plus d-2 back edges, so this one extra edge completes
+        // degree d without creating new free vertices.
+        int terminalLayer = corridorLength - 1;
+        for (int corridor = 0; corridor < degree; corridor += 2) {
+            graph.addEdge(outLayers[terminalLayer][corridor],
+                    outLayers[terminalLayer][corridor + 1]);
+        }
+
+        // Attach separate one-port completion gadgets to exactly the vertices
+        // that are still short of degree: B_j, O_1^j, and I_ell^j. Each call
+        // uses fresh vertices, so completions cannot connect one corridor to
+        // another.
+        for (int corridor = 0; corridor < degree; corridor++) {
+            cursor = attachOnePortCompletion(graph, plantedMatching, boundaryStart + corridor,
+                    degree, cursor);
+            cursor = attachOnePortCompletion(graph, plantedMatching, outLayers[0][corridor],
+                    degree, cursor);
+            cursor = attachOnePortCompletion(graph, plantedMatching,
+                    inLayers[terminalLayer][corridor], degree, cursor);
+        }
+
+        if (cursor != graph.size()) {
+            throw new IllegalStateException(
+                    "Internal vertex accounting error: used " + cursor + " of " + graph.size());
+        }
+
+        for (int vertex = 0; vertex < graph.size(); vertex++) {
+            if (graph.getDegree(vertex) != degree) {
+                throw new IllegalStateException("Expected vertex " + vertex + " to have degree "
+                        + degree + " but found " + graph.getDegree(vertex));
+            }
+        }
+
+        if (!GraphUtils.isValidMatching(graph, plantedMatching)) {
+            throw new IllegalStateException("Generated planted matching is invalid");
+        }
+
+        return new DaniHayesHardConstruction(graph, List.copyOf(plantedMatching), degree,
+                corridorLength, freeVertexCount);
+    }
+
+    private static void validateDaniHayesHardDegree(int degree) {
+        if (degree < 4 || degree % 2 != 0) {
+            throw new IllegalArgumentException("degree must be even and at least 4");
+        }
+    }
+
+    private static int attachOnePortCompletion(MutableGraph graph, List<Edge> plantedMatching,
+            int boundaryVertex, int degree, int cursor) {
+        // Use fresh vertices for every completion gadget. This is what makes
+        // the gadgets disjoint: the only old vertex they touch is boundaryVertex.
+        int[] left = new int[degree];
+        int[] right = new int[degree];
+        for (int i = 0; i < degree; i++) {
+            left[i] = cursor++;
+            right[i] = cursor++;
+        }
+
+        // Start from K_{d,d} and remove q independent diagonal edges. The
+        // endpoints of the removed edges are the only gadget vertices now short
+        // of degree d.
+        int removedPairs = (degree - 2) / 2;
+        for (int i = 0; i < degree; i++) {
+            for (int j = 0; j < degree; j++) {
+                if (i == j && i < removedPairs) {
+                    continue;
+                }
+                graph.addEdge(left[i], right[j]);
+            }
+        }
+
+        // Connect the port to both endpoints of each removed edge. This gives
+        // boundaryVertex exactly degree - 2 new incident edges and restores each
+        // affected gadget vertex to degree d.
+        for (int i = 0; i < removedPairs; i++) {
+            graph.addEdge(boundaryVertex, left[i]);
+            graph.addEdge(boundaryVertex, right[i]);
+        }
+
+        // Use a shifted perfect matching inside the gadget so no planted
+        // matching edge is one of the removed K_{d,d} edges.
+        for (int i = 0; i < degree; i++) {
+            int matchedRight = right[(i + 1) % degree];
+            if (!graph.hasEdge(left[i], matchedRight)) {
+                throw new IllegalStateException("Local completion matching edge is missing");
+            }
+            plantedMatching.add(new Edge(left[i], matchedRight));
+        }
+        return cursor;
+    }
+
+    private static void addMatchedEdge(MutableGraph graph, List<Edge> plantedMatching, int vertex1,
+            int vertex2) {
+        graph.addEdge(vertex1, vertex2);
+        plantedMatching.add(new Edge(vertex1, vertex2));
     }
 
 }

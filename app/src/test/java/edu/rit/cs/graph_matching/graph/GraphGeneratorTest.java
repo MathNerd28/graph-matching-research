@@ -431,6 +431,60 @@ class GraphGeneratorTest {
                 "Algorithms disagree on the matching — uniqueness violated");
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = { 1, 2, 3, 5, 7 })
+    void testGenerateDaniHayesHardRejectsInvalidDegree(int degree) {
+        assertThrows(IllegalArgumentException.class,
+                () -> GraphGenerator.generateDaniHayesHardGraph(degree));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = { 4, 6 })
+    void testGenerateDaniHayesHardGraphIsRegularWithValidSeed(int degree) {
+        GraphGenerator.DaniHayesHardConstruction construction =
+                GraphGenerator.generateDaniHayesHardGraph(degree);
+        Graph graph = construction.graph();
+
+        assertEquals(GraphGenerator.getDaniHayesHardVertexCount(degree), graph.size());
+        assertEquals(degree / 2, construction.corridorLength());
+        assertEquals(degree - 1, construction.freeVertexCount());
+        assertTrue(GraphUtils.isValidMatching(graph, construction.plantedMatching()));
+
+        boolean[] matched = new boolean[graph.size()];
+        for (Edge edge : construction.plantedMatching()) {
+            matched[edge.vertex1()] = true;
+            matched[edge.vertex2()] = true;
+        }
+
+        int matchedVertices = 0;
+        for (int vertex = 0; vertex < graph.size(); vertex++) {
+            assertEquals(degree, graph.getDegree(vertex),
+                    "Unexpected degree at vertex " + vertex);
+            if (matched[vertex]) {
+                matchedVertices++;
+            }
+        }
+
+        assertEquals(graph.size() - construction.freeVertexCount(), matchedVertices);
+        for (int freeVertex = 0; freeVertex < construction.freeVertexCount(); freeVertex++) {
+            assertFalse(matched[freeVertex]);
+        }
+    }
+
+    @Test
+    void testGenerateDaniHayesHardGraphHasLargerMatching() {
+        GraphGenerator.DaniHayesHardConstruction construction =
+                GraphGenerator.generateDaniHayesHardGraph(4);
+        Set<Edge> maximumMatching =
+                new EdmondsAlgorithm(construction.graph()).getMaximumMatching();
+
+        assertEquals(construction.graph()
+                                 .size()
+                / 2, maximumMatching.size());
+        assertEquals(maximumMatching.size() - 1, construction.plantedMatching()
+                                                             .size());
+    }
+
     /**
      * Helper function Checks the connectivity of a (compressed) graph
      * 

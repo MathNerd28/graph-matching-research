@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 import warnings
 
 
-def draw_trendline(x, y, polynomial=False):
+EXPONENTIAL_MODEL = "Exponential (A·exp(kx)+b)"
+
+
+def draw_trendline(x, y, polynomial=False, exclude=None, only=None, exponential=False):
     """
     Fits multiple curves to the given x and y data and returns the one with the
     lowest BIC (Bayesian Information Criterion). c.f. https://en.wikipedia.org/wiki/Bayesian_information_criterion
@@ -19,11 +22,15 @@ def draw_trendline(x, y, polynomial=False):
     Logarithmic     y = A*log(x) + b
     N log N         y = c*(a*x)*log(a*x) + b    (a is non-redundant: adds an x term)
     Polynomial n^k  y = A*x^k + b               (k free, bounds [0.1, 10])
+    Exponential     y = A*exp(k*x) + b
     Harmonic        y = c/(x - s) + b           (s < min(x) enforced)
     Harmonic n/(N-n) y = c/(x - N) + b          (N > max(x) enforced)
 
     :param x: array-like, independent variable data (e.g., matching size)
     :param y: array-like, dependent variable data (e.g., runtime)
+    :param exclude: optional set of candidate model names to skip
+    :param only: optional set of candidate model names to fit exclusively
+    :param exponential: include the exponential candidate in best-fit mode
     :return: dictionary containing the best fit curve's formula (name),
              parameters, R^2, and a predictor function
     """
@@ -58,6 +65,9 @@ def draw_trendline(x, y, polynomial=False):
     def func_poly(x, A, k, b):
         return A * x**k + b
 
+    def func_exp(x, A, k, b):
+        return A * np.exp(np.clip(k * x, -700, 700)) + b
+
     def func_harmonic(x, c, s, b):
         return c / (x - s) + b
 
@@ -80,6 +90,15 @@ def draw_trendline(x, y, polynomial=False):
     guess_A_log    = (y_max - y_min) / log_range if log_range != 0 else 1.0
     # nlogn scale guess: c such that c*x_max*log(x_max) ≈ y_max - y_min (at a=1)
     guess_c_nlogn  = (y_max - y_min) / (x_max * np.log(x_max)) if x_max > 1 else 1.0
+    positive_y_min = max(y_min, EPS)
+    positive_y_max = max(y_max, positive_y_min + EPS)
+    guess_k_exp = (
+        np.log(positive_y_max / positive_y_min) / x_range
+        if x_range > 0 and positive_y_max > positive_y_min else 1.0
+    )
+    guess_k_exp = max(float(guess_k_exp), EPS)
+    guess_A_exp = max((y_max - y_min) / np.exp(min(guess_k_exp * x_max, 50.0)), EPS)
+    max_k_exp = max(EPS, min(10.0, 700.0 / max(abs(x_max), EPS)))
 
     def _logc_guess(N_val):
         """Return [A, N, b] initial guess for -A*log(N-x)+b at a given N seed."""
@@ -122,6 +141,15 @@ def draw_trendline(x, y, polynomial=False):
             func_poly,
             [[guess_A_quad, k, y_min] for k in [1.0, 1.5, 2.0, 2.5, 3.0]],
             ([-np.inf, 0.1, -np.inf], [np.inf, 10.0, np.inf]),
+        ),
+        EXPONENTIAL_MODEL: (
+            func_exp,
+            [
+                [guess_A_exp, guess_k_exp, y_min],
+                [max(y_max - y_min, EPS), 1.0 / max(x_max, EPS), y_min],
+                [1.0, guess_k_exp, 0.0],
+            ],
+            ([EPS, EPS, -np.inf], [np.inf, max_k_exp, np.inf]),
         ),
         # s is bounded strictly below x_min so the denominator never hits 0
         # inside the data range.
@@ -238,6 +266,9 @@ def draw_trendline(x, y, polynomial=False):
         elif name == "Polynomial (n^k)":
             A, k, b = popt
             return f"Poly: y = {fmt(A)}x^{k:.2f} + {fmt(b)}"
+        elif name == EXPONENTIAL_MODEL:
+            A, k, b = popt
+            return f"Exp: y = {fmt(A)} * exp({fmt(k)}x) + {fmt(b)}"
         elif name == "Harmonic (c/(n-s))":
             c_h, s, b = popt
             return f"Harmonic: y = {fmt(c_h)} / (x - {fmt(s)}) + {fmt(b)}"
@@ -259,6 +290,13 @@ def draw_trendline(x, y, polynomial=False):
 
     if not polynomial:
         candidates.pop("Polynomial (n^k)", None)
+    if not exponential and (only is None or EXPONENTIAL_MODEL not in only):
+        candidates.pop(EXPONENTIAL_MODEL, None)
+    if only is not None:
+        candidates = {name: value for name, value in candidates.items() if name in only}
+    elif exclude:
+        for name in exclude:
+            candidates.pop(name, None)
 
     for name, (func, p0_list, bounds) in candidates.items():
         result = best_fit_multi(func, p0_list, bounds)
