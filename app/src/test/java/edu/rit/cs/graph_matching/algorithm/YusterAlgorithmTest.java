@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -17,6 +18,7 @@ import edu.rit.cs.graph_matching.graph.Graph.Edge;
 import edu.rit.cs.graph_matching.graph.GraphGenerator;
 import edu.rit.cs.graph_matching.graph.GraphUtils;
 import edu.rit.cs.graph_matching.graph.MutableGraph;
+import edu.rit.cs.graph_matching.runner.GraphStatistics;
 
 /**
  * Tests for {@link YusterAlgorithm}. Yuster's algorithm targets regular and
@@ -138,6 +140,35 @@ class YusterAlgorithmTest {
                     "Yuster must match Edmonds' maximum matching size on irregular graphs");
             assertTrue(GraphUtils.isValidMatching(g, matching), "Matching must be valid");
         }
+    }
+
+    /**
+     * Regression test for Yuster's compact subgraph storage. The input graph may
+     * be a statistics wrapper, so level 0 must remain that exact wrapper even
+     * though the generated halved subgraphs are stored in CSR form.
+     */
+    @Test
+    void graphStatisticsWrapperStillCountsInputGraphCalls() {
+        int vertices = 60;
+        int degree = 20;
+        Random random = new Random(Objects.hash(vertices, degree));
+        Graph g = GraphGenerator.generateGraph(new AdjacencySetGraph(vertices),
+                degrees(vertices, degree), random);
+        GraphStatistics stats = new GraphStatistics(g);
+
+        Set<Edge> matching = new YusterAlgorithm(stats).getMaximumMatching();
+
+        long degreeChecks = ((Number) stats.getStatistics()
+                                           .get("getDegree(v)")).longValue();
+        long neighborScans = ((Number) stats.getStatistics()
+                                            .get("getAllNeighbors()")).longValue();
+
+        assertEquals(vertices / 2, matching.size(), "The regular graph should have a perfect matching");
+        assertTrue(GraphUtils.isValidMatching(g, matching), "Matching must be valid");
+        assertTrue(degreeChecks > 0,
+                "Yuster should still count degree checks on the wrapped input graph");
+        assertTrue(neighborScans > 0,
+                "Yuster should still count neighbor scans on the wrapped input graph");
     }
 
     private static int[] degrees(int size, int degree) {

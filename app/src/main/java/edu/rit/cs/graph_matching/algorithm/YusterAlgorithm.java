@@ -8,29 +8,32 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
-import edu.rit.cs.graph_matching.graph.AdjacencySetGraph;
+import edu.rit.cs.graph_matching.graph.CompactGraph;
 import edu.rit.cs.graph_matching.graph.Graph;
 import edu.rit.cs.graph_matching.graph.Graph.Edge;
-import edu.rit.cs.graph_matching.graph.MutableGraph;
 
 /**
  * Raphael Yuster's exact maximum-matching algorithm for regular and
  * almost-regular graphs ("Maximum matching in regular and almost regular
- * graphs"): {@code O(r n^2 log n)} on an {@code r}-almost-regular {@code n}-vertex
+ * graphs"): {@code O(r n^2 log n)} on an {@code r}-almost-regular
+ * {@code n}-vertex
  * graph, hence {@code O(n^2 log n)} when regular.
  * <p>
  * It works bottom-up over spanning subgraphs {@code G_t ⊆ ... ⊆ G_0 = G}, each
  * with roughly half the max degree of the next (Lemma 2.2), built by keeping
- * every other edge of an Euler tour. A maximum matching is found on the sparsest
+ * every other edge of an Euler tour. A maximum matching is found on the
+ * sparsest
  * {@code G_t} (max degree {@code O(sqrt(n))}), then lifted level-by-level: a
- * maximum matching of {@code G_i} is a valid matching of {@code G_{i-1}} needing
+ * maximum matching of {@code G_i} is a valid matching of {@code G_{i-1}}
+ * needing
  * only a few more augmenting paths.
  * <p>
  * Each level is delegated to a solver sharing one {@code matches} array:
  * {@link GabowAlgorithm} ({@code O(m sqrt(n))}, Lemma 2.4) for the base,
  * {@link EdmondsAlgorithm} ({@code O(m)} per path, Lemma 2.5) for the lifts.
  * Correctness is independent of the subgraph sequence — the last level is
- * {@code G} itself, so the result is always a maximum matching of {@code G}; the
+ * {@code G} itself, so the result is always a maximum matching of {@code G};
+ * the
  * sequence only governs running time. {@link #augment()} is cooperatively
  * interruptible.
  */
@@ -38,16 +41,28 @@ public class YusterAlgorithm implements MatchingAlgorithm {
     /** The input graph, {@code G_0 = G}. */
     private final Graph graph;
 
-    /** Spanning subgraphs, densest first: index 0 is {@code G}, the last is the sparsest {@code G_t}. */
+    /**
+     * Spanning subgraphs, densest first: index 0 is {@code G}, the last is the
+     * sparsest {@code G_t}.
+     */
     private final List<Graph> subgraphs;
 
-    /** Matching shared across all levels: {@code matches[v]} is v's mate, or -1 if unmatched. */
+    /**
+     * Matching shared across all levels: {@code matches[v]} is v's mate, or -1 if
+     * unmatched.
+     */
     private final int[] matches;
 
-    /** Level being made maximum, from the sparsest {@code G_t} down to {@code G_0 = G}; finished when {@code < 0}. */
+    /**
+     * Level being made maximum, from the sparsest {@code G_t} down to
+     * {@code G_0 = G}; finished when {@code < 0}.
+     */
     private int level;
 
-    /** Solver for the current level (Gabow at the base, Edmonds for lifts); lazily (re)created per level. */
+    /**
+     * Solver for the current level (Gabow at the base, Edmonds for lifts); lazily
+     * (re)created per level.
+     */
     private MatchingAlgorithm levelSolver;
 
     /**
@@ -55,7 +70,7 @@ public class YusterAlgorithm implements MatchingAlgorithm {
      * {@code O(n * d)} time.
      *
      * @param graph
-     *     the graph to be solved
+     *              the graph to be solved
      */
     public YusterAlgorithm(Graph graph) {
         this.graph = graph;
@@ -75,8 +90,9 @@ public class YusterAlgorithm implements MatchingAlgorithm {
      * max degree, stopping once the max degree drops to {@code O(sqrt(n))}.
      *
      * @param g
-     *     the input graph {@code G_0}
-     * @return the subgraphs, densest ({@code G_0}) first, sparsest ({@code G_t}) last
+     *          the input graph {@code G_0}
+     * @return the subgraphs, densest ({@code G_0}) first, sparsest ({@code G_t})
+     *         last
      */
     private static List<Graph> buildSubgraphSequence(Graph g) {
         int n = g.size();
@@ -111,12 +127,11 @@ public class YusterAlgorithm implements MatchingAlgorithm {
      * {@code ⌊δ/2⌋ ≤ d'(v) ≤ ⌈Δ/2⌉}.
      *
      * @param g
-     *     the graph to thin out
+     *          the graph to thin out
      * @return a spanning subgraph of {@code g} with roughly half the degree
      */
     private static Graph halveDegrees(Graph g) {
         int n = g.size();
-        MutableGraph result = new AdjacencySetGraph(n);
 
         // Count original edges, so the multigraph edge arrays can be sized
         // exactly (originals + at most n/2 supplement edges).
@@ -176,6 +191,7 @@ public class YusterAlgorithm implements MatchingAlgorithm {
                 }
             }
         }
+        boolean[] kept = new boolean[edgeCount];
 
         // Build a CSR incidence structure over the multigraph.
         int[] incidenceStart = new int[n + 1];
@@ -227,12 +243,12 @@ public class YusterAlgorithm implements MatchingAlgorithm {
             for (int i = 1; i < tourLength; i += 2) {
                 int e = tour[i];
                 if (!isSupplement[e]) {
-                    result.addEdge(edgeU[e], edgeV[e]);
+                    kept[e] = true;
                 }
             }
         }
 
-        return result;
+        return CompactGraph.fromSelectedEdges(n, edgeU, edgeV, kept);
     }
 
     /**
@@ -331,7 +347,7 @@ public class YusterAlgorithm implements MatchingAlgorithm {
      * each, Lemma 2.5) suffices.
      *
      * @param level
-     *     the level whose subgraph the solver should operate on
+     *              the level whose subgraph the solver should operate on
      * @return a solver over {@code subgraphs.get(level)} sharing {@link #matches}
      */
     private MatchingAlgorithm createLevelSolver(int level) {
