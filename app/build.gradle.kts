@@ -37,7 +37,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "edu.rit.cs.graph_matching.Main"
+    mainClass = "redacted.graph_matching.Main"
 }
 
 tasks.named<Test>("test") {
